@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
@@ -22,23 +21,16 @@ export const AIAssistant: React.FC = () => {
     if (!input.trim() || isLoading) return;
 
     const userMsg = input.trim();
-    const apiKey = (process.env as any).API_KEY;
 
-    if (!apiKey) {
-      setMessages(prev => [...prev, 
-        { role: 'user', content: userMsg },
-        { role: 'assistant', content: "I'm sorry, I'm missing my API key to process this request. Please check the project settings." }
-      ]);
-      setInput('');
-      return;
-    }
-
+    // As per guidelines, process.env.API_KEY is assumed to be valid and accessible.
+    // We proceed to send the message using the direct environment variable.
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: apiKey });
+      // Use process.env.API_KEY directly when initializing the client as per guidelines.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userMsg,
@@ -48,6 +40,7 @@ export const AIAssistant: React.FC = () => {
         }
       });
 
+      // Directly access .text property from GenerateContentResponse
       const aiResponse = response.text || "I'm sorry, I couldn't process that. How about we book a call with our experts?";
       setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
     } catch (error) {

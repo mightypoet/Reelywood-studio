@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { DorkyProject } from './components/DorkyProject';
@@ -9,17 +10,23 @@ import { Trust } from './components/Trust';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 import { AIAssistant } from './components/AIAssistant';
+import { AuthView } from './components/AuthView';
 
-const App: React.FC = () => {
+const MainContent: React.FC = () => {
+  const [view, setView] = useState<'home' | 'auth'>('home');
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
   }, []);
 
+  if (view === 'auth') {
+    return <AuthView onBack={() => setView('home')} />;
+  }
+
   return (
     <div className={`min-h-screen transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <Navbar />
+      <Navbar onAuthClick={() => setView('auth')} />
       <main>
         <section id="home">
           <Hero />
@@ -47,6 +54,14 @@ const App: React.FC = () => {
         <AIAssistant />
       </div>
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <MainContent />
+    </AuthProvider>
   );
 };
 
