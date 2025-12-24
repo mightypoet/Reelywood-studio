@@ -11,8 +11,9 @@ import {
   Copy, 
   Check, 
   Settings, 
-  Globe,
-  ShieldCheck
+  ShieldCheck,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 
 interface AuthViewProps {
@@ -42,18 +43,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
       await loginWithGoogle();
       onBack(); // Return to home on success
     } catch (err: any) {
-      console.error("Auth Error:", err);
+      const errCode = err.code || '';
+      const errMsg = err.message || '';
       
-      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+      if (errCode === 'auth/unauthorized-domain' || errMsg.includes('unauthorized-domain')) {
         setError({
           code: 'auth/unauthorized-domain',
-          message: "Whitelisting required for authentication.",
+          message: "This domain isn't authorized in Firebase.",
           domain: window.location.hostname
         });
       } else {
         setError({
-          code: err.code || 'unknown',
-          message: err.message || "Failed to sign in. Please try again."
+          code: errCode || 'unknown',
+          message: errMsg || "Failed to sign in. Please try again."
         });
       }
     } finally {
@@ -63,9 +65,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden font-['Plus_Jakarta_Sans']">
-      {/* Decorative Blobs */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-200/40 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-violet-200/40 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
+      {/* Decorative Gradients */}
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-indigo-200/30 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2"></div>
+      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-violet-200/30 rounded-full blur-[120px] translate-x-1/2 translate-y-1/2"></div>
 
       <div className="w-full max-w-lg relative z-10">
         <button 
@@ -82,73 +84,84 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="bg-amber-50 p-8 border-b border-amber-100 flex items-center space-x-4">
                 <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-200">
-                  <Settings size={24} className="animate-spin-slow" />
+                  <Settings size={24} className="animate-pulse" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-amber-900">Action Required</h2>
-                  <p className="text-amber-700 text-xs font-medium">Domain Whitelisting Required</p>
+                  <h2 className="text-xl font-black text-amber-900">Security Requirement</h2>
+                  <p className="text-amber-700 text-xs font-medium uppercase tracking-wider">Firebase Whitelist Missing</p>
                 </div>
               </div>
 
               <div className="p-8 lg:p-10 space-y-8">
                 <div className="space-y-4">
+                  <div className="flex items-center space-x-2 text-slate-400">
+                    <Info size={14} />
+                    <p className="text-[11px] font-bold uppercase tracking-widest">Why am I seeing this?</p>
+                  </div>
                   <p className="text-slate-600 text-sm leading-relaxed">
-                    Google Authentication is blocked because this URL is not in your Firebase "Authorized Domains" list. Follow these 2 steps to fix it:
+                    Firebase blocked authentication because this URL is not on your <span className="font-bold">Authorized Domains</span> list. You need to manually add it to continue development.
                   </p>
                   
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <div className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</div>
-                      <div className="flex-1 space-y-2">
-                        <p className="text-sm font-bold text-slate-900">Copy your current domain:</p>
-                        <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
-                          <code className="text-indigo-600 font-bold text-xs truncate mr-2">{error.domain}</code>
+                  <div className="space-y-4 pt-2">
+                    {/* Step 1 */}
+                    <div className="flex items-start space-x-4 bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
+                      <div className="w-8 h-8 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-md">1</div>
+                      <div className="flex-1 space-y-3">
+                        <p className="text-sm font-bold text-slate-900">Copy current domain:</p>
+                        <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm group">
+                          <code className="text-indigo-600 font-bold text-xs truncate mr-2 select-all">{error.domain}</code>
                           <button 
                             onClick={handleCopyDomain}
                             className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-indigo-600 hover:text-white rounded-lg text-slate-500 transition-all text-[10px] font-bold"
                           >
                             {copied ? <Check size={12} /> : <Copy size={12} />}
-                            <span>{copied ? 'Copied' : 'Copy'}</span>
+                            <span>{copied ? 'Done' : 'Copy'}</span>
                           </button>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-start space-x-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <div className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</div>
+                    {/* Step 2 */}
+                    <div className="flex items-start space-x-4 bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
+                      <div className="w-8 h-8 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-md">2</div>
                       <div className="flex-1 space-y-3">
-                        <p className="text-sm font-bold text-slate-900">Add it to Firebase Console:</p>
-                        <ul className="text-[11px] text-slate-500 space-y-1 list-disc pl-4">
-                          <li>Go to <span className="font-bold">Authentication</span> &gt; <span className="font-bold">Settings</span></li>
-                          <li>Find <span className="font-bold">Authorized domains</span></li>
-                          <li>Click <span className="font-bold">Add domain</span> and paste the URL</li>
-                        </ul>
+                        <p className="text-sm font-bold text-slate-900">Whitelist in Firebase:</p>
+                        <div className="space-y-2">
+                          <div className="flex items-center text-[11px] text-slate-500 space-x-2">
+                            <ChevronRight size={12} className="text-indigo-500" />
+                            <span>Authentication → Settings → Authorized domains</span>
+                          </div>
+                          <div className="flex items-center text-[11px] text-slate-500 space-x-2">
+                            <ChevronRight size={12} className="text-indigo-500" />
+                            <span>Click "Add domain" and paste the value from Step 1</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col space-y-3">
+                <div className="flex flex-col space-y-3 pt-4">
                   <a 
                     href={`https://console.firebase.google.com/project/studio-7648492258-76684/authentication/providers`} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center space-x-2 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                    className="w-full flex items-center justify-center space-x-2 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 group"
                   >
-                    <span>Open Firebase Settings</span>
-                    <ExternalLink size={18} />
+                    <span>Open Firebase Console</span>
+                    <ExternalLink size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </a>
                   <button 
                     onClick={() => setError(null)}
                     className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-colors"
                   >
-                    Try Signing In Again
+                    Refresh & Try Again
                   </button>
                 </div>
 
-                <div className="flex items-center justify-center space-x-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                  <ShieldCheck size={12} />
-                  <span>Developer Configuration Mode</span>
+                <div className="flex items-center justify-center space-x-2 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4">
+                  <ShieldCheck size={12} className="text-indigo-400" />
+                  <span>Config Assistant Ready</span>
                 </div>
               </div>
             </div>
@@ -201,7 +214,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
                     <div className="w-full border-t border-slate-100"></div>
                   </div>
                   <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black">
-                    <span className="bg-white px-4 text-slate-300">Secure Access</span>
+                    <span className="bg-white px-4 text-slate-300">Fast & Secure</span>
                   </div>
                 </div>
 
@@ -210,9 +223,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
                      <Lock size={18} />
                    </div>
                    <div className="space-y-1">
-                     <p className="text-indigo-900 font-bold text-xs uppercase tracking-wider">High Security Auth</p>
+                     <p className="text-indigo-900 font-bold text-xs uppercase tracking-wider">Privacy First</p>
                      <p className="text-indigo-600/70 text-[11px] leading-relaxed">
-                       Reelywood uses OAuth 2.0. No password storage, no data risk.
+                       We use high-security OAuth 2.0. We never store your Google password.
                      </p>
                    </div>
                 </div>
@@ -225,7 +238,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
                     onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
                     className="ml-2 text-indigo-600 font-bold hover:underline"
                   >
-                    {mode === 'login' ? 'Join waitlist' : 'Sign in'}
+                    {mode === 'login' ? 'Create one' : 'Sign in'}
                   </button>
                 </p>
               </div>
@@ -234,17 +247,17 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
         </div>
         
         <p className="mt-8 text-center text-slate-400 text-[10px] uppercase tracking-widest font-bold">
-          Protected by <span className="text-slate-500">Reelywood Studio</span> Security
+          Protected by <span className="text-slate-500">Reelywood Enterprise</span> Security
         </p>
       </div>
 
       <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @keyframes bounce-subtle {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
         }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
+        .animate-bounce-subtle {
+          animation: bounce-subtle 3s ease-in-out infinite;
         }
       `}</style>
     </div>

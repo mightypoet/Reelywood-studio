@@ -4,9 +4,7 @@ import {
   onAuthStateChanged, 
   signInWithPopup, 
   signOut, 
-  User,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  User
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
@@ -33,9 +31,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async () => {
     try {
+      // Note: We use Popup for best compatibility with local and hosted web environments
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error("Google Auth Error:", error);
+      // Re-throw to let the AuthView component handle the specific UI feedback
       throw error;
     }
   };
@@ -44,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signOut(auth);
     } catch (error) {
-      console.error("Logout Error:", error);
+      console.warn("Logout Error:", error);
     }
   };
 
