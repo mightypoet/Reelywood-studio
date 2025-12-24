@@ -2,39 +2,34 @@
 import React from 'react';
 
 export const Trust: React.FC = () => {
-  const logos = [
-    "https://picsum.photos/seed/logo1/200/80",
-    "https://picsum.photos/seed/logo2/200/80",
-    "https://picsum.photos/seed/logo3/200/80",
-    "https://picsum.photos/seed/logo4/200/80",
-    "https://picsum.photos/seed/logo5/200/80",
-    "https://picsum.photos/seed/logo6/200/80",
+  const metrics = [
+    { value: "4.5X", label: "ROAS", desc: "Average Return on Ad Spend for active campaigns." },
+    { value: "18%", label: "AOV Increase", desc: "Average Order Value lift through upsell funnels." },
+    { value: "450%", label: "Visibility", desc: "Increase in Google Maps & local search discovery." },
+    { value: "20+", label: "Projects", desc: "High-impact brand ecosystems delivered globally." }
   ];
 
   return (
-    <section className="py-24 bg-white">
+    <section className="py-16 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <p className="text-slate-400 font-semibold uppercase tracking-widest text-sm mb-12">Trusted by 200+ forward-thinking SMEs</p>
-          <div className="flex flex-wrap justify-center items-center gap-12 lg:gap-20 opacity-40 grayscale hover:grayscale-0 transition-all">
-            {logos.map((logo, i) => (
-              <img key={i} src={logo} alt="Partner" className="h-10 w-auto object-contain" />
-            ))}
-          </div>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8 mt-20">
-          {[
-            { metric: "15M+", label: "Ad Impressions Generated", desc: "For our performance marketing clients in 2024." },
-            { metric: "450%", label: "Average Engagement Lift", desc: "Seen by brands using our AI content workflow." },
-            { metric: "24/7", label: "Automated Lead Gen", desc: "Our AI systems never sleep, capturing leads round the clock." }
-          ].map((stat, i) => (
-            <div key={i} className="text-center p-10 bg-indigo-50/30 rounded-[3rem] border border-indigo-50">
-              <p className="text-5xl font-black text-indigo-600 mb-2">{stat.metric}</p>
-              <p className="text-lg font-bold text-slate-900 mb-2">{stat.label}</p>
-              <p className="text-slate-500">{stat.desc}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+          {metrics.map((stat, i) => (
+            <div key={i} className="text-center p-8 bg-indigo-50/20 rounded-[2.5rem] border border-indigo-50/50 hover:bg-white hover:shadow-xl transition-all group">
+              <p className="text-4xl font-black text-indigo-600 mb-1 group-hover:scale-110 transition-transform">{stat.value}</p>
+              <p className="text-xs font-black text-slate-900 uppercase tracking-widest mb-2">{stat.label}</p>
+              <p className="text-[10px] text-slate-400 font-bold leading-tight uppercase">{stat.desc}</p>
             </div>
           ))}
+        </div>
+        
+        <div className="mt-16 text-center">
+          <p className="text-slate-300 font-black uppercase text-[10px] tracking-[0.4em] mb-8">Trusted by</p>
+          <div className="flex flex-wrap justify-center items-center gap-12 opacity-30 grayscale hover:grayscale-0 transition-all">
+             <span className="text-xl font-black italic tracking-tighter">F&B LEADERS</span>
+             <span className="text-xl font-black italic tracking-tighter">PREMIUM D2C</span>
+             <span className="text-xl font-black italic tracking-tighter">FINTECH TOP</span>
+             <span className="text-xl font-black italic tracking-tighter">E-COMMERCE</span>
+          </div>
         </div>
       </div>
     </section>

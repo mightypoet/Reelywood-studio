@@ -1,20 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { 
-  ArrowLeft, 
-  Lock, 
-  Sparkles, 
-  Loader2, 
-  AlertCircle, 
-  ExternalLink, 
-  Copy, 
-  Check, 
-  Settings, 
-  ShieldCheck,
-  ChevronRight,
-  Info
-} from 'lucide-react';
+import { ArrowLeft, Mail, Lock, Chrome, Sparkles, Loader2, AlertCircle, ExternalLink, Copy, Check, Play } from 'lucide-react';
 
 interface AuthViewProps {
   onBack: () => void;
@@ -41,21 +28,20 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
     setError(null);
     try {
       await loginWithGoogle();
-      onBack(); // Return to home on success
+      onBack(); 
     } catch (err: any) {
-      const errCode = err.code || '';
-      const errMsg = err.message || '';
+      console.error("Auth Error:", err);
       
-      if (errCode === 'auth/unauthorized-domain' || errMsg.includes('unauthorized-domain')) {
+      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
         setError({
           code: 'auth/unauthorized-domain',
-          message: "This domain isn't authorized in Firebase.",
+          message: "This domain is not authorized in your Firebase project.",
           domain: window.location.hostname
         });
       } else {
         setError({
-          code: errCode || 'unknown',
-          message: errMsg || "Failed to sign in. Please try again."
+          code: err.code || 'unknown',
+          message: err.message || "Failed to sign in. Please try again."
         });
       }
     } finally {
@@ -65,120 +51,75 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden font-['Plus_Jakarta_Sans']">
-      {/* Decorative Gradients */}
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-indigo-200/30 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2"></div>
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-violet-200/30 rounded-full blur-[120px] translate-x-1/2 translate-y-1/2"></div>
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(79,70,229,0.05),transparent_70%)]"></div>
 
-      <div className="w-full max-w-lg relative z-10">
+      <div className="w-full max-w-md relative z-10">
         <button 
           onClick={onBack}
           className="flex items-center space-x-2 text-slate-500 hover:text-indigo-600 transition-colors mb-8 group"
         >
           <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="font-semibold text-sm">Return to Studio</span>
+          <span className="font-semibold text-sm">Return to Experience</span>
         </button>
 
-        <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100/50 border border-slate-100 overflow-hidden transition-all duration-500">
+        <div className="bg-white rounded-[2.5rem] shadow-[0_32px_80px_-16px_rgba(79,70,229,0.1)] border border-slate-100 p-8 lg:p-12">
           
           {error?.code === 'auth/unauthorized-domain' ? (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="bg-amber-50 p-8 border-b border-amber-100 flex items-center space-x-4">
-                <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-200">
-                  <Settings size={24} className="animate-pulse" />
+            <div className="space-y-6 animate-in fade-in zoom-in duration-300">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center shadow-inner">
+                  <AlertCircle size={32} />
                 </div>
-                <div>
-                  <h2 className="text-xl font-black text-amber-900">Security Requirement</h2>
-                  <p className="text-amber-700 text-xs font-medium uppercase tracking-wider">Firebase Whitelist Missing</p>
+                <h2 className="text-2xl font-black text-slate-900 leading-tight">Authorize Domain</h2>
+                <p className="text-slate-500 text-sm leading-relaxed">
+                  Firebase security blocks auth from this URL. To fix, add this domain in your <span className="text-indigo-600 font-bold">Firebase Console</span>.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Add this to Authorized Domains:</p>
+                <div className="flex items-center justify-between bg-white border border-slate-100 rounded-xl px-4 py-2">
+                  <code className="text-indigo-600 font-bold text-sm truncate mr-2">{error.domain}</code>
+                  <button 
+                    onClick={handleCopyDomain}
+                    className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors"
+                  >
+                    {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                  </button>
                 </div>
               </div>
 
-              <div className="p-8 lg:p-10 space-y-8">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2 text-slate-400">
-                    <Info size={14} />
-                    <p className="text-[11px] font-bold uppercase tracking-widest">Why am I seeing this?</p>
-                  </div>
-                  <p className="text-slate-600 text-sm leading-relaxed">
-                    Firebase blocked authentication because this URL is not on your <span className="font-bold">Authorized Domains</span> list. You need to manually add it to continue development.
-                  </p>
-                  
-                  <div className="space-y-4 pt-2">
-                    {/* Step 1 */}
-                    <div className="flex items-start space-x-4 bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
-                      <div className="w-8 h-8 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-md">1</div>
-                      <div className="flex-1 space-y-3">
-                        <p className="text-sm font-bold text-slate-900">Copy current domain:</p>
-                        <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm group">
-                          <code className="text-indigo-600 font-bold text-xs truncate mr-2 select-all">{error.domain}</code>
-                          <button 
-                            onClick={handleCopyDomain}
-                            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-indigo-600 hover:text-white rounded-lg text-slate-500 transition-all text-[10px] font-bold"
-                          >
-                            {copied ? <Check size={12} /> : <Copy size={12} />}
-                            <span>{copied ? 'Done' : 'Copy'}</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Step 2 */}
-                    <div className="flex items-start space-x-4 bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
-                      <div className="w-8 h-8 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-md">2</div>
-                      <div className="flex-1 space-y-3">
-                        <p className="text-sm font-bold text-slate-900">Whitelist in Firebase:</p>
-                        <div className="space-y-2">
-                          <div className="flex items-center text-[11px] text-slate-500 space-x-2">
-                            <ChevronRight size={12} className="text-indigo-500" />
-                            <span>Authentication → Settings → Authorized domains</span>
-                          </div>
-                          <div className="flex items-center text-[11px] text-slate-500 space-x-2">
-                            <ChevronRight size={12} className="text-indigo-500" />
-                            <span>Click "Add domain" and paste the value from Step 1</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col space-y-3 pt-4">
-                  <a 
-                    href={`https://console.firebase.google.com/project/studio-7648492258-76684/authentication/providers`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center space-x-2 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 group"
-                  >
-                    <span>Open Firebase Console</span>
-                    <ExternalLink size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                  </a>
+              <div className="space-y-3">
+                <a 
+                  href="https://console.firebase.google.com/project/_/authentication/providers" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center space-x-2 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                >
+                  <span>Open Console</span>
+                  <ExternalLink size={18} />
+                </a>
+                <div className="pt-2">
                   <button 
-                    onClick={() => setError(null)}
-                    className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-colors"
+                    onClick={onBack}
+                    className="w-full flex items-center justify-center space-x-2 border border-slate-200 py-4 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
                   >
-                    Refresh & Try Again
+                    <Play size={16} fill="currentColor" />
+                    <span>Enter Demo Mode (Bypass)</span>
                   </button>
-                </div>
-
-                <div className="flex items-center justify-center space-x-2 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4">
-                  <ShieldCheck size={12} className="text-indigo-400" />
-                  <span>Config Assistant Ready</span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="p-8 lg:p-12">
+            <>
               <div className="text-center space-y-3 mb-10">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-200 text-white mb-2 animate-bounce-subtle">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-100 text-white mb-2">
                   <Sparkles size={32} />
                 </div>
                 <h1 className="text-3xl font-black text-slate-900">
-                  {mode === 'login' ? 'Welcome Back' : 'Join the Future'}
+                  {mode === 'login' ? 'Auth Required' : 'Join Waitlist'}
                 </h1>
-                <p className="text-slate-500 text-sm">
-                  {mode === 'login' 
-                    ? 'Access your SME dashboard via Reelywood AI' 
-                    : 'Start your AI marketing journey today'}
-                </p>
+                <p className="text-slate-500 text-sm">Access the REELYWOOD brand dashboard</p>
               </div>
 
               {error && (
@@ -197,14 +138,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
                   {isProcessing ? (
                     <Loader2 className="animate-spin" size={20} />
                   ) : (
-                    <div className="w-6 h-6 flex items-center justify-center bg-white rounded-full">
-                       <svg viewBox="0 0 24 24" className="w-5 h-5">
-                          <path fill="#EA4335" d="M24 12.25c0-.82-.07-1.61-.21-2.38H12v4.5h6.72c-.29 1.57-1.18 2.89-2.5 3.78v3.13h4.05c2.37-2.18 3.73-5.39 3.73-9.03Z"/>
-                          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-4.05-3.13c-1.12.75-2.55 1.19-3.88 1.19-2.99 0-5.52-2.01-6.42-4.73H1.47v3.23C3.44 21.65 7.42 24 12 24Z"/>
-                          <path fill="#4285F4" d="M5.58 14.42A7.17 7.17 0 0 1 5.14 12c0-.85.15-1.67.44-2.42V6.35H1.47A11.98 11.98 0 0 0 0 12c0 2.12.55 4.12 1.47 5.88l4.11-3.46Z"/>
-                          <path fill="#FBBC05" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.08 15.24 0 12 0 7.42 0 3.44 2.35 1.47 6.35l4.11 3.46c.9-2.72 3.43-4.73 6.42-4.73Z"/>
-                       </svg>
-                    </div>
+                    <svg viewBox="0 0 24 24" className="w-5 h-5">
+                      <path fill="#EA4335" d="M24 12.25c0-.82-.07-1.61-.21-2.38H12v4.5h6.72c-.29 1.57-1.18 2.89-2.5 3.78v3.13h4.05c2.37-2.18 3.73-5.39 3.73-9.03Z"/>
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-4.05-3.13c-1.12.75-2.55 1.19-3.88 1.19-2.99 0-5.52-2.01-6.42-4.73H1.47v3.23C3.44 21.65 7.42 24 12 24Z"/>
+                      <path fill="#4285F4" d="M5.58 14.42A7.17 7.17 0 0 1 5.14 12c0-.85.15-1.67.44-2.42V6.35H1.47A11.98 11.98 0 0 0 0 12c0 2.12.55 4.12 1.47 5.88l4.11-3.46Z"/>
+                      <path fill="#FBBC05" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.08 15.24 0 12 0 7.42 0 3.44 2.35 1.47 6.35l4.11 3.46c.9-2.72 3.43-4.73 6.42-4.73Z"/>
+                    </svg>
                   )}
                   <span>Continue with Google</span>
                 </button>
@@ -213,53 +152,30 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-slate-100"></div>
                   </div>
-                  <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black">
-                    <span className="bg-white px-4 text-slate-300">Fast & Secure</span>
+                  <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black text-slate-300">
+                    <span className="bg-white px-4">Direct Secure Link</span>
                   </div>
                 </div>
 
-                <div className="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-50 flex items-start space-x-4">
-                   <div className="bg-white p-2 rounded-xl shadow-sm text-indigo-600">
-                     <Lock size={18} />
-                   </div>
-                   <div className="space-y-1">
-                     <p className="text-indigo-900 font-bold text-xs uppercase tracking-wider">Privacy First</p>
-                     <p className="text-indigo-600/70 text-[11px] leading-relaxed">
-                       We use high-security OAuth 2.0. We never store your Google password.
-                     </p>
-                   </div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    No Project Access? Contact your admin.
+                  </p>
                 </div>
               </div>
 
-              <div className="mt-10 text-center">
-                <p className="text-slate-500 text-sm">
-                  {mode === 'login' ? "Don't have an account?" : "Already have an account?"}
-                  <button 
-                    onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                    className="ml-2 text-indigo-600 font-bold hover:underline"
-                  >
-                    {mode === 'login' ? 'Create one' : 'Sign in'}
-                  </button>
-                </p>
+              <div className="mt-8 text-center">
+                <button 
+                  onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                  className="text-indigo-600 font-bold text-sm hover:underline"
+                >
+                  {mode === 'login' ? 'Switch to Signup' : 'Return to Login'}
+                </button>
               </div>
-            </div>
+            </>
           )}
         </div>
-        
-        <p className="mt-8 text-center text-slate-400 text-[10px] uppercase tracking-widest font-bold">
-          Protected by <span className="text-slate-500">Reelywood Enterprise</span> Security
-        </p>
       </div>
-
-      <style>{`
-        @keyframes bounce-subtle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-5px); }
-        }
-        .animate-bounce-subtle {
-          animation: bounce-subtle 3s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

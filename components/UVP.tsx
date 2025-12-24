@@ -1,48 +1,57 @@
 
 import React from 'react';
-import { Target, Cpu, Layout, Video } from 'lucide-react';
+import { Shield, Target, Heart, Zap } from 'lucide-react';
 
 export const UVP: React.FC = () => {
-  const values = [
+  const reel = [
     {
-      icon: <Cpu className="text-indigo-600" />,
-      title: "AI Integration",
-      description: "We deploy custom AI tools that automate lead gen and content distribution."
+      letter: "R",
+      title: "Resourceful Assets",
+      desc: "Optimized content and tools that maximize impact with lean execution.",
+      icon: <Zap className="text-amber-500" />
     },
     {
-      icon: <Target className="text-violet-600" />,
-      title: "Data-Driven Strategy",
-      description: "Precise audience targeting based on real-time market performance data."
+      letter: "E",
+      title: "Effective Marketing",
+      desc: "Data-driven strategies that focus on ROAS and measurable conversion.",
+      icon: <Target className="text-indigo-500" />
     },
     {
-      icon: <Layout className="text-blue-600" />,
-      title: "Modern Presence",
-      description: "High-converting web experiences built for the modern digital landscape."
+      letter: "E",
+      title: "Empathetic about Customers",
+      desc: "Understanding the 'why' behind the click to build lasting loyalty.",
+      icon: <Heart className="text-rose-500" />
     },
     {
-      icon: <Video className="text-rose-600" />,
-      title: "Content Mastery",
-      description: "Cinematic production tailored for social algorithms and viral potential."
+      letter: "L",
+      title: "Limitless Passion",
+      desc: "Unwavering commitment to pushing brand boundaries and innovation.",
+      icon: <Shield className="text-emerald-500" />
     }
   ];
 
   return (
-    <section className="py-24 bg-white relative overflow-hidden">
+    <section className="py-24 bg-white scroll-mt-24">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <h2 className="text-indigo-600 font-bold tracking-widest uppercase text-sm">Why Reelywood?</h2>
-          <p className="text-4xl font-extrabold text-slate-900 leading-tight">We combine human creativity with AI efficiency</p>
-          <p className="text-slate-600 text-lg">Our framework is designed to remove the guesswork from your marketing efforts.</p>
+        <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
+          <h4 className="text-indigo-600 font-black text-xs uppercase tracking-[0.3em]">Our Framework</h4>
+          <h2 className="text-5xl font-black text-slate-900 leading-tight">The REEL Standard</h2>
+          <p className="text-slate-500 text-lg italic">The core DNA of every Reelywood project.</p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {values.map((item, index) => (
-            <div key={index} className="p-8 rounded-3xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-xl hover:shadow-indigo-50 transition-all duration-300 group">
-              <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                {item.icon}
+          {reel.map((item, index) => (
+            <div key={index} className="relative group">
+              <div className="absolute -top-10 -left-4 text-9xl font-black text-slate-50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {item.letter}
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">{item.title}</h3>
-              <p className="text-slate-600 leading-relaxed">{item.description}</p>
+              <div className="relative z-10 p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 hover:bg-white hover:shadow-2xl hover:shadow-indigo-50 transition-all duration-300">
+                <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  {item.icon}
+                </div>
+                <h3 className="text-xl font-black text-slate-900 mb-3">{item.title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+              </div>
             </div>
           ))}
         </div>
