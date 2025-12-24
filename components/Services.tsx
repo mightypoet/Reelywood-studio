@@ -1,48 +1,56 @@
 
 import React from 'react';
-import { Bot, BarChart3, Globe, Megaphone, Users, Camera, Briefcase, ChevronRight } from 'lucide-react';
+import { Bot, BarChart3, Globe, Megaphone, Users, Camera, Briefcase, ChevronRight, LucideIcon } from 'lucide-react';
+
+interface Service {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  color: string;
+  light: string;
+}
 
 export const Services: React.FC = () => {
-  const services = [
+  const services: Service[] = [
     {
       title: "AI Automation Solutions",
       description: "Custom GPTs, automated outreach, and smart CRM integrations for your workflow.",
-      icon: <Bot />,
+      icon: Bot,
       color: "bg-blue-500",
       light: "bg-blue-50"
     },
     {
       title: "SME Branding",
       description: "End-to-end identity design that resonates with your local and global audience.",
-      icon: <Briefcase />,
+      icon: Briefcase,
       color: "bg-indigo-500",
       light: "bg-indigo-50"
     },
     {
       title: "Web Development",
       description: "Lightning fast, SEO-optimized React & Next.js applications that drive sales.",
-      icon: <Globe />,
+      icon: Globe,
       color: "bg-cyan-500",
       light: "bg-cyan-50"
     },
     {
       title: "Content Creation",
       description: "Professional shoots and rapid AI-assisted video editing for TikTok, Reels, and YT.",
-      icon: <Camera />,
+      icon: Camera,
       color: "bg-rose-500",
       light: "bg-rose-50"
     },
     {
       title: "Performance Marketing",
       description: "ROI-focused ad campaigns with deep funnel tracking and optimized spend.",
-      icon: <BarChart3 />,
+      icon: BarChart3,
       color: "bg-emerald-500",
       light: "bg-emerald-50"
     },
     {
       title: "Influencer Marketing",
       description: "Strategic partnerships with creators that actually move the needle for your brand.",
-      icon: <Users />,
+      icon: Users,
       color: "bg-violet-500",
       light: "bg-violet-50"
     }
@@ -66,7 +74,7 @@ export const Services: React.FC = () => {
           {services.map((s, idx) => (
             <div key={idx} className="bg-white p-8 rounded-[2rem] border border-slate-100 hover:border-indigo-100 shadow-sm hover:shadow-2xl hover:shadow-indigo-100/30 transition-all duration-500 group">
               <div className={`${s.light} w-16 h-16 rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 duration-500`}>
-                <span className="text-slate-800">{React.cloneElement(s.icon as React.ReactElement, { size: 28, className: "text-slate-700" })}</span>
+                <s.icon size={28} className="text-slate-700" />
               </div>
               <h3 className="text-2xl font-bold text-slate-900 mb-4">{s.title}</h3>
               <p className="text-slate-500 leading-relaxed mb-8">
