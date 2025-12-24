@@ -8,14 +8,19 @@ export const About: React.FC = () => {
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div className="relative">
             <div className="aspect-square bg-white rounded-[4rem] shadow-2xl overflow-hidden p-4 relative group">
-              <img 
-                src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1000" 
-                className="w-full h-full object-cover rounded-[3rem]" 
-                alt="Strategic Planning" 
-              />
-              <div className="absolute inset-0 bg-indigo-600/10 mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <video 
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
+                className="w-full h-full object-cover rounded-[3rem]"
+              >
+                <source src="https://www.pexels.com/download/video/8328103/" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              <div className="absolute inset-0 bg-indigo-600/5 mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
             </div>
-            <div className="absolute -bottom-6 -right-6 bg-indigo-600 text-white p-10 rounded-[3rem] shadow-2xl max-w-xs">
+            <div className="absolute -bottom-6 -right-6 bg-indigo-600 text-white p-10 rounded-[3rem] shadow-2xl max-w-xs z-10">
               <h3 className="text-3xl font-black mb-2 uppercase tracking-tighter">Human + AI</h3>
               <p className="text-xs font-bold opacity-80 leading-relaxed uppercase tracking-wider">The perfect symbiosis for modern brand growth.</p>
             </div>

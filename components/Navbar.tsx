@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown, Rocket, Database, Zap, LogOut } from 'lucide-react';
+import { Menu, X, ChevronDown, Database, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
@@ -48,60 +48,71 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
     }
   };
 
+  // Determine background based on state
+  const getNavbarStyles = () => {
+    if (mobileMenuOpen) {
+      // Opaque on mobile menu click/open
+      return 'bg-white border-slate-200 shadow-2xl py-3 px-5 lg:px-6';
+    }
+    if (scrolled) {
+      // 75% opacity when scrolled
+      return 'bg-white/75 backdrop-blur-md border-slate-200 shadow-xl py-3 px-5 lg:px-6';
+    }
+    // Default at top of page - Glassmorphic state
+    return 'bg-white/40 backdrop-blur-xl border-white/20 shadow-sm py-4 px-6 lg:px-8';
+  };
+
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] px-4 pt-6 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-[100] px-4 pt-4 lg:pt-6 pointer-events-none">
       <nav 
         className={`
           mx-auto max-w-5xl pointer-events-auto
-          transition-all duration-700 ease-out relative
-          rounded-[2.5rem] border
-          ${scrolled 
-            ? 'bg-white/70 backdrop-blur-2xl border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_0_0_1px_rgba(255,255,255,0.4)] py-3 px-6' 
-            : 'bg-white/40 backdrop-blur-lg border-white/20 shadow-none py-4 px-8'
-          }
+          transition-all duration-300 relative
+          rounded-2xl lg:rounded-[2.5rem] border
+          ${getNavbarStyles()}
         `}
       >
-        {/* Liquid Shimmer Effect */}
-        <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none opacity-20">
-          <div className="absolute -top-[100%] -left-[100%] w-[300%] h-[300%] animate-liquid-flow bg-[conic-gradient(from_0deg,transparent,rgba(79,70,229,0.2),transparent,rgba(79,70,229,0.1),transparent)]"></div>
-        </div>
-
         <div className="relative flex items-center justify-between z-10">
           {/* Logo */}
           <div 
             className="flex items-center space-x-2.5 cursor-pointer group" 
             onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
           >
-            <div className="w-9 h-9 bg-gradient-to-br from-[#1A73E8] to-[#6366F1] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200/50 group-hover:rotate-[15deg] transition-all duration-500">
-              <span className="text-white font-black text-lg">R</span>
+            <div className="w-8 h-8 lg:w-9 lg:h-9 bg-gradient-to-br from-[#1A73E8] to-[#6366F1] rounded-xl flex items-center justify-center shadow-md">
+              <span className="text-white font-black text-base lg:text-lg">R</span>
             </div>
-            <span className="font-bold text-sm lg:text-base tracking-tighter text-[#202124] uppercase">REELYWOODSTUDIO</span>
+            <span className="font-bold text-xs lg:text-base tracking-tighter text-[#202124] uppercase">REELYWOODSTUDIO</span>
           </div>
 
           {/* Desktop Menu */}
           <div className="hidden lg:flex items-center space-x-10">
             {navLinks.map((link) => (
               <div key={link.name} className="relative" ref={link.isExplore ? exploreRef : null}>
-                <a 
-                  href={link.href} 
-                  onClick={(e) => link.isExplore ? (e.preventDefault(), setExploreOpen(!exploreOpen)) : handleLinkClick(e, link.href)}
+                <button 
+                  onClick={(e) => link.isExplore ? (e.preventDefault(), setExploreOpen(!exploreOpen)) : null}
                   onMouseEnter={() => link.isExplore && setExploreOpen(true)}
                   className={`
                     text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center space-x-1 py-1
-                    ${exploreOpen && link.isExplore ? 'text-[#1A73E8]' : 'text-[#5F6368] hover:text-[#1A73E8] hover:scale-105'}
+                    ${exploreOpen && link.isExplore ? 'text-[#1A73E8]' : 'text-[#5F6368] hover:text-[#1A73E8]'}
                   `}
                 >
-                  <span>{link.name}</span>
-                  {link.isExplore && <ChevronDown size={14} className={`transition-transform duration-500 ${exploreOpen ? 'rotate-180' : ''}`} />}
-                </a>
+                  {link.isExplore ? (
+                    <>
+                      <span>{link.name}</span>
+                      <ChevronDown size={14} className={`transition-transform duration-300 ${exploreOpen ? 'rotate-180' : ''}`} />
+                    </>
+                  ) : (
+                    <a href={link.href} onClick={(e) => handleLinkClick(e, link.href)}>{link.name}</a>
+                  )}
+                </button>
 
                 {/* Explore Dropdown */}
                 {link.isExplore && exploreOpen && (
                   <div 
                     onMouseLeave={() => setExploreOpen(false)}
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-5 w-72 bg-white/80 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-white/50 p-6 animate-in fade-in zoom-in-95 duration-500 origin-top"
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-5 w-72 bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 animate-in fade-in zoom-in-95 duration-200 origin-top"
                   >
-                    <div className="bg-[#FEEFC3]/50 p-5 rounded-[1.5rem] mb-4 border border-white/50">
+                    <div className="bg-[#FEEFC3] p-5 rounded-2xl mb-4 border border-amber-100">
                       <div className="flex items-center space-x-2 text-[#202124] font-black text-[10px] uppercase tracking-[0.2em] mb-2">
                         <Database size={14} className="text-amber-500" />
                         <span>Labs Stack</span>
@@ -110,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
                         Growing tools built to help SMEs with marketing and execution.
                       </p>
                     </div>
-                    <div className="flex items-center space-x-4 p-4 rounded-[1.5rem] transition-all border border-transparent opacity-60">
+                    <div className="flex items-center space-x-4 p-4 rounded-2xl border border-transparent opacity-60">
                       <div className="text-2xl">🤓</div>
                       <div>
                         <div className="flex items-center space-x-2">
@@ -127,8 +138,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
             
             <div className="flex items-center space-x-4 ml-4">
               {user ? (
-                <div className="flex items-center space-x-3 bg-white/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/40 shadow-sm">
-                  <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt="Profile" className="w-7 h-7 rounded-full border border-white" />
+                <div className="flex items-center space-x-3 bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">
+                  <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt="Profile" className="w-7 h-7 rounded-full" />
                   <button onClick={logout} className="text-[#5F6368] hover:text-rose-500 transition-colors flex items-center space-x-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest">Logout</span>
                     <LogOut size={16} />
@@ -137,10 +148,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
               ) : (
                 <button 
                   onClick={onAuthClick}
-                  className="group relative bg-[#1A73E8] text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-[0.2em] transition-all hover:bg-[#1558B0] hover:scale-105 active:scale-95 shadow-xl shadow-indigo-200/50 overflow-hidden"
+                  className="bg-[#1A73E8] text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-[0.2em] transition-all hover:bg-[#1558B0] shadow-md"
                 >
-                  <span className="relative z-10">Sign In</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                  Sign In
                 </button>
               )}
             </div>
@@ -148,16 +158,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 
           {/* Mobile Toggle */}
           <button 
-            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-white/50 border border-white/40 text-[#202124] pointer-events-auto" 
+            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 border border-slate-200 text-[#202124]" 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu (Drawer) - Using transparent background to avoid stacking/overlapping with parent opacity */}
         {mobileMenuOpen && (
-          <div className="lg:hidden absolute top-full left-0 w-full mt-3 bg-white/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/50 shadow-2xl p-8 flex flex-col space-y-6 animate-in slide-in-from-top-5 duration-500 pointer-events-auto">
+          <div className="lg:hidden mt-4 pt-4 border-t border-slate-200/50 flex flex-col space-y-5 animate-in slide-in-from-top-2 duration-200 opacity-100 bg-transparent">
             {navLinks.map((link) => (
               <div key={link.name} className="flex flex-col space-y-2">
                 <a 
@@ -171,14 +181,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
                 {link.isExplore && (
                   <div className="pl-4 opacity-50 flex items-center space-x-2">
                     <span className="text-[10px] font-bold text-slate-500 uppercase">Dorky.ai</span>
-                    <span className="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded font-black">COMING SOON</span>
+                    <span className="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded font-black">SOON</span>
                   </div>
                 )}
               </div>
             ))}
             {user ? (
                <button 
-               className="bg-rose-50 text-rose-600 py-4 rounded-full font-black text-xs uppercase tracking-[0.3em] border border-rose-100 flex items-center justify-center space-x-2" 
+               className="bg-rose-50/50 text-rose-600 py-3.5 rounded-xl font-black text-xs uppercase tracking-[0.3em] border border-rose-100/50 flex items-center justify-center space-x-2" 
                onClick={() => { setMobileMenuOpen(false); logout(); }}
              >
                <LogOut size={16} />
@@ -186,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
              </button>
             ) : (
               <button 
-                className="bg-[#1A73E8] text-white py-4 rounded-full font-black text-xs uppercase tracking-[0.3em] shadow-lg shadow-indigo-100" 
+                className="bg-[#1A73E8] text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-[0.3em] shadow-md" 
                 onClick={() => { setMobileMenuOpen(false); onAuthClick(); }}
               >
                 Sign In
@@ -195,16 +205,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
           </div>
         )}
       </nav>
-
-      <style>{`
-        @keyframes liquid-flow {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .animate-liquid-flow {
-          animation: liquid-flow 15s linear infinite;
-        }
-      `}</style>
     </div>
   );
 };
