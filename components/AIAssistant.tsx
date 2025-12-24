@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Minus, Maximize2, Sparkles, User, Loader2 } from 'lucide-react';
+import { Bot, X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 
 export const AIAssistant: React.FC = () => {
@@ -22,12 +22,23 @@ export const AIAssistant: React.FC = () => {
     if (!input.trim() || isLoading) return;
 
     const userMsg = input.trim();
+    const apiKey = (process.env as any).API_KEY;
+
+    if (!apiKey) {
+      setMessages(prev => [...prev, 
+        { role: 'user', content: userMsg },
+        { role: 'assistant', content: "I'm sorry, I'm missing my API key to process this request. Please check the project settings." }
+      ]);
+      setInput('');
+      return;
+    }
+
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userMsg,
@@ -49,7 +60,6 @@ export const AIAssistant: React.FC = () => {
 
   return (
     <div className="relative">
-      {/* Floating Button */}
       {!isOpen && (
         <button 
           onClick={() => setIsOpen(true)}
@@ -60,10 +70,8 @@ export const AIAssistant: React.FC = () => {
         </button>
       )}
 
-      {/* Chat Window */}
       {isOpen && (
         <div className="bg-white w-80 sm:w-96 h-[500px] rounded-[2rem] shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-          {/* Header */}
           <div className="bg-indigo-600 p-6 flex justify-between items-center">
             <div className="flex items-center space-x-3 text-white">
               <div className="bg-white/20 p-2 rounded-xl">
@@ -82,7 +90,6 @@ export const AIAssistant: React.FC = () => {
             </button>
           </div>
 
-          {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -104,7 +111,6 @@ export const AIAssistant: React.FC = () => {
             )}
           </div>
 
-          {/* Input */}
           <div className="p-4 border-t bg-white">
             <div className="relative">
               <input 

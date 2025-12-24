@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bot, BarChart3, Globe, Megaphone, Users, Camera, Briefcase, ChevronRight, LucideIcon } from 'lucide-react';
+import { Bot, BarChart3, Globe, Camera, Briefcase, Users, ChevronRight, LucideIcon } from 'lucide-react';
 
 interface Service {
   title: string;
@@ -71,21 +71,24 @@ export const Services: React.FC = () => {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {services.map((s, idx) => (
-            <div key={idx} className="bg-white p-8 rounded-[2rem] border border-slate-100 hover:border-indigo-100 shadow-sm hover:shadow-2xl hover:shadow-indigo-100/30 transition-all duration-500 group">
-              <div className={`${s.light} w-16 h-16 rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 duration-500`}>
-                <s.icon size={28} className="text-slate-700" />
+          {services.map((s, idx) => {
+            const Icon = s.icon;
+            return (
+              <div key={idx} className="bg-white p-8 rounded-[2rem] border border-slate-100 hover:border-indigo-100 shadow-sm hover:shadow-2xl hover:shadow-indigo-100/30 transition-all duration-500 group">
+                <div className={`${s.light} w-16 h-16 rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 duration-500`}>
+                  <Icon size={28} className="text-slate-700" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">{s.title}</h3>
+                <p className="text-slate-500 leading-relaxed mb-8">
+                  {s.description}
+                </p>
+                <div className="flex items-center text-indigo-600 font-bold text-sm cursor-pointer hover:underline">
+                  Learn more
+                  <ChevronRight size={16} className="ml-1" />
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-4">{s.title}</h3>
-              <p className="text-slate-500 leading-relaxed mb-8">
-                {s.description}
-              </p>
-              <div className="flex items-center text-indigo-600 font-bold text-sm cursor-pointer hover:underline">
-                Learn more
-                <ChevronRight size={16} className="ml-1" />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
