@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Gravity, MatterBody } from './Gravity';
 import { MousePointer2 } from 'lucide-react';
@@ -35,7 +36,7 @@ export const ExpertiseSection: React.FC = () => {
           </div>
         </div>
 
-        <div className="h-[500px] lg:h-[600px] bg-slate-50 rounded-[3rem] border border-slate-100 relative shadow-inner overflow-hidden">
+        <div className="h-[600px] lg:h-[800px] bg-slate-50 rounded-[4rem] border border-slate-100 relative shadow-inner overflow-hidden">
           <Gravity gravity={{ x: 0, y: 1 }} className="w-full h-full">
             {capabilities.map((cap, i) => (
               <MatterBody
@@ -45,7 +46,7 @@ export const ExpertiseSection: React.FC = () => {
                 y={`${10 + (Math.random() * 20)}%`}
                 angle={Math.random() * 45}
               >
-                <div className={`text-sm sm:text-base lg:text-lg ${cap.color} text-white font-bold rounded-full hover:cursor-grab active:cursor-grabbing px-6 py-3 whitespace-nowrap shadow-lg`}>
+                <div className={`text-xl sm:text-2xl lg:text-4xl ${cap.color} text-white font-black rounded-[2rem] lg:rounded-[3rem] hover:cursor-grab active:cursor-grabbing px-10 py-6 lg:px-14 lg:py-8 whitespace-nowrap shadow-2xl border-2 border-white/10 transition-transform hover:scale-105`}>
                   {cap.text}
                 </div>
               </MatterBody>
