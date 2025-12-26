@@ -8,10 +8,9 @@ import { UVP } from './components/UVP';
 import { Pricing } from './components/Pricing';
 import { ExpertiseSection } from './components/ExpertiseSection';
 import { Leaderboard } from './components/Leaderboard';
-import { Testimonials } from './components/Testimonials';
+import { CreatorVerse } from './components/CreatorVerse';
 import { Engagement } from './components/Engagement';
 import { DorkyProject } from './components/DorkyProject';
-import { CreatorVerse } from './components/CreatorVerse';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 import { AuthView } from './components/AuthView';
@@ -59,10 +58,6 @@ const MainContent: React.FC = () => {
 
         <section id="creators" className="scroll-mt-24">
           <CreatorVerse />
-        </section>
-        
-        <section id="testimonials" className="scroll-mt-24">
-          <Testimonials />
         </section>
         
         <Engagement />
