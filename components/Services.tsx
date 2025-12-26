@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ChevronRight, Zap, ShieldCheck, Palette, Mail } from 'lucide-react';
 
@@ -56,8 +55,15 @@ export const Services: React.FC = () => {
   ];
 
   return (
-    <section id="services" className="py-24 bg-slate-50 overflow-hidden scroll-mt-24">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="services" className="py-24 relative overflow-hidden scroll-mt-24">
+      {/* Subtle Animated Background Layer */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-indigo-50/40 to-white animate-gradient-slow pointer-events-none"></div>
+      
+      {/* Decorative Blur Orbs */}
+      <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-200/20 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-purple-200/20 rounded-full blur-[100px] pointer-events-none"></div>
+
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="max-w-3xl mb-16 space-y-4">
           <h4 className="text-indigo-600 font-black text-xs uppercase tracking-[0.3em]">How It Works</h4>
           <h2 className="text-5xl font-black text-slate-900 leading-tight">Complete Brand Ecosystem</h2>
@@ -66,7 +72,7 @@ export const Services: React.FC = () => {
 
         <div className="grid lg:grid-cols-2 gap-8">
           {sections.map((section, idx) => (
-            <div key={idx} className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-indigo-100/30 transition-all duration-500 group">
+            <div key={idx} className="bg-white/80 backdrop-blur-sm p-10 rounded-[3rem] border border-white shadow-sm hover:shadow-2xl hover:shadow-indigo-100/30 transition-all duration-500 group">
               <div className="flex justify-between items-start mb-8">
                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
                    {section.icon}
@@ -97,6 +103,18 @@ export const Services: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes gradient-slow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-gradient-slow {
+          background-size: 200% 200%;
+          animation: gradient-slow 15s ease infinite;
+        }
+      `}</style>
     </section>
   );
 };

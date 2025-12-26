@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Mail, Phone, Globe, Instagram, Twitter, Linkedin } from 'lucide-react';
 
@@ -41,9 +40,9 @@ export const Footer: React.FC = () => {
             <div>
               <h4 className="font-bold text-[#202124] mb-8 text-xs uppercase tracking-widest">Solutions</h4>
               <ul className="space-y-4 text-[#5F6368] text-sm font-medium">
-                <li><a href="#services" onClick={(e) => scrollToId(e, 'services')} className="hover:text-[#1A73E8]">Business Assist</a></li>
-                <li><a href="#services" onClick={(e) => scrollToId(e, 'services')} className="hover:text-[#1A73E8]">Foundations</a></li>
-                <li><a href="#services" onClick={(e) => scrollToId(e, 'services')} className="hover:text-[#1A73E8]">Growth & Branding</a></li>
+                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#1A73E8]">Starter Plan</a></li>
+                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#1A73E8]">Professional Plan</a></li>
+                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#1A73E8]">Elite Tier</a></li>
               </ul>
             </div>
 
@@ -56,7 +55,7 @@ export const Footer: React.FC = () => {
                     <span className="text-[8px] bg-slate-50 px-1.5 py-0.5 rounded text-slate-400 font-bold uppercase">Soon</span>
                   </div>
                 </li>
-                <li><a href="#contact" onClick={(e) => scrollToId(e, 'contact')} className="hover:text-[#1A73E8]">Pricing</a></li>
+                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#1A73E8]">Pricing</a></li>
                 <li><a href="#contact" onClick={(e) => scrollToId(e, 'contact')} className="hover:text-[#1A73E8]">Brand Audit</a></li>
               </ul>
             </div>

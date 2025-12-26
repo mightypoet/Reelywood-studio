@@ -5,15 +5,18 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { About } from './components/About';
 import { UVP } from './components/UVP';
-import { Services } from './components/Services';
+import { Pricing } from './components/Pricing';
+import { ExpertiseSection } from './components/ExpertiseSection';
 import { Leaderboard } from './components/Leaderboard';
 import { Testimonials } from './components/Testimonials';
 import { Engagement } from './components/Engagement';
 import { DorkyProject } from './components/DorkyProject';
+import { CreatorVerse } from './components/CreatorVerse';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 import { AuthView } from './components/AuthView';
 import { Trust } from './components/Trust';
+import { ScrollToTop } from './components/ScrollToTop';
 
 const MainContent: React.FC = () => {
   const [view, setView] = useState<'home' | 'auth'>('home');
@@ -48,12 +51,14 @@ const MainContent: React.FC = () => {
 
         <UVP />
         
-        <section id="services" className="scroll-mt-24">
-          <Services />
-        </section>
+        <ExpertiseSection />
         
         <section id="leaderboard" className="scroll-mt-24">
           <Leaderboard />
+        </section>
+
+        <section id="creators" className="scroll-mt-24">
+          <CreatorVerse />
         </section>
         
         <section id="testimonials" className="scroll-mt-24">
@@ -65,12 +70,19 @@ const MainContent: React.FC = () => {
         <section id="explore" className="scroll-mt-24">
           <DorkyProject />
         </section>
+
+        <section id="pricing" className="scroll-mt-24">
+          <Pricing />
+        </section>
         
         <section id="contact" className="scroll-mt-24">
           <CTA />
         </section>
       </main>
       <Footer />
+      
+      {/* Scroll Shortcut Button */}
+      <ScrollToTop />
     </div>
   );
 };

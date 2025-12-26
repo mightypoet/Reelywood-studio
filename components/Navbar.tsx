@@ -32,7 +32,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 
   const navLinks = [
     { name: 'Home', href: '#home' },
-    { name: 'Services', href: '#services' },
+    { name: 'Creators', href: '#creators' },
+    { name: 'Pricing', href: '#pricing' },
     { name: 'Explore', href: '#explore', isExplore: true },
     { name: 'Contact', href: '#contact' },
   ];
@@ -48,18 +49,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
     }
   };
 
-  // Determine background based on state
+  const isDarkBase = !scrolled && !mobileMenuOpen;
+
   const getNavbarStyles = () => {
     if (mobileMenuOpen) {
-      // Opaque on mobile menu click/open
       return 'bg-white border-slate-200 shadow-2xl py-3 px-5 lg:px-6';
     }
     if (scrolled) {
-      // 75% opacity when scrolled
       return 'bg-white/75 backdrop-blur-md border-slate-200 shadow-xl py-3 px-5 lg:px-6';
     }
-    // Default at top of page - Glassmorphic state
-    return 'bg-white/40 backdrop-blur-xl border-white/20 shadow-sm py-4 px-6 lg:px-8';
+    // Transparent state over Dark Hero
+    return 'bg-white/5 backdrop-blur-xl border-white/10 py-4 px-6 lg:px-8';
   };
 
   return (
@@ -78,10 +78,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
             className="flex items-center space-x-2.5 cursor-pointer group" 
             onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
           >
-            <div className="w-8 h-8 lg:w-9 lg:h-9 bg-gradient-to-br from-[#1A73E8] to-[#6366F1] rounded-xl flex items-center justify-center shadow-md">
+            <div className="w-8 h-8 lg:w-9 lg:h-9 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-black text-base lg:text-lg">R</span>
             </div>
-            <span className="font-bold text-xs lg:text-base tracking-tighter text-[#202124] uppercase">REELYWOODSTUDIO</span>
+            <span className={`font-bold text-xs lg:text-base tracking-tighter uppercase transition-colors ${isDarkBase ? 'text-white' : 'text-[#202124]'}`}>
+              REELYWOODSTUDIO
+            </span>
           </div>
 
           {/* Desktop Menu */}
@@ -93,7 +95,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
                   onMouseEnter={() => link.isExplore && setExploreOpen(true)}
                   className={`
                     text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center space-x-1 py-1
-                    ${exploreOpen && link.isExplore ? 'text-[#1A73E8]' : 'text-[#5F6368] hover:text-[#1A73E8]'}
+                    ${exploreOpen && link.isExplore ? 'text-indigo-400' : isDarkBase ? 'text-white/60 hover:text-white' : 'text-[#5F6368] hover:text-indigo-600'}
                   `}
                 >
                   {link.isExplore ? (
@@ -138,9 +140,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
             
             <div className="flex items-center space-x-4 ml-4">
               {user ? (
-                <div className="flex items-center space-x-3 bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">
+                <div className={`flex items-center space-x-3 px-4 py-1.5 rounded-full border transition-colors ${isDarkBase ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
                   <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt="Profile" className="w-7 h-7 rounded-full" />
-                  <button onClick={logout} className="text-[#5F6368] hover:text-rose-500 transition-colors flex items-center space-x-2">
+                  <button onClick={logout} className={`${isDarkBase ? 'text-white/60 hover:text-rose-400' : 'text-[#5F6368] hover:text-rose-500'} transition-colors flex items-center space-x-2`}>
                     <span className="text-[10px] font-bold uppercase tracking-widest">Logout</span>
                     <LogOut size={16} />
                   </button>
@@ -148,7 +150,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
               ) : (
                 <button 
                   onClick={onAuthClick}
-                  className="bg-[#1A73E8] text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-[0.2em] transition-all hover:bg-[#1558B0] shadow-md"
+                  className={`px-8 py-3 rounded-full font-black text-xs uppercase tracking-[0.2em] transition-all shadow-md ${isDarkBase ? 'bg-white text-slate-950 hover:bg-slate-100' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                 >
                   Sign In
                 </button>
@@ -158,14 +160,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 
           {/* Mobile Toggle */}
           <button 
-            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 border border-slate-200 text-[#202124]" 
+            className={`lg:hidden w-10 h-10 flex items-center justify-center rounded-full border transition-colors ${isDarkBase ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-[#202124]'}`} 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
-        {/* Mobile Menu (Drawer) - Using transparent background to avoid stacking/overlapping with parent opacity */}
+        {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden mt-4 pt-4 border-t border-slate-200/50 flex flex-col space-y-5 animate-in slide-in-from-top-2 duration-200 opacity-100 bg-transparent">
             {navLinks.map((link) => (
@@ -196,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
              </button>
             ) : (
               <button 
-                className="bg-[#1A73E8] text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-[0.3em] shadow-md" 
+                className="bg-indigo-600 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-[0.3em] shadow-md" 
                 onClick={() => { setMobileMenuOpen(false); onAuthClick(); }}
               >
                 Sign In
