@@ -1,3 +1,4 @@
+
 import React, { 
   createContext, 
   useContext, 
@@ -51,19 +52,20 @@ export const Gravity: React.FC<GravityProps> = ({
     const height = containerRef.current.offsetHeight;
 
     // Boundaries
-    const ground = Matter.Bodies.rectangle(width / 2, height + 50, width, 100, { isStatic: true });
-    const wallLeft = Matter.Bodies.rectangle(-50, height / 2, 100, height, { isStatic: true });
-    const wallRight = Matter.Bodies.rectangle(width + 50, height / 2, 100, height, { isStatic: true });
-    const ceiling = Matter.Bodies.rectangle(width / 2, -50, width, 100, { isStatic: true });
+    const ground = Matter.Bodies.rectangle(width / 2, height + 50, width, 100, { isStatic: true, friction: 0.1 });
+    const wallLeft = Matter.Bodies.rectangle(-50, height / 2, 100, height, { isStatic: true, friction: 0.1 });
+    const wallRight = Matter.Bodies.rectangle(width + 50, height / 2, 100, height, { isStatic: true, friction: 0.1 });
+    const ceiling = Matter.Bodies.rectangle(width / 2, -50, width, 100, { isStatic: true, friction: 0.1 });
 
     Matter.World.add(engine.world, [ground, wallLeft, wallRight, ceiling]);
 
-    // Mouse control
+    // Mouse control with enhanced sensitivity
     const mouse = Matter.Mouse.create(containerRef.current);
     const mouseConstraint = Matter.MouseConstraint.create(engine, {
       mouse: mouse,
       constraint: {
-        stiffness: 0.2,
+        stiffness: 0.15, // Higher sensitivity to mouse movements
+        damping: 0.1,    // More fluid connection
         render: { visible: false }
       }
     });
@@ -147,8 +149,8 @@ export const MatterBody: React.FC<MatterBodyProps> = ({
       rect.width,
       rect.height,
       {
-        restitution: 0.5,
-        friction: 0.1,
+        restitution: 0.7, // Higher bounciness
+        friction: 0.005,  // Smooth gliding
         angle: (angle * Math.PI) / 180,
         ...matterBodyOptions
       }

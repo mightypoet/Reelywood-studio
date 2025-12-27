@@ -2,17 +2,18 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Play, Sparkles, TrendingUp, Instagram, CheckCircle2, Maximize2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
-export const CreatorVerse: React.FC = () => {
+interface CreatorVerseProps {
+  onEnterUniverse?: () => void;
+}
+
+export const CreatorVerse: React.FC<CreatorVerseProps> = ({ onEnterUniverse }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [useFallback, setUseFallback] = useState(false);
   const [hasError, setHasError] = useState(false);
   
-  // PRIMARY SOURCE: High-reliability Vercel Blob storage provided by user
   const primarySrc = "https://mc2szw5s8xk9lkkh.public.blob.vercel-storage.com/creator%20verse%201";
-  
-  // RELIABLE FALLBACK: A high-quality cinematic video from a reliable CDN
   const fallbackSrc = "https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-lighting-dancing-40030-large.mp4";
 
   useEffect(() => {
@@ -20,13 +21,11 @@ export const CreatorVerse: React.FC = () => {
     if (!video) return;
 
     const attemptPlay = () => {
-      // Muted + playsInline is REQUIRED for modern browser autoplay
       video.play().then(() => {
         setIsPlaying(true);
         setIsLoading(false);
       }).catch((error) => {
         console.warn("Autoplay interaction required:", error);
-        // On mobile, sometimes it needs a small delay or a tap
         setIsLoading(false);
       });
     };
@@ -69,7 +68,6 @@ export const CreatorVerse: React.FC = () => {
 
   return (
     <section id="creators" className="py-32 bg-[#050505] overflow-hidden scroll-mt-24 relative border-y border-white/5">
-      {/* Cinematic Background Atmosphere */}
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(79,70,229,0.15),transparent_70%)] pointer-events-none"></div>
       
       <div className="max-w-7xl mx-auto px-6 relative z-10">
@@ -88,14 +86,12 @@ export const CreatorVerse: React.FC = () => {
           </p>
         </div>
 
-        {/* Cinematic 16:9 Video Container */}
         <div className="relative w-full max-w-6xl mx-auto group">
           <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-indigo-500/30 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
           
           <div className="relative aspect-video w-full rounded-[2.5rem] lg:rounded-[3.5rem] p-1.5 lg:p-2 bg-gradient-to-br from-white/20 to-transparent border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
             <div className="relative h-full w-full rounded-[2rem] lg:rounded-[3rem] overflow-hidden bg-[#0a0a0a]">
               
-              {/* Overlay Loader */}
               {isLoading && !hasError && (
                 <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md">
                   <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
@@ -103,7 +99,6 @@ export const CreatorVerse: React.FC = () => {
                 </div>
               )}
 
-              {/* Error HUD */}
               {hasError && (
                 <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/95 p-8 text-center">
                   <AlertCircle className="text-rose-500 mb-4" size={48} />
@@ -132,7 +127,6 @@ export const CreatorVerse: React.FC = () => {
                 className={`w-full h-full object-cover transition-opacity duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
               />
 
-              {/* Cinematic HUD UI */}
               <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-6 lg:p-12 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center space-x-3 bg-black/60 backdrop-blur-2xl p-2 pr-5 rounded-full border border-white/10 translate-y-[-10px] group-hover:translate-y-0 transition-transform duration-700">
@@ -178,7 +172,6 @@ export const CreatorVerse: React.FC = () => {
                 </div>
               </div>
 
-              {/* Play Button Overlay */}
               {!isPlaying && !isLoading && !hasError && (
                 <div 
                   className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer"
@@ -194,9 +187,13 @@ export const CreatorVerse: React.FC = () => {
         </div>
 
         <div className="mt-20 text-center">
-           <button className="group relative inline-flex items-center space-x-5 bg-white text-slate-950 px-14 py-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.4em] transition-all hover:bg-indigo-50 hover:scale-[1.05] shadow-2xl shadow-white/5">
-              <span>Enter The Universe</span>
-              <TrendingUp size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+           <button 
+            onClick={onEnterUniverse}
+            className="group relative inline-flex items-center space-x-5 bg-white text-slate-950 px-14 py-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.4em] transition-all hover:bg-indigo-50 hover:scale-[1.05] shadow-2xl shadow-white/5 border border-indigo-500/10"
+          >
+              <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-r from-indigo-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <span className="relative z-10">Enter The Universe</span>
+              <TrendingUp size={20} className="relative z-10 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
            </button>
         </div>
       </div>

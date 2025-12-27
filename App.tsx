@@ -16,9 +16,10 @@ import { Footer } from './components/Footer';
 import { AuthView } from './components/AuthView';
 import { Trust } from './components/Trust';
 import { ScrollToTop } from './components/ScrollToTop';
+import { CreatorCardView } from './components/CreatorCardView';
 
 const MainContent: React.FC = () => {
-  const [view, setView] = useState<'home' | 'auth'>('home');
+  const [view, setView] = useState<'home' | 'auth' | 'creator-card'>('home');
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -30,8 +31,17 @@ const MainContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleCreatorUniverseClick = () => {
+    setView('creator-card');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (view === 'auth') {
     return <AuthView onBack={() => setView('home')} />;
+  }
+
+  if (view === 'creator-card') {
+    return <CreatorCardView onBack={() => setView('home')} />;
   }
 
   return (
@@ -57,7 +67,7 @@ const MainContent: React.FC = () => {
         </section>
 
         <section id="creators" className="scroll-mt-24">
-          <CreatorVerse />
+          <CreatorVerse onEnterUniverse={handleCreatorUniverseClick} />
         </section>
         
         <Engagement />
