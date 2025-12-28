@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { About } from './components/About';
@@ -17,14 +17,40 @@ import { AuthView } from './components/AuthView';
 import { Trust } from './components/Trust';
 import { ScrollToTop } from './components/ScrollToTop';
 import { CreatorCardView } from './components/CreatorCardView';
+import { AdminLogin } from './components/Admin/AdminLogin';
+import { AdminDashboard } from './components/Admin/AdminDashboard';
 
 const MainContent: React.FC = () => {
-  const [view, setView] = useState<'home' | 'auth' | 'creator-card'>('home');
+  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard'>('home');
   const [isVisible, setIsVisible] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     setIsVisible(true);
+    
+    // Improved Route Handling for /admin
+    const handleRouting = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      
+      if (path === '/admin' || path === '/admin/login' || hash === '#admin') {
+        setView('admin-login');
+      } else if (path === '/dashboard' || hash === '#dashboard') {
+        setView('admin-dashboard');
+      }
+    };
+
+    handleRouting();
+    window.addEventListener('popstate', handleRouting);
+    return () => window.removeEventListener('popstate', handleRouting);
   }, []);
+
+  // Sync view with authenticated user state for admin dashboard
+  useEffect(() => {
+    if (view === 'admin-login' && user?.email === 'rohan00as@gmail.com') {
+      setView('admin-dashboard');
+    }
+  }, [user, view]);
 
   const handleAuthClick = () => {
     setView('auth');
@@ -36,12 +62,32 @@ const MainContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const navigateToAdmin = () => {
+    setView('admin-login');
+    window.history.pushState({}, '', '/admin');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (view === 'auth') {
     return <AuthView onBack={() => setView('home')} />;
   }
 
   if (view === 'creator-card') {
     return <CreatorCardView onBack={() => setView('home')} />;
+  }
+
+  if (view === 'admin-login') {
+    return <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />;
+  }
+
+  if (view === 'admin-dashboard') {
+    if (user?.email !== 'rohan00as@gmail.com') {
+      return <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />;
+    }
+    return <AdminDashboard onLogout={() => {
+      setView('home');
+      window.history.pushState({}, '', '/');
+    }} />;
   }
 
   return (
@@ -84,9 +130,7 @@ const MainContent: React.FC = () => {
           <CTA />
         </section>
       </main>
-      <Footer />
-      
-      {/* Scroll Shortcut Button */}
+      <Footer onAdminClick={navigateToAdmin} />
       <ScrollToTop />
     </div>
   );

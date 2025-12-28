@@ -1,7 +1,12 @@
-import React from 'react';
-import { Mail, Phone, Globe, Instagram, Twitter, Linkedin } from 'lucide-react';
 
-export const Footer: React.FC = () => {
+import React from 'react';
+import { Mail, Phone, Globe, Instagram, Twitter, Linkedin, Lock } from 'lucide-react';
+
+interface FooterProps {
+  onAdminClick?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
   const scrollToId = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     const element = document.getElementById(id);
@@ -56,7 +61,10 @@ export const Footer: React.FC = () => {
                   </div>
                 </li>
                 <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#1A73E8]">Pricing</a></li>
-                <li><a href="#contact" onClick={(e) => scrollToId(e, 'contact')} className="hover:text-[#1A73E8]">Brand Audit</a></li>
+                <li><button onClick={onAdminClick} className="hover:text-[#1A73E8] flex items-center space-x-2">
+                  <Lock size={12} />
+                  <span>Admin Terminal</span>
+                </button></li>
               </ul>
             </div>
 
