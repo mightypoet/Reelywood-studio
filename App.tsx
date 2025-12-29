@@ -20,6 +20,8 @@ import { CreatorCardView } from './components/CreatorCardView';
 import { AdminLogin } from './components/Admin/AdminLogin';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 
+const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
+
 const MainContent: React.FC = () => {
   const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard'>('home');
   const [isVisible, setIsVisible] = useState(false);
@@ -28,7 +30,6 @@ const MainContent: React.FC = () => {
   useEffect(() => {
     setIsVisible(true);
     
-    // Improved Route Handling for /admin
     const handleRouting = () => {
       const path = window.location.pathname;
       const hash = window.location.hash;
@@ -45,9 +46,8 @@ const MainContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handleRouting);
   }, []);
 
-  // Sync view with authenticated user state for admin dashboard
   useEffect(() => {
-    if (view === 'admin-login' && user?.email === 'rohan00as@gmail.com') {
+    if (view === 'admin-login' && user?.email && ADMIN_EMAILS.includes(user.email)) {
       setView('admin-dashboard');
     }
   }, [user, view]);
@@ -81,7 +81,7 @@ const MainContent: React.FC = () => {
   }
 
   if (view === 'admin-dashboard') {
-    if (user?.email !== 'rohan00as@gmail.com') {
+    if (!user?.email || !ADMIN_EMAILS.includes(user.email)) {
       return <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />;
     }
     return <AdminDashboard onLogout={() => {

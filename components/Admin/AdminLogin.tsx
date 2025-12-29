@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, Sparkles, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 
+const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
+
 interface AdminLoginProps {
   onBack: () => void;
   onSuccess: () => void;
@@ -18,7 +20,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBack, onSuccess }) => 
     setError(null);
     try {
       await loginWithGoogle();
-      // Auth success, but we need to check if the user is the super admin
     } catch (err: any) {
       setError("Failed to authenticate. Access denied.");
     } finally {
@@ -26,10 +27,9 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBack, onSuccess }) => 
     }
   };
 
-  // Effect to check email after successful login attempt
   React.useEffect(() => {
     if (user) {
-      if (user.email === 'rohan00as@gmail.com') {
+      if (user.email && ADMIN_EMAILS.includes(user.email)) {
         onSuccess();
       } else {
         setError("Unauthorized access. This account does not have admin privileges.");
