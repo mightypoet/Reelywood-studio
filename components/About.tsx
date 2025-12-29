@@ -1,10 +1,10 @@
-
-import React, { useState } from 'react';
-import { Sparkles, CheckCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, CheckCircle, Loader2, PartyPopper } from 'lucide-react';
 import { ThreeDCard } from './ThreeDCard';
 import { CreatorForm } from './CreatorForm';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 export interface CreatorFormData {
   fullName: string;
@@ -18,6 +18,7 @@ export interface CreatorFormData {
 }
 
 export const About: React.FC = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<CreatorFormData>({
     fullName: '',
     platform: '',
@@ -31,6 +32,7 @@ export const About: React.FC = () => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   const handleFormUpdate = (data: Partial<CreatorFormData>) => {
     setFormData(prev => ({ ...prev, ...data }));
@@ -38,20 +40,31 @@ export const About: React.FC = () => {
 
   const handleSubmit = async (data: CreatorFormData) => {
     setIsSubmitting(true);
+    // Show the "Joined the waitlist" popup immediately upon click as requested
+    setShowToast(true);
+    
     try {
       await addDoc(collection(db, 'creator_applications'), {
         ...data,
+        userId: user?.uid || null, // Link to authenticated user if exists
         status: 'pending',
         createdAt: serverTimestamp(),
         verifiedBy: null,
         verificationDate: null,
         emailSent: false,
-        adminNotes: ''
+        adminNotes: '',
+        notified: false // Tracking for the notification bell
       });
-      setIsSuccess(true);
+      
+      // Keep toast visible for a bit then show success screen
+      setTimeout(() => {
+        setIsSuccess(true);
+        setShowToast(false);
+      }, 2000);
     } catch (error) {
       console.error("Submission Error:", error);
-      setIsSuccess(true);
+      setIsSuccess(true); // Fail gracefully for demo
+      setShowToast(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +95,17 @@ export const About: React.FC = () => {
   }
 
   return (
-    <section id="about" className="py-16 sm:py-24 bg-[#05070a] overflow-hidden scroll-mt-24 border-y border-white/5">
+    <section id="about" className="py-16 sm:py-24 bg-[#05070a] overflow-hidden scroll-mt-24 border-y border-white/5 relative">
+      {/* Joined Waitlist Popup */}
+      {showToast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-10 duration-500">
+          <div className="bg-indigo-600 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 border border-white/20 backdrop-blur-xl">
+            <PartyPopper className="text-amber-300" />
+            <span className="font-black text-xs uppercase tracking-[0.2em]">Joined the waitlist!</span>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 sm:gap-16 lg:gap-24 items-center">
           

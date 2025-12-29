@@ -1,7 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown, Database, LogOut } from 'lucide-react';
+import { Menu, X, ChevronDown, Database, LogOut, Bell, CheckCircle2, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { db } from '../lib/firebase';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
 interface NavbarProps {
   onAuthClick: () => void;
@@ -11,8 +12,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const { user, logout } = useAuth();
   const exploreRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -20,10 +24,37 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Notification Listener
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'creator_applications'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const apps = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setNotifications(apps);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (exploreRef.current && !exploreRef.current.contains(event.target as Node)) {
         setExploreOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -58,9 +89,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
     if (scrolled) {
       return 'bg-white/75 backdrop-blur-md border-slate-200 shadow-xl py-3 px-5 lg:px-6';
     }
-    // Transparent state over Dark Hero
     return 'bg-white/5 backdrop-blur-xl border-white/10 py-4 px-6 lg:px-8';
   };
+
+  const unreadCount = notifications.filter(n => n.status === 'approved' && !n.notified).length;
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] px-4 pt-4 lg:pt-6 pointer-events-none">
@@ -123,16 +155,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
                         Growing tools built to help SMEs with marketing and execution.
                       </p>
                     </div>
-                    <div className="flex items-center space-x-4 p-4 rounded-2xl border border-transparent opacity-60">
-                      <div className="text-2xl">🤓</div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <p className="text-xs font-black text-[#202124] uppercase tracking-widest">Dorky.ai</p>
-                          <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[8px] font-black">SOON</span>
-                        </div>
-                        <p className="text-[10px] text-[#5F6368] font-bold uppercase tracking-wider">Lead Intel</p>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
@@ -140,12 +162,59 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
             
             <div className="flex items-center space-x-4 ml-4">
               {user ? (
-                <div className={`flex items-center space-x-3 px-4 py-1.5 rounded-full border transition-colors ${isDarkBase ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
-                  <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt="Profile" className="w-7 h-7 rounded-full" />
-                  <button onClick={logout} className={`${isDarkBase ? 'text-white/60 hover:text-rose-400' : 'text-[#5F6368] hover:text-rose-500'} transition-colors flex items-center space-x-2`}>
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Logout</span>
-                    <LogOut size={16} />
-                  </button>
+                <div className="flex items-center space-x-4">
+                  {/* Notification Bell */}
+                  <div className="relative" ref={notificationsRef}>
+                    <button 
+                      onClick={() => setNotificationsOpen(!notificationsOpen)}
+                      className={`p-2 rounded-full transition-colors relative ${isDarkBase ? 'text-white/60 hover:text-white hover:bg-white/5' : 'text-[#5F6368] hover:text-indigo-600 hover:bg-slate-100'}`}
+                    >
+                      <Bell size={18} />
+                      {notifications.some(n => n.status === 'approved') && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                      )}
+                    </button>
+
+                    {notificationsOpen && (
+                      <div className="absolute top-full right-0 mt-4 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                        <div className="p-4 border-b border-slate-50 bg-slate-50/50">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Activity Hub</p>
+                        </div>
+                        <div className="max-h-96 overflow-y-auto">
+                          {notifications.length === 0 ? (
+                            <div className="p-10 text-center space-y-3">
+                              <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                                <Bell size={20} />
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">No application history found on this node.</p>
+                            </div>
+                          ) : (
+                            notifications.map((n) => (
+                              <div key={n.id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors flex items-start space-x-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.status === 'approved' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}`}>
+                                  {n.status === 'approved' ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-xs font-bold text-slate-900 leading-tight">
+                                    {n.status === 'approved' ? 'Reelywood Card Approved!' : 'Card sync is pending review.'}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 font-medium">Protocol ID: #{n.id.slice(0, 8).toUpperCase()}</p>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`flex items-center space-x-3 px-4 py-1.5 rounded-full border transition-colors ${isDarkBase ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
+                    <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt="Profile" className="w-7 h-7 rounded-full border border-white/20 shadow-sm" />
+                    <button onClick={logout} className={`${isDarkBase ? 'text-white/60 hover:text-rose-400' : 'text-[#5F6368] hover:text-rose-500'} transition-colors flex items-center space-x-2`}>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Logout</span>
+                      <LogOut size={16} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button 
@@ -180,12 +249,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
                   <span>{link.name}</span>
                   {link.isExplore && <span className="bg-amber-100 text-amber-600 px-2.5 py-1 rounded-full text-[9px]">LABS</span>}
                 </a>
-                {link.isExplore && (
-                  <div className="pl-4 opacity-50 flex items-center space-x-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Dorky.ai</span>
-                    <span className="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded font-black">SOON</span>
-                  </div>
-                )}
               </div>
             ))}
             {user ? (
