@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { CreatorFormData } from './CreatorCardView';
+import { CreatorFormData } from './About';
 import { ChevronRight, Loader2, Globe, Instagram, Youtube, Linkedin, Twitter } from 'lucide-react';
 
 interface CreatorFormProps {
@@ -42,8 +43,8 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
   const niches = ['Fashion', 'Food', 'Tech', 'Lifestyle', 'Finance', 'Fitness', 'Travel', 'Other'];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Name Input - Direct Card Sync */}
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      {/* Name Input */}
       <div className="relative group">
         <input 
           required
@@ -54,12 +55,12 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
           placeholder=" "
           className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-transparent"
         />
-        <label className="absolute left-5 top-5 text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
+        <label className="absolute left-5 top-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
           Full Name
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Platform Dropdown */}
         <div className="relative group">
           <select
@@ -69,12 +70,12 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
             onChange={handleChange}
             className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none"
           >
-            <option value="" disabled className="bg-[#0a0a0a] text-white/40">Select</option>
+            <option value="" disabled className="bg-[#0a0a0a] text-white/40">Select Platform</option>
             {platforms.map(p => (
               <option key={p.id} value={p.id} className="bg-[#0a0a0a] text-white">{p.id}</option>
             ))}
           </select>
-          <label className="absolute left-5 top-2 text-[10px] font-black uppercase tracking-widest text-indigo-400">
+          <label className="absolute left-5 top-2 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-indigo-400">
             Platform
           </label>
         </div>
@@ -88,17 +89,18 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
             onChange={handleChange}
             className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none"
           >
-            <option value="" disabled className="bg-[#0a0a0a] text-white/40">Select</option>
+            <option value="" disabled className="bg-[#0a0a0a] text-white/40">Select Niche</option>
             {niches.map(n => (
               <option key={n} value={n} className="bg-[#0a0a0a] text-white">{n}</option>
             ))}
           </select>
-          <label className="absolute left-5 top-2 text-[10px] font-black uppercase tracking-widest text-indigo-400">
+          <label className="absolute left-5 top-2 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-indigo-400">
             Niche
           </label>
         </div>
       </div>
 
+      {/* Handle Input */}
       <div className="relative group">
         <input 
           required
@@ -109,11 +111,12 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
           placeholder=" "
           className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-transparent"
         />
-        <label className="absolute left-5 top-5 text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
+        <label className="absolute left-5 top-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
           Handle (@username)
         </label>
       </div>
 
+      {/* Email Input */}
       <div className="relative group">
         <input 
           required
@@ -124,12 +127,13 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
           placeholder=" "
           className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-transparent"
         />
-        <label className="absolute left-5 top-5 text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
+        <label className="absolute left-5 top-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
           Email Address
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* City Input */}
         <div className="relative group">
           <input 
             type="text"
@@ -139,10 +143,11 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
             placeholder=" "
             className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-transparent"
           />
-          <label className="absolute left-5 top-5 text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
+          <label className="absolute left-5 top-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
             City
           </label>
         </div>
+        {/* Phone Input */}
         <div className="relative group">
           <input 
             type="tel"
@@ -152,16 +157,17 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
             placeholder=" "
             className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-transparent"
           />
-          <label className="absolute left-5 top-5 text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
+          <label className="absolute left-5 top-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
             Phone
           </label>
         </div>
       </div>
 
+      {/* Submit Button */}
       <button 
         disabled={isSubmitting}
         type="submit"
-        className="w-full relative group bg-indigo-600 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-[0.4em] overflow-hidden transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full relative group bg-indigo-600 text-white py-5 sm:py-6 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.4em] overflow-hidden transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
         <span className="flex items-center justify-center space-x-3">
@@ -176,7 +182,7 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
         </span>
       </button>
       
-      <p className="text-center text-[9px] text-white/20 font-black uppercase tracking-widest">
+      <p className="text-center text-[8px] sm:text-[9px] text-white/20 font-black uppercase tracking-widest">
         100% Secure • High Impact • Creator Preferred
       </p>
     </form>

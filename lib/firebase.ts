@@ -1,15 +1,15 @@
-
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC7E6n9hoxzeH5iFf7raIyL59U2ds6y4Ss",
-  authDomain: "studio-7648492258-76684.firebaseapp.com",
-  projectId: "studio-7648492258-76684",
-  storageBucket: "studio-7648492258-76684.firebasestorage.app",
-  messagingSenderId: "980161099808",
-  appId: "1:980161099808:web:943a5c23ba036cc8a9e445"
+  apiKey: "AIzaSyAwYK5YNF_YX7rtEyUchp5nIC7vsCcgoWY",
+  authDomain: "reelywood-studio.firebaseapp.com",
+  projectId: "reelywood-studio",
+  storageBucket: "reelywood-studio.firebasestorage.app",
+  messagingSenderId: "481913366686",
+  appId: "1:481913366686:web:690dfb51ac9e72fd17738f",
+  measurementId: "G-FEPX73WH66"
 };
 
 const app = initializeApp(firebaseConfig);
