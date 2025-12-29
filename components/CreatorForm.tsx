@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CreatorFormData } from './About';
-import { ChevronRight, Loader2, Globe, Instagram, Youtube, Linkedin, Twitter } from 'lucide-react';
+import { ChevronRight, Loader2, Globe, Instagram, Youtube, Linkedin, Twitter, Users } from 'lucide-react';
 
 interface CreatorFormProps {
   onUpdate: (data: Partial<CreatorFormData>) => void;
@@ -17,7 +17,8 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
     city: '',
     email: '',
     phone: '',
-    handle: ''
+    handle: '',
+    followers: ''
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -100,20 +101,38 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
         </div>
       </div>
 
-      {/* Handle Input */}
-      <div className="relative group">
-        <input 
-          required
-          type="text"
-          name="handle"
-          value={data.handle}
-          onChange={handleChange}
-          placeholder=" "
-          className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-transparent"
-        />
-        <label className="absolute left-5 top-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
-          Handle (@username)
-        </label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Handle Input */}
+        <div className="relative group">
+          <input 
+            required
+            type="text"
+            name="handle"
+            value={data.handle}
+            onChange={handleChange}
+            placeholder=" "
+            className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-transparent"
+          />
+          <label className="absolute left-5 top-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
+            Handle (@username)
+          </label>
+        </div>
+
+        {/* Followers Input */}
+        <div className="relative group">
+          <input 
+            required
+            type="number"
+            name="followers"
+            value={data.followers}
+            onChange={handleChange}
+            placeholder=" "
+            className="peer w-full bg-white/5 border border-white/10 rounded-2xl px-5 pt-7 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-transparent"
+          />
+          <label className="absolute left-5 top-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 transition-all peer-focus:top-2 peer-focus:text-indigo-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-indigo-400">
+            Followers
+          </label>
+        </div>
       </div>
 
       {/* Email Input */}

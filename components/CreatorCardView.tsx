@@ -18,6 +18,7 @@ export interface CreatorFormData {
   email: string;
   phone: string;
   handle: string;
+  followers: string;
 }
 
 export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
@@ -28,7 +29,8 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
     city: '',
     email: '',
     phone: '',
-    handle: ''
+    handle: '',
+    followers: ''
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);

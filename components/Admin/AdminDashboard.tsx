@@ -5,7 +5,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp
 import { 
   Users, CheckCircle, XCircle, Clock, Mail, Search, 
   ChevronRight, Filter, LogOut, MoreVertical, ExternalLink,
-  Check, X, Trash2, Edit3, Send, Loader2
+  Check, X, Trash2, Edit3, Send, Loader2, ArrowUpDown
 } from 'lucide-react';
 import { EmailComposer } from './EmailComposer';
 
@@ -22,6 +22,7 @@ export interface Application {
   platform: string;
   niche: string;
   city: string;
+  followers: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: any;
   verifiedBy: string | null;
@@ -35,6 +36,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'followers'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [isEmailing, setIsEmailing] = useState(false);
 
@@ -60,22 +64,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         verifiedBy: auth.currentUser?.email,
         verificationDate: serverTimestamp()
       });
-      // If success, we can trigger an email or notification
     } catch (error) {
       console.error("Update Status Error:", error);
     }
   };
 
-  const filteredApps = applications.filter(app => {
-    const matchesSearch = 
-      app.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      app.handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const platforms = Array.from(new Set(applications.map(app => app.platform)));
+
+  const filteredAndSortedApps = applications
+    .filter(app => {
+      const matchesSearch = 
+        app.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        app.handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.email.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
+      const matchesPlatform = platformFilter === 'all' || app.platform === platformFilter;
+      
+      return matchesSearch && matchesStatus && matchesPlatform;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date') {
+        const dateA = a.createdAt?.toDate?.() || new Date(0);
+        const dateB = b.createdAt?.toDate?.() || new Date(0);
+        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+      } else {
+        const followersA = parseInt(a.followers) || 0;
+        const followersB = parseInt(b.followers) || 0;
+        return sortOrder === 'desc' ? followersB - followersA : followersA - followersB;
+      }
+    });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -88,9 +106,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
+  const toggleSortOrder = () => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+
   return (
     <div className="min-h-screen bg-[#05070a] text-white flex flex-col font-['Plus_Jakarta_Sans']">
-      {/* Header */}
       <header className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-black/40 backdrop-blur-xl sticky top-0 z-50">
         <div className="flex items-center space-x-4">
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black">R</div>
@@ -112,7 +131,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </header>
 
       <div className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-10">
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: 'Total Apps', value: applications.length, icon: <Users />, color: 'text-indigo-400' },
@@ -130,35 +148,71 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
-        {/* Filters & Search */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by name, handle, email..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-indigo-500/50"
-            />
+        <div className="flex flex-col space-y-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search by name, handle, email..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-indigo-500/50"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2 bg-white/[0.03] p-1.5 rounded-2xl border border-white/10">
+              {['all', 'pending', 'approved', 'rejected'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setStatusFilter(f as any)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    statusFilter === f ? 'bg-white text-black' : 'text-white/40 hover:text-white'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2 bg-white/[0.03] p-1.5 rounded-2xl border border-white/10">
-            {['all', 'pending', 'approved', 'rejected'].map(f => (
-              <button
-                key={f}
-                onClick={() => setStatusFilter(f as any)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  statusFilter === f ? 'bg-white text-black' : 'text-white/40 hover:text-white'
-                }`}
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2 bg-white/[0.03] px-4 py-2 rounded-xl border border-white/10">
+              <Filter size={14} className="text-white/40" />
+              <select 
+                value={platformFilter} 
+                onChange={(e) => setPlatformFilter(e.target.value)}
+                className="bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer"
               >
-                {f}
-              </button>
-            ))}
+                <option value="all" className="bg-[#0a0a0a]">All Platforms</option>
+                {platforms.map(p => (
+                  <option key={p} value={p} className="bg-[#0a0a0a]">{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 bg-white/[0.03] px-4 py-2 rounded-xl border border-white/10">
+                <ArrowUpDown size={14} className="text-white/40" />
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer"
+                >
+                  <option value="date" className="bg-[#0a0a0a]">Sort by Date</option>
+                  <option value="followers" className="bg-[#0a0a0a]">Sort by Followers</option>
+                </select>
+                <button 
+                  onClick={toggleSortOrder}
+                  className="ml-2 text-indigo-400 hover:text-indigo-300 transition-colors text-[10px] font-black"
+                >
+                  {sortOrder.toUpperCase()}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Applications Table */}
         <div className="bg-white/[0.02] border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -166,7 +220,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <tr className="border-b border-white/5 bg-white/[0.01]">
                   <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Creator</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Platform</th>
-                  <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Niche</th>
+                  <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Followers</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-center">Status</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-right">Actions</th>
                 </tr>
@@ -178,12 +232,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <Loader2 className="animate-spin text-indigo-500 mx-auto" size={32} />
                     </td>
                   </tr>
-                ) : filteredApps.length === 0 ? (
+                ) : filteredAndSortedApps.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-20 text-center text-white/20 font-bold uppercase tracking-widest">No matching applications found</td>
                   </tr>
                 ) : (
-                  filteredApps.map(app => (
+                  filteredAndSortedApps.map(app => (
                     <tr key={app.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="p-6">
                         <div className="flex items-center space-x-3">
@@ -200,7 +254,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         <span className="text-[10px] font-black text-white/60 uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">{app.platform}</span>
                       </td>
                       <td className="p-6">
-                        <p className="text-xs text-white/60">{app.niche}</p>
+                        <p className="text-xs font-black text-indigo-400">{parseInt(app.followers).toLocaleString()}</p>
                       </td>
                       <td className="p-6 text-center">
                         {getStatusBadge(app.status)}

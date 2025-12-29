@@ -14,6 +14,7 @@ export interface CreatorFormData {
   email: string;
   phone: string;
   handle: string;
+  followers: string;
 }
 
 export const About: React.FC = () => {
@@ -24,7 +25,8 @@ export const About: React.FC = () => {
     city: '',
     email: '',
     phone: '',
-    handle: ''
+    handle: '',
+    followers: ''
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
