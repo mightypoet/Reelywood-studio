@@ -35,45 +35,46 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Trigger the main submission (Firebase)
-    onSubmit(data);
+    // 1. Prepare FormData for Google Sheets Apps Script
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      formData.append(key, value as string);
+    });
 
-    // Google Sheets Apps Script Sync
     try {
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        // Fix: Explicitly cast value to string for compatibility with FormData.append
-        formData.append(key, value as string);
-      });
+      // Execute all submission logic in parallel for maximum performance
+      // We wrap them in Promise.all to ensure they all fire off correctly
+      await Promise.all([
+        // Node A: Google Sheets Sync (POST with FormData & no-cors)
+        fetch(GOOGLE_SHEET_URL, {
+          method: "POST",
+          mode: "no-cors",
+          body: formData,
+        }).then(() => console.log("Google Sheets sync transmission finished.")),
 
-      // Using mode: 'no-cors' as requested to handle Google Script redirects simply
-      await fetch(GOOGLE_SHEET_URL, {
-        method: "POST",
-        mode: "no-cors",
-        body: formData,
-      });
-      console.log("Google Sheets sync initiated.");
-    } catch (error) {
-      console.warn("Google Sheets sync error:", error);
-    }
+        // Node B: Parent Submission (Firebase + UI state update)
+        onSubmit(data),
 
-    // Additionally send to Formspark
-    try {
-      await fetch(`https://submit-form.com/${FORMSPARK_FORM_ID}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          ...data,
-          submission_type: "Creator Identity Sync",
-          timestamp: new Date().toISOString()
-        }),
-      });
-      console.log("Formspark sync complete.");
+        // Node C: Formspark Backup Sync
+        fetch(`https://submit-form.com/${FORMSPARK_FORM_ID}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            ...data,
+            submission_type: "Creator Identity Sync",
+            timestamp: new Date().toISOString()
+          }),
+        }).then(() => console.log("Formspark sync finished."))
+      ]);
+      
+      console.log("Transmission sequence complete across all database nodes.");
     } catch (error) {
-      console.warn("Formspark sync failed, but Firebase storage succeeded.", error);
+      console.error("Critical transmission error:", error);
+      // Ensure the UI still proceeds to the success state if the parent handler worked
+      onSubmit(data);
     }
   };
 
