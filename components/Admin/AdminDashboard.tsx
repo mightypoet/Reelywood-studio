@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../../lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Users, CheckCircle, XCircle, Clock, Mail, Search, 
   ChevronRight, Filter, LogOut, MoreVertical, ExternalLink,
-  Check, X, Trash2, Edit3, Send, Loader2, ArrowUpDown
+  Check, X, Trash2, Edit3, Send, Loader2, ArrowUpDown, RefreshCw
 } from 'lucide-react';
 import { EmailComposer } from './EmailComposer';
 
@@ -34,6 +33,7 @@ export interface Application {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
@@ -42,7 +42,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [isEmailing, setIsEmailing] = useState(false);
 
-  useEffect(() => {
+  const fetchApplications = () => {
+    setRefreshing(true);
     const q = query(collection(db, 'creator_applications'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const apps = snapshot.docs.map(doc => ({
@@ -51,10 +52,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       })) as Application[];
       setApplications(apps);
       setLoading(false);
+      setTimeout(() => setRefreshing(false), 500);
     });
+    return unsubscribe;
+  };
 
+  useEffect(() => {
+    const unsubscribe = fetchApplications();
     return () => unsubscribe();
   }, []);
+
+  const handleManualRefresh = () => {
+    fetchApplications();
+  };
 
   const handleStatusChange = async (id: string, newStatus: 'approved' | 'rejected') => {
     try {
@@ -120,6 +130,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
         
         <div className="flex items-center space-x-6">
+          <button 
+            onClick={handleManualRefresh}
+            className={`p-2 rounded-full hover:bg-white/5 transition-all ${refreshing ? 'animate-spin text-indigo-400' : 'text-white/40'}`}
+            title="Refresh Data"
+          >
+            <RefreshCw size={20} />
+          </button>
+          <div className="h-8 w-px bg-white/10"></div>
           <button 
             onClick={() => { auth.signOut(); onLogout(); }}
             className="flex items-center space-x-2 text-white/40 hover:text-white transition-colors"

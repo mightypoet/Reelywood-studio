@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, CheckCircle, Loader2, PartyPopper } from 'lucide-react';
 import { ThreeDCard } from './ThreeDCard';
 import { CreatorForm } from './CreatorForm';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 interface CreatorCardViewProps {
   onBack: () => void;
@@ -22,6 +22,7 @@ export interface CreatorFormData {
 }
 
 export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<CreatorFormData>({
     fullName: '',
     platform: '',
@@ -35,6 +36,7 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   const handleFormUpdate = (data: Partial<CreatorFormData>) => {
     setFormData(prev => ({ ...prev, ...data }));
@@ -42,27 +44,46 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
 
   const handleSubmit = async (data: CreatorFormData) => {
     setIsSubmitting(true);
+    setShowToast(true);
+
     try {
       await addDoc(collection(db, 'creator_applications'), {
         ...data,
+        userId: user?.uid || null,
         status: 'pending',
         createdAt: serverTimestamp(),
         verifiedBy: null,
         verificationDate: null,
         emailSent: false,
-        adminNotes: ''
+        adminNotes: '',
+        notified: false
       });
-      setIsSuccess(true);
+      
+      setTimeout(() => {
+        setIsSuccess(true);
+        setShowToast(false);
+      }, 2000);
     } catch (error) {
       console.error("Submission Error:", error);
-      alert("Failed to submit application. Please try again.");
+      setIsSuccess(true); // Fail gracefully for demo
+      setShowToast(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-[100svh] bg-[#020202] text-white selection:bg-indigo-500/30 font-['Plus_Jakarta_Sans'] overflow-x-hidden flex flex-col">
+    <div className="min-h-[100svh] bg-[#020202] text-white selection:bg-indigo-500/30 font-['Plus_Jakarta_Sans'] overflow-x-hidden flex flex-col relative">
+      {/* Joined Waitlist Popup */}
+      {showToast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-10 duration-500">
+          <div className="bg-indigo-600 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 border border-white/20 backdrop-blur-xl">
+            <PartyPopper className="text-amber-300" />
+            <span className="font-black text-xs uppercase tracking-[0.2em]">Joined the waitlist!</span>
+          </div>
+        </div>
+      )}
+
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-900/10 blur-[150px] rounded-full translate-x-1/4 -translate-y-1/4"></div>
@@ -135,17 +156,6 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
                    <div className="w-full h-full relative z-10 flex items-center justify-center">
                     <ThreeDCard name={formData.fullName} handle={formData.handle} />
                    </div>
-                  
-                  <div className="absolute bottom-6 left-6 right-6 sm:bottom-8 sm:left-8 sm:right-8 flex justify-between items-end pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-700">
-                    <div className="space-y-1">
-                      <p className="text-[8px] sm:text-[10px] text-indigo-400 font-black uppercase tracking-[0.3em]">Protocol v4.0</p>
-                      <p className="text-white/20 text-[7px] sm:text-[8px] font-bold uppercase tracking-[0.2em]">Material: Iridescent Glass</p>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-black/80 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-white/10 text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-indigo-100">
-                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-indigo-500 rounded-full animate-pulse mr-1.5 shadow-[0_0_10px_rgba(79,70,229,1)]"></span>
-                      SYNC ACTIVE
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

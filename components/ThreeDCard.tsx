@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 
 interface ThreeDCardProps {
@@ -18,27 +17,22 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
     const width = rect.width;
     const height = rect.height;
     
-    // Calculate mouse position relative to the card center
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Map the cursor across the entire container to a 360-degree range for a very spatial orbit
-    // We use a sensitivity multiplier to make it feel responsive but not erratic
-    const rotateY = ((mouseX - width / 2) / width) * 180; 
-    const rotateX = ((height / 2 - mouseY) / height) * 180; 
+    const rotateY = ((mouseX - width / 2) / width) * 35; 
+    const rotateX = ((height / 2 - mouseY) / height) * 35; 
 
     setRotate({ x: rotateX, y: rotateY });
 
-    // Calculate dynamic glare based on cursor
     setGlare({
       x: (mouseX / width) * 100,
       y: (mouseY / height) * 100,
-      opacity: 0.6
+      opacity: 0.4
     });
   };
 
   const handleMouseLeave = () => {
-    // Reset position smoothly
     setRotate({ x: 0, y: 0 });
     setGlare({ ...glare, opacity: 0 });
   };
@@ -46,93 +40,73 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
   return (
     <div 
       className="relative w-full h-full flex items-center justify-center p-4 sm:p-8"
-      style={{ perspective: '2000px' }}
+      style={{ perspective: '1500px' }}
     >
       <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative w-[300px] h-[480px] sm:w-[340px] sm:h-[530px] transition-transform duration-300 ease-out select-none"
+        className="relative w-[310px] h-[480px] sm:w-[350px] sm:h-[530px] transition-transform duration-700 ease-out select-none cursor-default"
         style={{
           transform: `rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
           transformStyle: 'preserve-3d',
         }}
       >
-        {/* FRONT FACE */}
+        {/* THE CARD BODY */}
         <div 
-          className="absolute inset-0 rounded-[32px] bg-[#0c0c0c] shadow-2xl overflow-hidden"
-          style={{ backfaceVisibility: 'hidden', transform: 'translateZ(1px)' }}
+          className="absolute inset-0 rounded-[40px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] border border-white/30"
+          style={{ 
+            backfaceVisibility: 'hidden', 
+            transform: 'translateZ(1px)',
+            // High-contrast, vibrant iridescent gradient
+            background: 'linear-gradient(135deg, #ff66b2 0%, #33ccff 25%, #4dffb8 50%, #fff24d 75%, #ff66b2 100%)',
+          }}
         >
-          {/* NOISE OVERLAY (MATTE TEXTURE) */}
+          {/* Surface Texture */}
+          <div className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+
+          {/* BRUSHED METAL CHIP (CENTER) */}
           <div 
-            className="absolute inset-0 rounded-[32px] pointer-events-none z-0 opacity-[0.06] mix-blend-overlay"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 sm:w-36 sm:h-36 rounded-[32px] flex items-center justify-center overflow-hidden shadow-[inset_0_2px_10px_rgba(255,255,255,0.2),0_20px_40px_rgba(0,0,0,0.5)] border border-black/40"
+            style={{ 
+              transform: 'translate(-50%, -50%) translateZ(50px)',
+              background: 'radial-gradient(circle at center, #444 0%, #000 100%)'
             }}
-          ></div>
-
-          {/* METALLIC RIM BORDER */}
-          <div className="absolute inset-0 rounded-[32px] border border-white/10 z-10 pointer-events-none shadow-[inset_0_0_20px_rgba(255,255,255,0.02)]"></div>
-          
-          {/* MAIN CONTENT */}
-          <div className="relative h-full w-full flex flex-col items-center pt-10 pb-12 z-20 rounded-[32px]">
+          >
+            {/* Brushed Metal Radial Effect */}
+            <div className="absolute inset-0 opacity-50"
+                 style={{ 
+                   background: 'conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255,255,255,0.2) 45deg, transparent 90deg, rgba(255,255,255,0.2) 135deg, transparent 180deg, rgba(255,255,255,0.2) 225deg, transparent 270deg, rgba(255,255,255,0.2) 315deg, transparent 360deg)',
+                   filter: 'blur(3px)'
+                 }}
+            ></div>
             
-            {/* Top Logo */}
-            <h1 className="text-[#888] font-bold tracking-[0.3em] text-[12px] uppercase mb-10 drop-shadow-lg font-display">
+            <span className="relative z-10 text-[10px] sm:text-[12px] font-black tracking-[0.4em] text-[#999] uppercase select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               REELYWOOD
-            </h1>
-
-            {/* HOLOGRAPHIC PANEL */}
-            <div 
-              className="relative w-[210px] h-[260px] sm:w-[240px] sm:h-[300px] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] group/panel border border-white/5"
-              style={{ transform: 'translateZ(40px)' }}
-            >
-                {/* Vibrant Iridescent Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#ff0095] via-[#00d4ff] to-[#fffb00] animate-pulse-slow opacity-90"></div>
-                
-                {/* Panel Shine Overlay */}
-                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.2)_0%,rgba(255,255,255,0)_50%,rgba(255,255,255,0.1)_100%)]"></div>
-                
-                {/* Central Black Chip */}
-                <div 
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-black/85 backdrop-blur-xl rounded-xl flex flex-col items-center justify-center border border-white/20 shadow-2xl"
-                  style={{ transform: 'translate(-50%, -50%) translateZ(25px)' }}
-                >
-                    <span className="text-[7px] text-white/90 font-black tracking-[0.2em] mb-1 font-display">REELYWOOD</span>
-                    <div className="w-6 h-[1px] bg-white/20 mb-1"></div>
-                    <span className="text-[6px] text-white/40 font-bold uppercase tracking-widest text-center px-2">Creator<br/>Card</span>
-                </div>
-
-                {/* Micro-details */}
-                <div className="absolute bottom-4 left-5 text-[6px] font-mono text-black/20 font-black tracking-widest uppercase">
-                  #NODE-004.8842
-                </div>
-            </div>
-
-            {/* Bottom Identity Block */}
-            <div className="mt-auto text-center px-8" style={{ transform: 'translateZ(60px)' }}>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white/90 mb-1 uppercase font-display drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
-                    {name || "YOUR NAME"}
-                </h2>
-                <p className="text-[10px] text-white/20 font-bold uppercase tracking-[0.2em] leading-relaxed">
-                    Authenticated Access v4.0
-                </p>
-                {handle && (
-                  <p className="text-[8px] text-indigo-400 font-black uppercase tracking-[0.4em] mt-3 bg-white/5 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
-                    {handle.startsWith('@') ? handle : `@${handle}`}
-                  </p>
-                )}
-            </div>
+            </span>
           </div>
 
-          {/* GLARE EFFECT */}
+          {/* IDENTITY TEXTS (BOTTOM) */}
           <div 
-            className="absolute inset-0 rounded-[32px] pointer-events-none z-30 mix-blend-overlay"
+            className="absolute bottom-14 left-0 right-0 flex flex-col items-center px-8 text-center"
+            style={{ transform: 'translateZ(80px)' }}
+          >
+            <h2 className="text-[#1a1a1a] font-cursive text-5xl sm:text-6xl mb-1 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)]">
+              {name || "Your Identity"}
+            </h2>
+            <p className="text-[#1a1a1a] font-mono-custom text-[12px] sm:text-[14px] font-bold tracking-tight opacity-95">
+              {handle ? (handle.startsWith('@') ? handle : `@${handle}`) : "@handle"}
+            </p>
+          </div>
+
+          {/* GLARE OVERLAY */}
+          <div 
+            className="absolute inset-0 rounded-[40px] pointer-events-none z-30"
             style={{
               background: `radial-gradient(
                 circle at ${glare.x}% ${glare.y}%, 
-                rgba(255,255,255,0.4) 0%, 
-                rgba(255,255,255,0) 70%
+                rgba(255,255,255,0.6) 0%, 
+                rgba(255,255,255,0) 65%
               )`,
               opacity: glare.opacity,
               transition: 'opacity 0.4s ease'
@@ -140,40 +114,17 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
           />
         </div>
 
-        {/* BACK FACE */}
+        {/* REAR FACE - HOLLOW / CLEAN */}
         <div 
-          className="absolute inset-0 rounded-[32px] bg-[#0c0c0c] flex items-center justify-center overflow-hidden"
+          className="absolute inset-0 rounded-[40px] bg-white flex items-center justify-center overflow-hidden border border-white/20"
           style={{ 
             backfaceVisibility: 'hidden', 
             transform: 'rotateY(180deg) translateZ(1px)',
-            border: '1px solid rgba(255,255,255,0.1)' 
+            background: 'linear-gradient(135deg, #ff66b2 0%, #33ccff 25%, #4dffb8 50%, #fff24d 75%, #ff66b2 100%)',
           }}
         >
-          {/* Logo on the back */}
-          <div className="flex flex-col items-center space-y-4">
-            <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl">
-              <span className="text-white font-black text-4xl">R</span>
-            </div>
-            <div className="text-center">
-              <p className="text-white/40 font-black text-[10px] uppercase tracking-[0.5em]">REELYWOOD STUDIO</p>
-              <p className="text-white/10 font-mono text-[8px] mt-2">ENCRYPTED IDENTITY TOKEN</p>
-            </div>
-          </div>
-          
-          {/* Circuit-like pattern overlay */}
-          <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.85; filter: hue-rotate(0deg); }
-          50% { opacity: 1; filter: hue-rotate(15deg); }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 6s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

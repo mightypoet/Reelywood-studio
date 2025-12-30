@@ -130,17 +130,6 @@ export const About: React.FC = () => {
                <div className="w-full h-full relative z-10 flex items-center justify-center">
                 <ThreeDCard name={formData.fullName || "Your Identity"} handle={formData.handle || "@handle"} />
                </div>
-              
-              <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 flex justify-between items-end pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity duration-700">
-                <div className="space-y-1">
-                  <p className="text-[8px] sm:text-[10px] text-indigo-400 font-black uppercase tracking-[0.3em]">Protocol v4.0</p>
-                  <p className="text-white/20 text-[7px] sm:text-[8px] font-bold uppercase tracking-[0.2em]">Material: Iridescent Glass</p>
-                </div>
-                <div className="flex items-center space-x-2 bg-black/80 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-white/10 text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-indigo-100 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-indigo-500 rounded-full animate-pulse mr-1.5 shadow-[0_0_10px_rgba(79,70,229,1)]"></span>
-                  SYNC ACTIVE
-                </div>
-              </div>
             </div>
           </div>
 

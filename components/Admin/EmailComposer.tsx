@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { X, Send, Loader2, CheckCircle, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
 import { Application } from './AdminDashboard';
@@ -24,7 +23,7 @@ export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClo
 
   const handleSend = async () => {
     setIsSending(true);
-    // Simulate real backend email dispatch from reelywood.com
+    // Simulate real backend email dispatch from reelywood@gmail.com
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     try {
@@ -33,7 +32,7 @@ export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClo
         emailSent: true,
         lastEmailSubject: subject,
         lastEmailTimestamp: new Date().toISOString(),
-        senderDomain: 'reelywood.com'
+        senderDomain: 'reelywood@gmail.com'
       });
       setIsSuccess(true);
       setTimeout(() => onClose(), 2500);
@@ -56,7 +55,7 @@ export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClo
             </div>
             <div className="space-y-2">
               <h2 className="text-3xl font-black uppercase tracking-tight text-white">Transmission Successful</h2>
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.4em]">Email Dispatched via Reelywood.com</p>
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.4em]">Email Dispatched via Reelywood@gmail.com</p>
             </div>
             <p className="text-emerald-500/80 font-bold text-xs">A notification has been sent to {application.email}</p>
           </div>
@@ -69,7 +68,7 @@ export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClo
                 </div>
                 <div>
                   <h3 className="text-xl font-black uppercase tracking-tight">Studio Mailer</h3>
-                  <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">Routing from: <span className="text-indigo-400">admin@reelywood.com</span></p>
+                  <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">Routing from: <span className="text-indigo-400">reelywood@gmail.com</span></p>
                 </div>
               </div>
               <button onClick={onClose} className="text-white/20 hover:text-white transition-colors p-2">
