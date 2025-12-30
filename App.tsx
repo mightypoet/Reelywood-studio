@@ -38,6 +38,10 @@ const MainContent: React.FC = () => {
         setView('admin-login');
       } else if (path === '/dashboard' || hash === '#dashboard') {
         setView('admin-dashboard');
+      } else if (path === '/creatorcard' || hash === '#creatorcard') {
+        setView('creator-card');
+      } else {
+        setView('home');
       }
     };
 
@@ -59,6 +63,7 @@ const MainContent: React.FC = () => {
 
   const handleCreatorUniverseClick = () => {
     setView('creator-card');
+    window.history.pushState({}, '', '/creatorcard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -69,20 +74,20 @@ const MainContent: React.FC = () => {
   };
 
   if (view === 'auth') {
-    return <AuthView onBack={() => setView('home')} />;
+    return <AuthView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
   }
 
   if (view === 'creator-card') {
-    return <CreatorCardView onBack={() => setView('home')} />;
+    return <CreatorCardView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
   }
 
   if (view === 'admin-login') {
-    return <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />;
+    return <AdminLogin onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} onSuccess={() => setView('admin-dashboard')} />;
   }
 
   if (view === 'admin-dashboard') {
     if (!user?.email || !ADMIN_EMAILS.includes(user.email)) {
-      return <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />;
+      return <AdminLogin onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} onSuccess={() => setView('admin-dashboard')} />;
     }
     return <AdminDashboard onLogout={() => {
       setView('home');

@@ -9,6 +9,10 @@ interface CreatorFormProps {
   isSubmitting: boolean;
 }
 
+// Replace this with your actual Formspark Form ID
+const FORMSPARK_FORM_ID = "REELYWOOD_CREATOR_SYNC_ID"; 
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwS8XaS2zURf24cEevwrst4RL8hclcoRAWuCy4Mi6YdAtL-3PAFuF6baFjvcyTM0uo4Sg/exec";
+
 export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, isSubmitting }) => {
   const [data, setData] = React.useState<CreatorFormData>({
     fullName: '',
@@ -28,9 +32,49 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
     onUpdate({ [name]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Trigger the main submission (Firebase)
     onSubmit(data);
+
+    // Google Sheets Apps Script Sync
+    try {
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        // Fix: Explicitly cast value to string for compatibility with FormData.append
+        formData.append(key, value as string);
+      });
+
+      // Using mode: 'no-cors' as requested to handle Google Script redirects simply
+      await fetch(GOOGLE_SHEET_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: formData,
+      });
+      console.log("Google Sheets sync initiated.");
+    } catch (error) {
+      console.warn("Google Sheets sync error:", error);
+    }
+
+    // Additionally send to Formspark
+    try {
+      await fetch(`https://submit-form.com/${FORMSPARK_FORM_ID}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          ...data,
+          submission_type: "Creator Identity Sync",
+          timestamp: new Date().toISOString()
+        }),
+      });
+      console.log("Formspark sync complete.");
+    } catch (error) {
+      console.warn("Formspark sync failed, but Firebase storage succeeded.", error);
+    }
   };
 
   const platforms = [
