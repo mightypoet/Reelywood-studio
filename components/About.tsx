@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sparkles, CheckCircle, Loader2, PartyPopper } from 'lucide-react';
 import { ThreeDCard } from './ThreeDCard';
@@ -40,36 +41,52 @@ export const About: React.FC = () => {
 
   const handleSubmit = async (data: CreatorFormData) => {
     setIsSubmitting(true);
-    // Show the "Joined the waitlist" popup immediately upon click as requested
+    // 1. Show the "Joined the waitlist" popup immediately
     setShowToast(true);
     
+    // 2. Auto-hide the toast after exactly 1 second as requested
+    setTimeout(() => {
+      setShowToast(false);
+    }, 1000);
+    
     try {
+      // 3. Main Firebase storage (async background task)
       await addDoc(collection(db, 'creator_applications'), {
         ...data,
-        userId: user?.uid || null, // Link to authenticated user if exists
+        userId: user?.uid || null,
         status: 'pending',
         createdAt: serverTimestamp(),
         verifiedBy: null,
         verificationDate: null,
         emailSent: false,
         adminNotes: '',
-        notified: false // Tracking for the notification bell
+        notified: false
       });
       
-      // Keep toast visible for a bit then show success screen
+      // 4. Return to "default state" after 1.5 seconds (allowing toast to finish and a tiny buffer)
+      // This ensures the button text returns to "Generate My Card" for a new submission
       setTimeout(() => {
-        setIsSuccess(true);
-        setShowToast(false);
-      }, 2000);
+        setIsSubmitting(false);
+        setFormData({
+          fullName: '',
+          platform: '',
+          niche: '',
+          city: '',
+          email: '',
+          phone: '',
+          handle: '',
+          followers: ''
+        });
+      }, 1500);
+
     } catch (error) {
       console.error("Submission Error:", error);
-      setIsSuccess(true); // Fail gracefully for demo
-      setShowToast(false);
-    } finally {
       setIsSubmitting(false);
+      setShowToast(false);
     }
   };
 
+  // Dedicated Success View is bypassed in favor of direct form reset per latest request
   if (isSuccess) {
     return (
       <section className="py-20 lg:py-32 bg-[#05070a] overflow-hidden scroll-mt-24">
@@ -96,7 +113,7 @@ export const About: React.FC = () => {
 
   return (
     <section id="about" className="py-16 sm:py-24 bg-[#05070a] overflow-hidden scroll-mt-24 border-y border-white/5 relative">
-      {/* Joined Waitlist Popup */}
+      {/* Joined Waitlist Popup - Constrained to 1s duration */}
       {showToast && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-10 duration-500">
           <div className="bg-indigo-600 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 border border-white/20 backdrop-blur-xl">
