@@ -18,22 +18,35 @@ export interface CreatorFormData {
   followers: string;
 }
 
-export const About: React.FC = () => {
+const initialFormState: CreatorFormData = {
+  fullName: '',
+  platform: '',
+  niche: '',
+  city: '',
+  email: '',
+  phone: '',
+  handle: '',
+  followers: ''
+};
+
+interface AboutProps {
+  onAcademyClick?: () => void;
+}
+
+export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<CreatorFormData>({
-    fullName: '',
-    platform: '',
-    niche: '',
-    city: '',
-    email: '',
-    phone: '',
-    handle: '',
-    followers: ''
-  });
-  
+  const [formData, setFormData] = useState<CreatorFormData>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [waitlistCount, setWaitlistCount] = useState(500);
+
+  // Live counting animation: starts at 500, increments +1 every 10 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setWaitlistCount(prev => prev + 1);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleFormUpdate = (data: Partial<CreatorFormData>) => {
     setFormData(prev => ({ ...prev, ...data }));
@@ -41,16 +54,13 @@ export const About: React.FC = () => {
 
   const handleSubmit = async (data: CreatorFormData) => {
     setIsSubmitting(true);
-    // 1. Show the "Joined the waitlist" popup immediately
     setShowToast(true);
     
-    // 2. Auto-hide the toast after exactly 1 second as requested
     setTimeout(() => {
       setShowToast(false);
-    }, 1000);
+    }, 1200);
     
     try {
-      // 3. Main Firebase storage (async background task)
       await addDoc(collection(db, 'creator_applications'), {
         ...data,
         userId: user?.uid || null,
@@ -63,85 +73,49 @@ export const About: React.FC = () => {
         notified: false
       });
       
-      // 4. Return to "default state" after 1.5 seconds (allowing toast to finish and a tiny buffer)
-      // This ensures the button text returns to "Generate My Card" for a new submission
       setTimeout(() => {
         setIsSubmitting(false);
-        setFormData({
-          fullName: '',
-          platform: '',
-          niche: '',
-          city: '',
-          email: '',
-          phone: '',
-          handle: '',
-          followers: ''
-        });
+        setFormData(initialFormState);
       }, 1500);
 
     } catch (error) {
-      console.error("Submission Error:", error);
+      console.error("Submission Node Error:", error);
       setIsSubmitting(false);
       setShowToast(false);
     }
   };
 
-  // Dedicated Success View is bypassed in favor of direct form reset per latest request
-  if (isSuccess) {
-    return (
-      <section className="py-20 lg:py-32 bg-[#05070a] overflow-hidden scroll-mt-24">
-        <div className="max-w-4xl mx-auto px-6 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(79,70,229,0.3)] border border-white/20">
-            <CheckCircle size={40} className="text-white sm:w-12 sm:h-12" />
-          </div>
-          <div className="space-y-4">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white uppercase tracking-tight">Identity Synced</h2>
-            <p className="text-slate-400 text-sm sm:text-lg max-w-lg mx-auto leading-relaxed">
-              Your Reelywood Creator Card application has been dispatched to our narrative engineers. Authentication details will follow via secure transmission.
-            </p>
-          </div>
-          <button 
-            onClick={() => setIsSuccess(false)}
-            className="text-indigo-400 font-bold text-xs sm:text-sm hover:text-indigo-300 transition-colors uppercase tracking-[0.3em]"
-          >
-            Initiate Another Sync
-          </button>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section id="about" className="py-16 sm:py-24 bg-[#05070a] overflow-hidden scroll-mt-24 border-y border-white/5 relative">
-      {/* Joined Waitlist Popup - Constrained to 1s duration */}
+      {/* Action Notification Toast */}
       {showToast && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-10 duration-500">
           <div className="bg-indigo-600 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 border border-white/20 backdrop-blur-xl">
             <PartyPopper className="text-amber-300" />
-            <span className="font-black text-xs uppercase tracking-[0.2em]">Joined the waitlist!</span>
+            <span className="font-black text-xs uppercase tracking-[0.2em]">✨ Application Sync Active</span>
           </div>
         </div>
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 sm:gap-16 lg:gap-24 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 lg:gap-24 items-center">
           
-          {/* Holographic Preview Container */}
-          <div className="lg:col-span-7 space-y-8 sm:space-y-10 order-2 lg:order-1 flex flex-col items-center lg:items-start">
+          {/* Visual Identity Preview (Holographic Card) */}
+          <div className="space-y-8 sm:space-y-10 order-2 lg:order-1 flex flex-col items-center lg:items-start">
             <div className="space-y-4 sm:space-y-6 text-center lg:text-left">
               <div className="inline-flex items-center space-x-3 bg-white/5 border border-white/10 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-indigo-400 font-black text-[9px] sm:text-[10px] uppercase tracking-[0.4em] backdrop-blur-md">
                 <Sparkles size={12} className="animate-pulse" />
                 <span>Holographic Render</span>
               </div>
               <h2 className="text-4xl sm:text-6xl md:text-8xl font-black text-white tracking-tighter leading-[0.9] uppercase">
-                Creator <br className="hidden sm:block" /> Authenticated
+                Creator <br className="hidden sm:block" /> Card
               </h2>
-              <p className="text-base sm:text-xl text-slate-400 font-medium italic max-w-xl mx-auto lg:mx-0">
-                Built for growth. Engineered for value. We build ecosystems that scale.
+              <p className="text-base sm:text-lg text-slate-400 font-medium italic max-w-xl mx-auto lg:mx-0">
+                The card that turns your content into currency. Post. Earn. Spend. Repeat.
               </p>
             </div>
 
-            <div className="relative group w-full max-w-[500px] lg:max-w-full aspect-[4/5] sm:aspect-[3.5/4] lg:aspect-[4/5] rounded-[3rem] sm:rounded-[4rem] bg-gradient-to-b from-white/[0.02] to-transparent border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden flex items-center justify-center p-6 sm:p-12 cursor-crosshair">
+            <div className="relative group w-full max-w-[500px] aspect-[3.5/5] sm:aspect-[3.5/4] lg:aspect-[3.5/5] rounded-[3rem] sm:rounded-[4rem] bg-gradient-to-b from-white/[0.02] to-transparent border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex items-center justify-center p-4 sm:p-12 cursor-crosshair">
                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(79,70,229,0.12),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
                
                <div className="w-full h-full relative z-10 flex items-center justify-center">
@@ -150,21 +124,21 @@ export const About: React.FC = () => {
             </div>
           </div>
 
-          {/* Identity Sync Form Container */}
-          <div className="lg:col-span-5 order-1 lg:order-2 w-full">
+          {/* User Input Module (Identity Sync Form) */}
+          <div className="order-1 lg:order-2 w-full">
             <div className="bg-white/[0.03] border border-white/5 p-6 sm:p-8 lg:p-12 rounded-[2.5rem] sm:rounded-[4rem] backdrop-blur-3xl shadow-2xl relative">
-              <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-indigo-600 text-white p-4 px-6 sm:p-6 sm:px-10 rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl z-10 scale-90 sm:scale-100">
-                <h3 className="text-sm sm:text-xl font-black uppercase tracking-tighter leading-none mb-1">Human + AI</h3>
-                <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">Identity Node</p>
+              <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-indigo-600 text-white p-4 px-6 sm:p-6 sm:px-10 rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl z-10 scale-90 sm:scale-100 flex flex-col items-center min-w-[120px]">
+                <h3 className="text-sm sm:text-xl font-black uppercase tracking-tighter leading-none mb-1">{waitlistCount}+</h3>
+                <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">joined waitlist</p>
               </div>
               
               <div className="mb-8 sm:mb-12 space-y-3 sm:space-y-4">
                 <div className="flex items-center space-x-3">
                   <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-indigo-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(79,70,229,0.8)]"></div>
-                  <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">Identity Protocol</h3>
+                  <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">Claim Your Identity</h3>
                 </div>
                 <p className="text-slate-500 text-xs sm:text-sm font-medium leading-relaxed">
-                  Initiate your digital identity sync. Calibrated for maximum narrative impact and ROI.
+                  Tell us who you are, and we’ll show you where you can go.
                 </p>
               </div>
 
@@ -172,6 +146,8 @@ export const About: React.FC = () => {
                 onUpdate={handleFormUpdate} 
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
+                externalData={formData}
+                onAcademyClick={onAcademyClick}
               />
 
               <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-white/5 flex items-center justify-between opacity-30">

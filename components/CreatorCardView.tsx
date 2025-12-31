@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ArrowLeft, Sparkles, CheckCircle, Loader2, PartyPopper } from 'lucide-react';
 import { ThreeDCard } from './ThreeDCard';
@@ -136,9 +137,9 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-center w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center w-full">
             {/* 3D Preview Container */}
-            <div className="lg:col-span-7 flex flex-col items-center justify-center w-full order-2 lg:order-1">
+            <div className="flex flex-col items-center justify-center w-full order-2 lg:order-1">
               <div className="w-full max-w-[500px] space-y-6 sm:space-y-8">
                 <div className="space-y-3 sm:space-y-4 text-center lg:text-left">
                   <div className="inline-flex items-center space-x-3 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-indigo-400 font-black text-[8px] sm:text-[9px] uppercase tracking-[0.4em]">
@@ -161,7 +162,7 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
             </div>
 
             {/* Form Container */}
-            <div className="lg:col-span-5 w-full order-1 lg:order-2">
+            <div className="w-full order-1 lg:order-2">
               <div className="bg-white/[0.03] border border-white/5 p-6 sm:p-10 lg:p-12 rounded-[2.5rem] sm:rounded-[3.5rem] backdrop-blur-3xl shadow-2xl w-full">
                 <div className="mb-8 sm:mb-10 space-y-2">
                   <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Identity Node</h3>

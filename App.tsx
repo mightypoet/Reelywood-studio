@@ -19,11 +19,12 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { CreatorCardView } from './components/CreatorCardView';
 import { AdminLogin } from './components/Admin/AdminLogin';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { AcademyView } from './components/AcademyView';
 
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
 
 const MainContent: React.FC = () => {
-  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard'>('home');
+  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'academy'>('home');
   const [isVisible, setIsVisible] = useState(false);
   const { user } = useAuth();
 
@@ -40,6 +41,8 @@ const MainContent: React.FC = () => {
         setView('admin-dashboard');
       } else if (path === '/creatorcard' || hash === '#creatorcard') {
         setView('creator-card');
+      } else if (path === '/academy' || hash === '#academy') {
+        setView('academy');
       } else {
         setView('home');
       }
@@ -67,6 +70,12 @@ const MainContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleAcademyClick = () => {
+    setView('academy');
+    window.history.pushState({}, '', '/academy');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const navigateToAdmin = () => {
     setView('admin-login');
     window.history.pushState({}, '', '/admin');
@@ -79,6 +88,10 @@ const MainContent: React.FC = () => {
 
   if (view === 'creator-card') {
     return <CreatorCardView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
+  }
+
+  if (view === 'academy') {
+    return <AcademyView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
   }
 
   if (view === 'admin-login') {
@@ -106,7 +119,7 @@ const MainContent: React.FC = () => {
         <Trust />
         
         <section id="about" className="scroll-mt-24">
-          <About />
+          <About onAcademyClick={handleAcademyClick} />
         </section>
 
         <UVP />

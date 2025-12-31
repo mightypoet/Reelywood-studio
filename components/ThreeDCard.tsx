@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 
 interface ThreeDCardProps {
@@ -20,8 +21,8 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const rotateY = ((mouseX - width / 2) / width) * 35; 
-    const rotateX = ((height / 2 - mouseY) / height) * 35; 
+    const rotateY = ((mouseX - width / 2) / width) * 25; 
+    const rotateX = ((height / 2 - mouseY) / height) * 25; 
 
     setRotate({ x: rotateX, y: rotateY });
 
@@ -39,14 +40,14 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
 
   return (
     <div 
-      className="relative w-full h-full flex items-center justify-center p-4 sm:p-8"
+      className="relative w-full h-full flex items-center justify-center p-2 sm:p-8"
       style={{ perspective: '1500px' }}
     >
       <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative w-[310px] h-[480px] sm:w-[350px] sm:h-[530px] transition-transform duration-700 ease-out select-none cursor-default"
+        className="relative w-[260px] h-[400px] sm:w-[350px] sm:h-[530px] transition-transform duration-700 ease-out select-none cursor-default"
         style={{
           transform: `rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
           transformStyle: 'preserve-3d',
@@ -54,7 +55,7 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
       >
         {/* THE CARD BODY */}
         <div 
-          className="absolute inset-0 rounded-[40px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] border border-white/30"
+          className="absolute inset-0 rounded-[30px] sm:rounded-[40px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] border border-white/30"
           style={{ 
             backfaceVisibility: 'hidden', 
             transform: 'translateZ(1px)',
@@ -67,7 +68,7 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
 
           {/* BRUSHED METAL CHIP (CENTER) */}
           <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 sm:w-36 sm:h-36 rounded-[32px] flex items-center justify-center overflow-hidden shadow-[inset_0_2px_10px_rgba(255,255,255,0.2),0_20px_40px_rgba(0,0,0,0.5)] border border-black/40"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 sm:w-36 sm:h-36 rounded-[24px] sm:rounded-[32px] flex items-center justify-center overflow-hidden shadow-[inset_0_2px_10px_rgba(255,255,255,0.2),0_20px_40px_rgba(0,0,0,0.5)] border border-black/40"
             style={{ 
               transform: 'translate(-50%, -50%) translateZ(50px)',
               background: 'radial-gradient(circle at center, #444 0%, #000 100%)'
@@ -81,27 +82,27 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
                  }}
             ></div>
             
-            <span className="relative z-10 text-[10px] sm:text-[12px] font-black tracking-[0.4em] text-[#999] uppercase select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+            <span className="relative z-10 text-[8px] sm:text-[12px] font-black tracking-[0.4em] text-[#999] uppercase select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               REELYWOOD
             </span>
           </div>
 
           {/* IDENTITY TEXTS (BOTTOM) */}
           <div 
-            className="absolute bottom-14 left-0 right-0 flex flex-col items-center px-8 text-center"
+            className="absolute bottom-10 sm:bottom-14 left-0 right-0 flex flex-col items-center px-4 sm:px-8 text-center"
             style={{ transform: 'translateZ(80px)' }}
           >
-            <h2 className="text-[#1a1a1a] font-cursive text-5xl sm:text-6xl mb-1 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)]">
+            <h2 className="text-[#1a1a1a] font-cursive text-4xl sm:text-6xl mb-1 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)]">
               {name || "Your Identity"}
             </h2>
-            <p className="text-[#1a1a1a] font-mono-custom text-[12px] sm:text-[14px] font-bold tracking-tight opacity-95">
+            <p className="text-[#1a1a1a] font-mono-custom text-[10px] sm:text-[14px] font-bold tracking-tight opacity-95">
               {handle ? (handle.startsWith('@') ? handle : `@${handle}`) : "@handle"}
             </p>
           </div>
 
           {/* GLARE OVERLAY */}
           <div 
-            className="absolute inset-0 rounded-[40px] pointer-events-none z-30"
+            className="absolute inset-0 rounded-[30px] sm:rounded-[40px] pointer-events-none z-30"
             style={{
               background: `radial-gradient(
                 circle at ${glare.x}% ${glare.y}%, 
@@ -116,7 +117,7 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
 
         {/* REAR FACE - HOLLOW / CLEAN */}
         <div 
-          className="absolute inset-0 rounded-[40px] bg-white flex items-center justify-center overflow-hidden border border-white/20"
+          className="absolute inset-0 rounded-[30px] sm:rounded-[40px] bg-white flex items-center justify-center overflow-hidden border border-white/20"
           style={{ 
             backfaceVisibility: 'hidden', 
             transform: 'rotateY(180deg) translateZ(1px)',
