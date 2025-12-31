@@ -37,6 +37,7 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState<CreatorFormData>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [waitlistCount, setWaitlistCount] = useState(500);
 
@@ -55,10 +56,7 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
   const handleSubmit = async (data: CreatorFormData) => {
     setIsSubmitting(true);
     setShowToast(true);
-    
-    setTimeout(() => {
-      setShowToast(false);
-    }, 1200);
+    setIsSuccess(false);
     
     try {
       await addDoc(collection(db, 'creator_applications'), {
@@ -73,15 +71,25 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
         notified: false
       });
       
+      // Successfully logged - trigger the success transition
+      setIsSuccess(true);
+      
+      // Exactly 5 seconds later, reset the whole module to default state
       setTimeout(() => {
         setIsSubmitting(false);
-        setFormData(initialFormState);
-      }, 1500);
+        setIsSuccess(false);
+        setShowToast(false);
+        setFormData({ ...initialFormState }); 
+      }, 5000);
 
     } catch (error) {
       console.error("Submission Node Error:", error);
-      setIsSubmitting(false);
-      setShowToast(false);
+      // Fail gracefully: reset after 2 seconds on error so user isn't stuck
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setShowToast(false);
+        setIsSuccess(false);
+      }, 2000);
     }
   };
 
@@ -92,7 +100,7 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-10 duration-500">
           <div className="bg-indigo-600 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 border border-white/20 backdrop-blur-xl">
             <PartyPopper className="text-amber-300" />
-            <span className="font-black text-xs uppercase tracking-[0.2em]">✨ Application Sync Active</span>
+            <span className="font-black text-xs uppercase tracking-[0.2em]">✨ Applied successfully</span>
           </div>
         </div>
       )}
@@ -115,10 +123,10 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
               </p>
             </div>
 
-            <div className="relative group w-full max-w-[500px] aspect-[3.5/5] sm:aspect-[3.5/4] lg:aspect-[3.5/5] rounded-[3rem] sm:rounded-[4rem] bg-gradient-to-b from-white/[0.02] to-transparent border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex items-center justify-center p-4 sm:p-12 cursor-crosshair">
+            <div className="relative group w-full max-w-[500px] aspect-[3.5/5] rounded-[3rem] sm:rounded-[4rem] bg-gradient-to-b from-white/[0.02] to-transparent border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex items-center justify-center p-4 sm:p-12 cursor-crosshair">
                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(79,70,229,0.12),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
                
-               <div className="w-full h-full relative z-10 flex items-center justify-center">
+               <div className="w-full h-full relative z-10 flex items-center justify-center scale-90 sm:scale-100">
                 <ThreeDCard name={formData.fullName || "Your Identity"} handle={formData.handle || "@handle"} />
                </div>
             </div>
@@ -126,7 +134,15 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
 
           {/* User Input Module (Identity Sync Form) */}
           <div className="order-1 lg:order-2 w-full">
-            <div className="bg-white/[0.03] border border-white/5 p-6 sm:p-8 lg:p-12 rounded-[2.5rem] sm:rounded-[4rem] backdrop-blur-3xl shadow-2xl relative">
+            <div className="bg-white/[0.03] border border-white/5 p-6 sm:p-8 lg:p-12 rounded-[2.5rem] sm:rounded-[4rem] backdrop-blur-3xl shadow-2xl relative min-h-[500px] flex flex-col justify-center">
+              {isSuccess && (
+                <div className="absolute inset-0 z-50 bg-[#05070a]/90 backdrop-blur-md rounded-[2.5rem] sm:rounded-[4rem] flex flex-col items-center justify-center text-center p-8 animate-in fade-in duration-500">
+                  <CheckCircle size={64} className="text-emerald-500 mb-6 animate-bounce" />
+                  <h3 className="text-3xl font-black uppercase tracking-tight text-white mb-2">Applied Successfully</h3>
+                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">Refreshing Protocal in 5s...</p>
+                </div>
+              )}
+
               <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-indigo-600 text-white p-4 px-6 sm:p-6 sm:px-10 rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl z-10 scale-90 sm:scale-100 flex flex-col items-center min-w-[120px]">
                 <h3 className="text-sm sm:text-xl font-black uppercase tracking-tighter leading-none mb-1">{waitlistCount}+</h3>
                 <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">joined waitlist</p>
