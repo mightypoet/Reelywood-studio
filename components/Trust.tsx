@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import LogoLoop, { LogoItem } from './LogoLoop';
 
@@ -81,40 +82,40 @@ export const Trust: React.FC = () => {
   ];
 
   return (
-    <section className="py-16 bg-white overflow-hidden">
+    <section className="py-48 bg-white dark:bg-[#0a0a0a] overflow-hidden border-t-4 border-black dark:border-white transition-colors duration-500">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-12 lg:gap-16">
           {metrics.map((stat, i) => (
             <div 
               key={i} 
-              className="text-center p-8 bg-indigo-50/20 rounded-[2.5rem] border border-indigo-50/50 hover:bg-white hover:shadow-xl transition-all group animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both"
+              className="text-center p-16 bg-[#f8fbff] dark:bg-[#151515] rounded-[3rem] border-2 border-slate-50 dark:border-white/5 shadow-sm hover:shadow-xl transition-all group animate-in fade-in slide-in-from-bottom-4 duration-700"
               style={{ animationDelay: `${i * 150}ms` }}
             >
-              <p className="text-4xl font-black text-indigo-600 mb-1 group-hover:scale-110 transition-transform">
+              <p className="text-6xl font-black text-[#5642ff] dark:text-[#834bf1] mb-4 font-display">
                 <CountUp value={stat.value} />
               </p>
-              <p className="text-xs font-black text-slate-900 uppercase tracking-widest mb-2">{stat.label}</p>
-              <p className="text-[10px] text-slate-400 font-bold leading-tight uppercase opacity-0 animate-in fade-in duration-1000 delay-500 fill-mode-forwards">
+              <p className="text-sm font-black text-black dark:text-white uppercase tracking-[0.3em] mb-4">{stat.label}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-bold leading-relaxed uppercase max-w-[240px] mx-auto">
                 {stat.desc}
               </p>
             </div>
           ))}
         </div>
         
-        <div className="mt-16 text-center">
-          <p className="text-slate-300 font-black uppercase text-[10px] tracking-[0.4em] mb-8 animate-in fade-in duration-1000 delay-700">Trusted by</p>
+        <div className="mt-32 text-center">
+          <p className="text-slate-200 dark:text-white/10 font-black uppercase text-[11px] tracking-[0.6em] mb-16">Trusted ecosystem</p>
           
-          <div className="opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
+          <div className="opacity-30 dark:opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
             <LogoLoop
               logos={brandLogos}
-              speed={60}
+              speed={35}
               direction="left"
-              logoHeight={32}
-              gap={80}
-              hoverSpeed={10}
+              logoHeight={28}
+              gap={120}
+              hoverSpeed={5}
               scaleOnHover
               fadeOut
-              fadeOutColor="#ffffff"
+              fadeOutColor="transparent"
               ariaLabel="Client categories and sectors"
             />
           </div>

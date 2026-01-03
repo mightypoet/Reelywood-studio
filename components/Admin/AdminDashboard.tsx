@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../../lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -41,6 +42,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [isEmailing, setIsEmailing] = useState(false);
+
+  const LOGO_URL = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Untitled%20design%20%281%29.mp4";
 
   const fetchApplications = () => {
     setRefreshing(true);
@@ -122,7 +125,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     <div className="min-h-screen bg-[#05070a] text-white flex flex-col font-['Plus_Jakarta_Sans']">
       <header className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-black/40 backdrop-blur-xl sticky top-0 z-50">
         <div className="flex items-center space-x-4">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black">R</div>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden bg-black/5">
+            <video 
+              src={LOGO_URL} 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="w-full h-full object-cover"
+            />
+          </div>
           <div>
             <h1 className="text-sm font-black uppercase tracking-widest">Reelywood Admin</h1>
             <p className="text-[10px] text-white/30 font-bold uppercase tracking-wider">Superuser Node: {auth.currentUser?.email}</p>
@@ -259,7 +271,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <tr key={app.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="p-6">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-white/10 to-transparent border border-white/10 flex items-center justify-center font-black text-xs uppercase">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-white/10 to-transparent border border-white/10 flex items-center justify-center font-black text-xs uppercase overflow-hidden">
                             {app.fullName.charAt(0)}
                           </div>
                           <div>

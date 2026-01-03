@@ -26,6 +26,12 @@ const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
 const MainContent: React.FC = () => {
   const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'academy'>('home');
   const [isVisible, setIsVisible] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('reelywood-theme') as 'light' | 'dark') || 'light';
+    }
+    return 'light';
+  });
   const { user } = useAuth();
 
   useEffect(() => {
@@ -54,10 +60,24 @@ const MainContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('reelywood-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
     if (view === 'admin-login' && user?.email && ADMIN_EMAILS.includes(user.email)) {
       setView('admin-dashboard');
     }
   }, [user, view]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   const handleAuthClick = () => {
     setView('auth');
@@ -109,8 +129,8 @@ const MainContent: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <Navbar onAuthClick={handleAuthClick} />
+    <div className={`min-h-screen transition-all duration-700 bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      <Navbar onAuthClick={handleAuthClick} onThemeToggle={toggleTheme} currentTheme={theme} />
       <main>
         <section id="home" className="scroll-mt-24">
           <Hero onAuthClick={handleAuthClick} />

@@ -1,14 +1,13 @@
 
 import React from 'react';
-// Import CardData to ensure reelData items match the expected type for the Card component
 import { Carousel, Card, CardData } from './AppleCardsCarousel';
 
 const DummyContent = ({ title, body, image }: { title: string; body: string; image: string }) => {
   return (
     <div className="space-y-8">
-      <div className="bg-[#F5F5F7] dark:bg-neutral-800 p-8 md:p-14 rounded-[3rem]">
-        <p className="text-neutral-600 dark:text-neutral-400 text-base md:text-2xl font-sans max-w-3xl mx-auto leading-relaxed">
-          <span className="font-black text-neutral-900 dark:text-neutral-200">
+      <div className="bg-white dark:bg-[#111] border-4 border-black dark:border-white p-8 md:p-14 shadow-[8px_8px_0px_0px_#000000] dark:shadow-[8px_8px_0px_0px_#ffffff]">
+        <p className="text-black dark:text-white text-base md:text-2xl font-bold max-w-3xl mx-auto leading-relaxed">
+          <span className="font-black bg-[#ffde59] text-black px-2 border border-black">
             {title}
           </span>{" "}
           {body}
@@ -16,7 +15,7 @@ const DummyContent = ({ title, body, image }: { title: string; body: string; ima
         <img
           src={image}
           alt="Framework detail"
-          className="md:w-3/4 h-auto mt-10 mx-auto object-cover rounded-3xl shadow-2xl"
+          className="md:w-3/4 h-auto mt-10 mx-auto object-cover border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000000] dark:shadow-[8px_8px_0px_0px_#ffffff]"
         />
       </div>
     </div>
@@ -24,7 +23,6 @@ const DummyContent = ({ title, body, image }: { title: string; body: string; ima
 };
 
 export const UVP: React.FC = () => {
-  // Explicitly typing reelData as CardData[] ensures compatibility with the Card component props
   const reelData: CardData[] = [
     {
       category: "Intelligence",
@@ -93,12 +91,12 @@ export const UVP: React.FC = () => {
   ));
 
   return (
-    <section className="py-24 bg-white overflow-hidden scroll-mt-24">
-      <div className="max-w-7xl mx-auto px-6 mb-10">
-        <div className="text-left space-y-4">
-          <h4 className="text-indigo-600 font-black text-xs uppercase tracking-[0.3em]">Our Framework</h4>
-          <h2 className="text-5xl font-black text-slate-900 leading-tight">The REEL Standard</h2>
-          <p className="text-slate-500 text-lg italic font-medium">Click on a pillar to explore our methodology.</p>
+    <section className="py-48 bg-white dark:bg-[#0a0a0a] overflow-hidden scroll-mt-24 transition-colors duration-500">
+      <div className="max-w-7xl mx-auto px-6 mb-24">
+        <div className="text-left space-y-8">
+          <h4 className="text-[#834bf1] dark:text-[#ffde59] font-black text-base uppercase tracking-[0.5em]">Protocol Framework</h4>
+          <h2 className="text-6xl md:text-7xl font-black text-black dark:text-white leading-tight tracking-tighter font-display uppercase">The REEL Standard</h2>
+          <div className="h-3 w-48 bg-[#ffde59] border-[3px] border-black dark:border-white"></div>
         </div>
       </div>
       
