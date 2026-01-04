@@ -57,6 +57,11 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
     setShowToast(true);
     setIsSuccess(false);
     
+    // Safety timer to ensure loader doesn't run > 5 seconds
+    const loadingTimeout = setTimeout(() => {
+      if (!isSuccess) setIsSubmitting(false);
+    }, 5000);
+
     try {
       await addDoc(collection(db, 'creator_applications'), {
         ...data,
@@ -70,10 +75,12 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
         notified: false
       });
       
+      clearTimeout(loadingTimeout);
+      setIsSubmitting(false);
       setIsSuccess(true);
       
+      // Auto-dismiss success popup after exactly 5 seconds and refresh form
       setTimeout(() => {
-        setIsSubmitting(false);
         setIsSuccess(false);
         setShowToast(false);
         setFormData({ ...initialFormState }); 
@@ -81,11 +88,10 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
 
     } catch (error) {
       console.error("Submission Node Error:", error);
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setShowToast(false);
-        setIsSuccess(false);
-      }, 2000);
+      clearTimeout(loadingTimeout);
+      setIsSubmitting(false);
+      setShowToast(false);
+      setIsSuccess(false);
     }
   };
 
@@ -132,6 +138,7 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
                   <CheckCircle size={64} className="text-white mb-6 animate-bounce" />
                   <h3 className="text-3xl font-black uppercase tracking-tight text-white mb-2">Authenticated</h3>
                   <p className="text-white/80 text-[10px] font-black uppercase tracking-[0.3em]">Identity Node Locked In</p>
+                  <p className="text-white/60 text-[10px] mt-4 uppercase font-bold">Refreshing form in 5 seconds...</p>
                 </div>
               )}
 

@@ -50,6 +50,10 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
     setShowToast(true);
     setIsSuccess(false);
 
+    const loadingTimeout = setTimeout(() => {
+      if (!isSuccess) setIsSubmitting(false);
+    }, 5000);
+
     try {
       await addDoc(collection(db, 'creator_applications'), {
         ...data,
@@ -63,25 +67,23 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
         notified: false
       });
       
-      // Successfully pushed to database - trigger success transition
+      clearTimeout(loadingTimeout);
       setIsSuccess(true);
+      setIsSubmitting(false);
       
-      // Exactly 5 seconds later, reset everything to default state
+      // Exactly 5 seconds later, reset everything to default state and clear the success popup
       setTimeout(() => {
         setIsSuccess(false);
-        setIsSubmitting(false); // Restore button to interactive state
-        setShowToast(false); // Remove toast
-        setFormData({ ...initialFormState }); // Clear input fields
+        setShowToast(false); 
+        setFormData({ ...initialFormState }); 
       }, 5000);
 
     } catch (error) {
       console.error("Submission Error:", error);
-      // Reset after error
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setShowToast(false);
-        setIsSuccess(false);
-      }, 2000);
+      clearTimeout(loadingTimeout);
+      setIsSubmitting(false);
+      setShowToast(false);
+      setIsSuccess(false);
     }
   };
 

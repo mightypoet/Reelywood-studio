@@ -1,8 +1,14 @@
+
 import React from 'react';
 import { Calendar, ArrowRight } from 'lucide-react';
 import CurvedLoop from './CurvedLoop';
 
 export const CTA: React.FC = () => {
+  const scrollToAbout = () => {
+    const el = document.getElementById('about');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <section id="contact" className="py-24 px-6 scroll-mt-24 overflow-hidden">
       <div className="max-w-7xl mx-auto bg-slate-900 rounded-[4rem] overflow-hidden relative shadow-2xl shadow-indigo-200">
@@ -30,9 +36,12 @@ export const CTA: React.FC = () => {
           </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-            <button className="w-full sm:w-auto bg-indigo-600 text-white px-10 py-6 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all flex items-center justify-center space-x-3 shadow-2xl shadow-indigo-600/30">
+            <button 
+              onClick={scrollToAbout}
+              className="w-full sm:w-auto bg-indigo-600 text-white px-10 py-6 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all flex items-center justify-center space-x-3 shadow-2xl shadow-indigo-600/30"
+            >
               <Calendar size={18} />
-              <span>Book a Consultation</span>
+              <span>Apply for creator card</span>
             </button>
             <button className="w-full sm:w-auto bg-white/5 text-white border border-white/10 px-10 py-6 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex items-center justify-center space-x-3">
               <span>Read Case Studies</span>

@@ -166,7 +166,7 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
             {isSubmitting ? (
               <Loader2 className="animate-spin" size={18} />
             ) : (
-              <span>Sync Identity Node</span>
+              <span>Apply for creator card</span>
             )}
           </span>
         </button>
