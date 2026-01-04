@@ -1,19 +1,16 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play } from 'lucide-react';
+import { Play, ArrowRight } from 'lucide-react';
 
 interface HeroProps {
   onAuthClick: () => void;
+  onDashboardClick?: () => void;
 }
 
-export const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
+export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => {
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleApplyClick = () => {
-    scrollToSection('about');
   };
 
   const VIDEO_URL = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Untitled%20design%20%282%29.mp4";
@@ -34,7 +31,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
               <span>Intelligence-First Agency</span>
             </div>
 
-            {/* Heading - Matched to Screenshot Request */}
+            {/* Heading - Updated to match screenshot request */}
             <div className="space-y-4">
               <h1 className="text-5xl md:text-8xl lg:text-[100px] font-black text-white leading-[0.85] tracking-tighter font-display uppercase">
                 Apply for <br />
@@ -52,13 +49,12 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
             {/* Buttons */}
             <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-4">
               <button 
-                onClick={handleApplyClick}
+                onClick={onDashboardClick}
                 className="group w-full sm:w-auto bg-white text-black px-10 lg:px-12 py-5 lg:py-6 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-between sm:justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2"
               >
-                <span>Apply for creator card</span>
+                <span>Enter Creator Dashboard</span>
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 lg:w-10 h-[2px] bg-black/40"></div>
-                  <div className="w-1.5 h-1.5 bg-black rounded-full"></div>
+                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
               

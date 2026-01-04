@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut, Sun, Moon, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   onAuthClick: () => void;
   onThemeToggle: () => void;
   currentTheme: 'light' | 'dark';
+  onDashboardClick?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, currentTheme }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, currentTheme, onDashboardClick }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
 
@@ -63,6 +64,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
                   {link.name}
                 </a>
               ))}
+              {user && (
+                <button 
+                  onClick={onDashboardClick}
+                  className="text-[10px] font-black uppercase tracking-widest text-[#834bf1] flex items-center space-x-2"
+                >
+                  <LayoutDashboard size={14} />
+                  <span>Dashboard</span>
+                </button>
+              )}
             </div>
 
             {/* Theme Toggle - Square box from screenshot */}
@@ -102,6 +112,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
                 {link.name}
               </a>
             ))}
+            {user && (
+              <button 
+                onClick={onDashboardClick}
+                className="text-sm font-black text-[#834bf1] uppercase tracking-widest py-1 text-left"
+              >
+                Dashboard
+              </button>
+            )}
           </div>
         )}
       </nav>

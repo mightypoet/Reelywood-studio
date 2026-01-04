@@ -20,11 +20,12 @@ import { CreatorCardView } from './components/CreatorCardView';
 import { AdminLogin } from './components/Admin/AdminLogin';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { AcademyView } from './components/AcademyView';
+import { DashboardView } from './components/Dashboard/DashboardView';
 
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
 
 const MainContent: React.FC = () => {
-  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'academy'>('home');
+  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'academy' | 'dashboard'>('home');
   const [isVisible, setIsVisible] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -44,7 +45,7 @@ const MainContent: React.FC = () => {
       if (path === '/admin' || path === '/admin/login' || hash === '#admin') {
         setView('admin-login');
       } else if (path === '/dashboard' || hash === '#dashboard') {
-        setView('admin-dashboard');
+        setView('dashboard');
       } else if (path === '/creatorcard' || hash === '#creatorcard') {
         setView('creator-card');
       } else if (path === '/academy' || hash === '#academy') {
@@ -84,6 +85,16 @@ const MainContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleDashboardClick = () => {
+    if (!user) {
+      setView('auth');
+    } else {
+      setView('dashboard');
+      window.history.pushState({}, '', '/dashboard');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleCreatorUniverseClick = () => {
     setView('creator-card');
     window.history.pushState({}, '', '/creatorcard');
@@ -110,6 +121,13 @@ const MainContent: React.FC = () => {
     return <CreatorCardView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
   }
 
+  if (view === 'dashboard') {
+    if (!user) {
+      return <AuthView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
+    }
+    return <DashboardView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
+  }
+
   if (view === 'academy') {
     return <AcademyView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
   }
@@ -130,10 +148,10 @@ const MainContent: React.FC = () => {
 
   return (
     <div className={`min-h-screen transition-all duration-700 bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <Navbar onAuthClick={handleAuthClick} onThemeToggle={toggleTheme} currentTheme={theme} />
+      <Navbar onAuthClick={handleAuthClick} onThemeToggle={toggleTheme} currentTheme={theme} onDashboardClick={handleDashboardClick} />
       <main>
         <section id="home" className="scroll-mt-24">
-          <Hero onAuthClick={handleAuthClick} />
+          <Hero onAuthClick={handleAuthClick} onDashboardClick={handleDashboardClick} />
         </section>
         
         <Trust />
