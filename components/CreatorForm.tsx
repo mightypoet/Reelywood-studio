@@ -85,8 +85,8 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
 
   const niches = ['Fashion', 'Food', 'Tech', 'Lifestyle', 'Finance', 'Fitness', 'Travel', 'Other'];
 
-  const inputClasses = "peer w-full bg-[#0d0d0d] border border-white/5 rounded-2xl px-5 pt-8 pb-3 text-sm text-white focus:outline-none focus:border-indigo-500/30 focus:ring-4 focus:ring-indigo-500/5 transition-all appearance-none";
-  const labelClasses = "absolute left-5 top-3 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400/90 transition-all pointer-events-none";
+  const inputClasses = "peer w-full bg-white dark:bg-white border-[3px] border-black rounded-none px-5 pt-8 pb-3 text-sm text-black focus:outline-none transition-all appearance-none";
+  const labelClasses = "absolute left-5 top-3 text-[10px] font-black uppercase tracking-[0.2em] text-black/60 transition-all pointer-events-none";
 
   const followerCount = parseInt(data.followers) || 0;
   const showGrowthTrack = followerCount > 0 && followerCount < 1000;
@@ -100,7 +100,7 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
           name="fullName"
           value={data.fullName}
           onChange={handleChange}
-          placeholder="Enter your full name"
+          placeholder="Full Name"
           className={inputClasses}
         />
         <label className={labelClasses}>Full Name</label>
@@ -109,22 +109,22 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="relative group">
           <select required name="platform" value={data.platform} onChange={handleChange} className={inputClasses}>
-            <option value="" disabled className="bg-[#0a0a0a] text-white/40">Select Platform</option>
-            {platforms.map(p => <option key={p.id} value={p.id} className="bg-[#0a0a0a] text-white">{p.id}</option>)}
+            <option value="" disabled className="bg-white text-black/40">Platform</option>
+            {platforms.map(p => <option key={p.id} value={p.id} className="bg-white text-black">{p.id}</option>)}
           </select>
           <label className={labelClasses}>Platform</label>
           <div className="absolute right-5 top-[55%] -translate-y-1/2 pointer-events-none opacity-50">
-             <ChevronRight className="rotate-90" size={14} />
+             <ChevronRight className="rotate-90 text-black" size={14} />
           </div>
         </div>
         <div className="relative group">
           <select required name="niche" value={data.niche} onChange={handleChange} className={inputClasses}>
-            <option value="" disabled className="bg-[#0a0a0a] text-white/40">Select Niche</option>
-            {niches.map(n => <option key={n} value={n} className="bg-[#0a0a0a] text-white">{n}</option>)}
+            <option value="" disabled className="bg-white text-black/40">Niche</option>
+            {niches.map(n => <option key={n} value={n} className="bg-white text-black">{n}</option>)}
           </select>
           <label className={labelClasses}>Niche</label>
           <div className="absolute right-5 top-[55%] -translate-y-1/2 pointer-events-none opacity-50">
-             <ChevronRight className="rotate-90" size={14} />
+             <ChevronRight className="rotate-90 text-black" size={14} />
           </div>
         </div>
       </div>
@@ -132,26 +132,26 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="relative group">
           <input required type="text" name="handle" value={data.handle} onChange={handleChange} placeholder="@username" className={inputClasses} />
-          <label className={labelClasses}>Handle (@username)</label>
+          <label className={labelClasses}>Handle</label>
         </div>
         <div className="relative group">
-          <input required type="number" name="followers" value={data.followers} onChange={handleChange} placeholder="e.g. 50000" className={inputClasses} />
+          <input required type="number" name="followers" value={data.followers} onChange={handleChange} placeholder="Count" className={inputClasses} />
           <label className={labelClasses}>Followers</label>
         </div>
       </div>
 
       <div className="relative group">
-        <input required type="email" name="email" value={data.email} onChange={handleChange} placeholder="hello@reelywood.com" className={inputClasses} />
+        <input required type="email" name="email" value={data.email} onChange={handleChange} placeholder="Email" className={inputClasses} />
         <label className={labelClasses}>Email Address</label>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="relative group">
-          <input type="text" name="city" value={data.city} onChange={handleChange} placeholder="Your City" className={inputClasses} />
+          <input type="text" name="city" value={data.city} onChange={handleChange} placeholder="City" className={inputClasses} />
           <label className={labelClasses}>City</label>
         </div>
         <div className="relative group">
-          <input type="tel" name="phone" value={data.phone} onChange={handleChange} placeholder="+91 ..." className={inputClasses} />
+          <input type="tel" name="phone" value={data.phone} onChange={handleChange} placeholder="Phone" className={inputClasses} />
           <label className={labelClasses}>Phone</label>
         </div>
       </div>
@@ -160,14 +160,13 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
         <button 
           disabled={isSubmitting}
           type="submit"
-          className="w-full relative group bg-indigo-600 text-white py-5 sm:py-6 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.4em] overflow-hidden transition-all hover:bg-indigo-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mt-4 shadow-xl shadow-indigo-600/20"
+          className="w-full relative group bg-[#834bf1] text-white py-5 sm:py-6 rounded-none font-black text-[10px] sm:text-xs uppercase tracking-[0.4em] transition-all border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
           <span className="flex items-center justify-center space-x-3">
             {isSubmitting ? (
               <Loader2 className="animate-spin" size={18} />
             ) : (
-              <span>Apply for Creator Card*</span>
+              <span>Sync Identity Node</span>
             )}
           </span>
         </button>
@@ -176,7 +175,7 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
           <button 
             type="button"
             onClick={onAcademyClick}
-            className="w-full flex items-center justify-center space-x-2 text-indigo-400 font-black text-[10px] uppercase tracking-[0.2em] hover:text-indigo-300 transition-colors py-2 group"
+            className="w-full flex items-center justify-center space-x-2 text-black font-black text-[10px] uppercase tracking-[0.2em] hover:text-[#834bf1] transition-colors py-2 group"
           >
             <span>Show Me How To Grow</span>
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -184,7 +183,7 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
         )}
       </div>
       
-      <p className="text-center text-[8px] sm:text-[9px] text-white/20 font-black uppercase tracking-widest pt-4">
+      <p className="text-center text-[8px] sm:text-[9px] text-black/40 font-black uppercase tracking-widest pt-4">
         100% Secure • High Impact • Creator Preferred
       </p>
     </form>

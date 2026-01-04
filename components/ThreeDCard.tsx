@@ -21,15 +21,15 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const rotateY = ((mouseX - width / 2) / width) * 25; 
-    const rotateX = ((height / 2 - mouseY) / height) * 25; 
+    const rotateY = ((mouseX - width / 2) / width) * 20; 
+    const rotateX = ((height / 2 - mouseY) / height) * 20; 
 
     setRotate({ x: rotateX, y: rotateY });
 
     setGlare({
       x: (mouseX / width) * 100,
       y: (mouseY / height) * 100,
-      opacity: 0.4
+      opacity: 0.3
     });
   };
 
@@ -41,89 +41,116 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
   return (
     <div 
       className="relative w-full h-full flex items-center justify-center p-2 sm:p-8"
-      style={{ perspective: '1500px' }}
+      style={{ perspective: '2000px' }}
     >
       <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative w-[260px] h-[400px] sm:w-[350px] sm:h-[530px] transition-transform duration-700 ease-out select-none cursor-default"
+        className="relative w-[280px] h-[440px] sm:w-[350px] sm:h-[550px] transition-transform duration-500 ease-out select-none cursor-default"
         style={{
           transform: `rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
           transformStyle: 'preserve-3d',
         }}
       >
-        {/* THE CARD BODY */}
+        {/* CARD BODY - Solid Purple */}
         <div 
-          className="absolute inset-0 rounded-[30px] sm:rounded-[40px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] border border-white/30"
+          className="absolute inset-0 rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] bg-[#834bf1]"
           style={{ 
             backfaceVisibility: 'hidden', 
             transform: 'translateZ(1px)',
-            // High-contrast, vibrant iridescent gradient
-            background: 'linear-gradient(135deg, #ff66b2 0%, #33ccff 25%, #4dffb8 50%, #fff24d 75%, #ff66b2 100%)',
+            border: '1px solid rgba(255,255,255,0.1)'
           }}
         >
-          {/* Surface Texture */}
-          <div className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+          {/* Subtle Sheen */}
+          <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-white via-transparent to-black pointer-events-none"></div>
 
-          {/* BRUSHED METAL CHIP (CENTER) */}
+          {/* OWL EYES LOGO - Centered */}
           <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 sm:w-36 sm:h-36 rounded-[24px] sm:rounded-[32px] flex items-center justify-center overflow-hidden shadow-[inset_0_2px_10px_rgba(255,255,255,0.2),0_20px_40px_rgba(0,0,0,0.5)] border border-black/40"
-            style={{ 
-              transform: 'translate(-50%, -50%) translateZ(50px)',
-              background: 'radial-gradient(circle at center, #444 0%, #000 100%)'
-            }}
+            className="absolute inset-0 flex flex-col items-center justify-center text-center -translate-y-12"
+            style={{ transform: 'translateZ(40px) translateY(-40px)' }}
           >
-            {/* Brushed Metal Radial Effect */}
-            <div className="absolute inset-0 opacity-50"
-                 style={{ 
-                   background: 'conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255,255,255,0.2) 45deg, transparent 90deg, rgba(255,255,255,0.2) 135deg, transparent 180deg, rgba(255,255,255,0.2) 225deg, transparent 270deg, rgba(255,255,255,0.2) 315deg, transparent 360deg)',
-                   filter: 'blur(3px)'
-                 }}
-            ></div>
-            
-            <span className="relative z-10 text-[8px] sm:text-[12px] font-black tracking-[0.4em] text-[#999] uppercase select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-              REELYWOOD
-            </span>
+            <div className="relative w-36 sm:w-44 h-24 sm:h-28 flex items-center justify-center space-x-2">
+              {/* Back Brows/Detail */}
+              <div className="absolute top-2 w-[90%] flex justify-between px-2 opacity-80">
+                 <div className="w-10 h-2 bg-black -rotate-12 rounded-full"></div>
+                 <div className="w-10 h-2 bg-black rotate-12 rounded-full"></div>
+              </div>
+
+              {/* Eyes */}
+              <div className="w-16 sm:w-20 h-16 sm:h-20 bg-[#ffde59] border-[3px] border-black rounded-[24px] flex items-center justify-center shadow-[4px_4px_0px_#000] relative overflow-hidden">
+                <div className="w-10 h-10 bg-black rounded-full translate-y-2"></div>
+              </div>
+              <div className="w-16 sm:w-20 h-16 sm:h-20 bg-[#ffde59] border-[3px] border-black rounded-[24px] flex items-center justify-center shadow-[4px_4px_0px_#000] relative overflow-hidden">
+                <div className="w-10 h-10 bg-black rounded-full translate-y-2"></div>
+              </div>
+              
+              {/* Beak */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-2 border-black rotate-45"></div>
+            </div>
+
+            <div className="mt-4 flex flex-col items-center space-y-1">
+              <span className="text-white font-black text-2xl sm:text-3xl tracking-tight uppercase font-display italic">REELY</span>
+              <span className="text-white font-black text-2xl sm:text-3xl tracking-tight uppercase font-display italic leading-none">WOOD</span>
+              <span className="text-white font-bold text-[8px] sm:text-[10px] tracking-[0.4em] uppercase opacity-90 pt-1">STUDIO</span>
+            </div>
           </div>
 
-          {/* IDENTITY TEXTS (BOTTOM) */}
+          {/* CHIP - Positioned like screenshot */}
           <div 
-            className="absolute bottom-10 sm:bottom-14 left-0 right-0 flex flex-col items-center px-4 sm:px-8 text-center"
-            style={{ transform: 'translateZ(80px)' }}
+            className="absolute bottom-[35%] left-8 w-12 h-10 sm:w-14 sm:h-12 bg-gradient-to-br from-[#c0c0c0] via-[#e8e8e8] to-[#909090] rounded-lg border border-black/10 overflow-hidden"
+            style={{ transform: 'translateZ(20px)' }}
           >
-            <h2 className="text-[#1a1a1a] font-cursive text-4xl sm:text-6xl mb-1 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)]">
-              {name || "Your Identity"}
-            </h2>
-            <p className="text-[#1a1a1a] font-mono-custom text-[10px] sm:text-[14px] font-bold tracking-tight opacity-95">
-              {handle ? (handle.startsWith('@') ? handle : `@${handle}`) : "@handle"}
+            <div className="w-full h-full opacity-30 border border-black/20 grid grid-cols-3 grid-rows-3">
+              {[...Array(9)].map((_, i) => <div key={i} className="border-[0.5px] border-black/40"></div>)}
+            </div>
+          </div>
+
+          {/* CARD NUMBERS - Metallic Silver Monospaced */}
+          <div 
+            className="absolute bottom-[24%] left-8 right-8"
+            style={{ transform: 'translateZ(30px)' }}
+          >
+            <p className="text-[#d1d5db] font-mono text-xl sm:text-2xl tracking-[0.15em] italic font-bold drop-shadow-[2px_2px_1px_rgba(0,0,0,0.5)]">
+              1234 5678 9000 0000
+            </p>
+          </div>
+
+          {/* EXPO DATE */}
+          <div 
+            className="absolute bottom-[16%] left-1/2 -translate-x-1/2 flex flex-col items-center"
+            style={{ transform: 'translateZ(25px)' }}
+          >
+            <div className="flex items-center space-x-1 mb-0.5">
+               <span className="text-[7px] sm:text-[8px] font-black text-[#d1d5db] uppercase tracking-tighter opacity-70">EXPO</span>
+               <span className="text-[7px] sm:text-[8px] font-black text-[#d1d5db] uppercase tracking-tighter opacity-70">DATE</span>
+            </div>
+            <span className="text-[#d1d5db] font-mono text-sm sm:text-base tracking-widest font-bold">12/28</span>
+          </div>
+
+          {/* CARDHOLDER NAME */}
+          <div 
+            className="absolute bottom-8 sm:bottom-10 left-8 right-8"
+            style={{ transform: 'translateZ(35px)' }}
+          >
+            <p className="text-[#d1d5db] font-bold text-sm sm:text-lg uppercase tracking-widest truncate drop-shadow-md">
+              {name || "CARDHOLDER NAME"}
             </p>
           </div>
 
           {/* GLARE OVERLAY */}
           <div 
-            className="absolute inset-0 rounded-[30px] sm:rounded-[40px] pointer-events-none z-30"
+            className="absolute inset-0 pointer-events-none z-30"
             style={{
               background: `radial-gradient(
                 circle at ${glare.x}% ${glare.y}%, 
-                rgba(255,255,255,0.6) 0%, 
-                rgba(255,255,255,0) 65%
+                rgba(255,255,255,0.4) 0%, 
+                rgba(255,255,255,0) 60%
               )`,
               opacity: glare.opacity,
               transition: 'opacity 0.4s ease'
             }}
           />
-        </div>
-
-        {/* REAR FACE - HOLLOW / CLEAN */}
-        <div 
-          className="absolute inset-0 rounded-[30px] sm:rounded-[40px] bg-white flex items-center justify-center overflow-hidden border border-white/20"
-          style={{ 
-            backfaceVisibility: 'hidden', 
-            transform: 'rotateY(180deg) translateZ(1px)',
-            background: 'linear-gradient(135deg, #ff66b2 0%, #33ccff 25%, #4dffb8 50%, #fff24d 75%, #ff66b2 100%)',
-          }}
-        >
         </div>
       </div>
     </div>

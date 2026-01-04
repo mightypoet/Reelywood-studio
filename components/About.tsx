@@ -106,8 +106,8 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
           
           <div className="space-y-10 order-2 lg:order-1 flex flex-col items-center lg:items-start">
             <div className="space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center space-x-3 bg-[#ffde59] border-2 border-black dark:border-white px-5 py-2.5 rounded-full text-black font-black text-[10px] uppercase tracking-[0.4em] shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff]">
-                <Sparkles size={12} className="animate-pulse" />
+              <div className="inline-flex items-center space-x-3 bg-black border-[3px] border-black px-6 py-2.5 rounded-full text-white font-black text-[10px] uppercase tracking-[0.4em] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+                <span className="text-white font-black text-xs">+</span>
                 <span>Visual Protocol</span>
               </div>
               <h2 className="text-5xl sm:text-7xl font-black text-black dark:text-white tracking-tighter leading-[0.9] uppercase font-display">
@@ -118,7 +118,7 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
               </p>
             </div>
 
-            <div className="relative group w-full max-w-[450px] aspect-[3.5/5] bg-white dark:bg-[#111] border-4 border-black dark:border-white shadow-[12px_12px_0px_0px_#000000] dark:shadow-[12px_12px_0px_0px_#ffffff] flex items-center justify-center p-6 cursor-crosshair transition-transform hover:-translate-y-2">
+            <div className="relative group w-full max-w-[450px] aspect-[3.5/5] bg-white border-[4px] border-black shadow-[12px_12px_0px_0px_#000000] flex items-center justify-center p-6 cursor-crosshair transition-transform hover:-translate-y-2">
                <div className="w-full h-full relative z-10 flex items-center justify-center scale-90 sm:scale-100">
                 <ThreeDCard name={formData.fullName || "Your Identity"} handle={formData.handle || "@handle"} />
                </div>
@@ -126,7 +126,7 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
           </div>
 
           <div className="order-1 lg:order-2 w-full">
-            <div className="bg-white dark:bg-[#111] border-4 border-black dark:border-white p-8 sm:p-12 shadow-[12px_12px_0px_0px_#000000] dark:shadow-[12px_12px_0px_0px_#ffffff] relative min-h-[500px] flex flex-col justify-center transition-colors duration-500">
+            <div className="bg-white border-[4px] border-black p-8 sm:p-12 shadow-[12px_12px_0px_0px_#000000] relative min-h-[500px] flex flex-col justify-center transition-colors duration-500">
               {isSuccess && (
                 <div className="absolute inset-0 z-50 bg-[#834bf1] flex flex-col items-center justify-center text-center p-8 animate-in fade-in duration-500">
                   <CheckCircle size={64} className="text-white mb-6 animate-bounce" />
@@ -135,17 +135,17 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
                 </div>
               )}
 
-              <div className="absolute -top-6 -right-6 bg-[#ffde59] text-black border-4 border-black dark:border-white p-6 shadow-[6px_6px_0px_0px_#000000] dark:shadow-[6px_6px_0px_0px_#ffffff] z-10 flex flex-col items-center min-w-[140px]">
+              <div className="absolute -top-6 -right-6 bg-[#ffde59] text-black border-[4px] border-black p-6 shadow-[6px_6px_0px_0px_#000000] z-10 flex flex-col items-center min-w-[140px]">
                 <h3 className="text-2xl font-black uppercase tracking-tighter leading-none mb-1 font-display">{waitlistCount}+</h3>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Verified Users</p>
               </div>
               
               <div className="mb-12 space-y-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-4 h-4 bg-[#834bf1] border-2 border-black dark:border-white rounded-full"></div>
-                  <h3 className="text-3xl font-black text-black dark:text-white uppercase tracking-tight font-display">Sync Identity</h3>
+                  <div className="w-4 h-4 bg-[#834bf1] border-[2px] border-black rounded-none"></div>
+                  <h3 className="text-3xl font-black text-black uppercase tracking-tight font-display">Sync Identity</h3>
                 </div>
-                <p className="text-slate-500 dark:text-slate-400 font-bold text-sm leading-relaxed">
+                <p className="text-slate-500 font-bold text-sm leading-relaxed">
                   Join the elite network of performance-driven creators.
                 </p>
               </div>
@@ -155,7 +155,6 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
                 externalData={formData}
-                /* Fix: Changed handleAcademyClick to onAcademyClick to use the passed prop */
                 onAcademyClick={onAcademyClick}
               />
             </div>
