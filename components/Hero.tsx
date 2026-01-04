@@ -1,12 +1,20 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play } from 'lucide-react';
+import { ArrowRight, Sparkles, Play } from 'lucide-react';
 
 interface HeroProps {
   onAuthClick: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -24,11 +32,13 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
           
           <div className="lg:col-span-8 space-y-10 lg:space-y-12 animate-in fade-in slide-in-from-left-8 duration-1000 ease-out">
             
+            {/* Intelligence Badge - Black pill with + */}
             <div className="inline-flex items-center space-x-3 bg-black border-2 border-black px-6 py-2.5 rounded-full text-white font-black text-[10px] uppercase tracking-[0.4em] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]">
               <span className="text-white font-black text-xs">+</span>
               <span>Intelligence-First Agency</span>
             </div>
 
+            {/* Heading - All caps sans + Yellow italic stroke */}
             <div className="space-y-4">
               <h1 className="text-5xl md:text-8xl lg:text-[100px] font-black text-white leading-[0.9] tracking-tighter font-display uppercase">
                 Unlock Your <br />
@@ -43,12 +53,13 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
               </p>
             </div>
 
+            {/* Buttons - Neobrutalist matched to screenshot */}
             <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-4">
               <button 
                 onClick={onAuthClick}
                 className="group w-full sm:w-auto bg-white text-black px-10 lg:px-12 py-5 lg:py-6 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-between sm:justify-center space-x-8 border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2"
               >
-                <span>Apply for Card</span>
+                <span>Book Consultation</span>
                 <div className="flex items-center space-x-2">
                   <div className="w-8 lg:w-10 h-[2px] bg-black/40"></div>
                   <div className="w-1.5 h-1.5 bg-black rounded-full"></div>
@@ -56,7 +67,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
               </button>
               
               <button 
-                onClick={() => scrollToSection('creators')}
+                onClick={() => scrollToSection('leaderboard')}
                 className="w-full sm:w-auto bg-[#ffde59] text-black px-10 lg:px-12 py-5 lg:py-6 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-center space-x-6 border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 group"
               >
                 <div className="w-10 lg:w-12 h-10 lg:h-12 bg-white border-2 border-black rounded-full flex items-center justify-center text-black shrink-0 shadow-[2px_2px_0px_#000]">
