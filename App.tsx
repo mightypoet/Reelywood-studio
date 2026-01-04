@@ -16,7 +16,7 @@ import { Footer } from './components/Footer';
 import { AuthView } from './components/AuthView';
 import { Trust } from './components/Trust';
 import { ScrollToTop } from './components/ScrollToTop';
-import { CreatorCardView } from './components/CreatorCardView';
+import { CreatorDashboard } from './components/CreatorDashboard';
 import { AdminLogin } from './components/Admin/AdminLogin';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { AcademyView } from './components/AcademyView';
@@ -24,7 +24,7 @@ import { AcademyView } from './components/AcademyView';
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
 
 const MainContent: React.FC = () => {
-  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'academy'>('home');
+  const [view, setView] = useState<'home' | 'auth' | 'dashboard' | 'admin-login' | 'admin-dashboard' | 'academy'>('home');
   const [isVisible, setIsVisible] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -43,10 +43,10 @@ const MainContent: React.FC = () => {
       
       if (path === '/admin' || path === '/admin/login' || hash === '#admin') {
         setView('admin-login');
-      } else if (path === '/dashboard' || hash === '#dashboard') {
+      } else if (path === '/admin-dashboard' || hash === '#admin-dashboard') {
         setView('admin-dashboard');
-      } else if (path === '/creatorcard' || hash === '#creatorcard') {
-        setView('creator-card');
+      } else if (path === '/dashboard' || hash === '#dashboard') {
+        setView('dashboard');
       } else if (path === '/academy' || hash === '#academy') {
         setView('academy');
       } else {
@@ -69,24 +69,18 @@ const MainContent: React.FC = () => {
     localStorage.setItem('reelywood-theme', theme);
   }, [theme]);
 
-  useEffect(() => {
-    if (view === 'admin-login' && user?.email && ADMIN_EMAILS.includes(user.email)) {
-      setView('admin-dashboard');
-    }
-  }, [user, view]);
-
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  const handleAuthClick = () => {
-    setView('auth');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleCreatorUniverseClick = () => {
-    setView('creator-card');
-    window.history.pushState({}, '', '/creatorcard');
+  const handleAuthRedirect = () => {
+    if (user) {
+      setView('dashboard');
+      window.history.pushState({}, '', '/dashboard');
+    } else {
+      setView('auth');
+      window.history.pushState({}, '', '/auth');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -106,8 +100,11 @@ const MainContent: React.FC = () => {
     return <AuthView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
   }
 
-  if (view === 'creator-card') {
-    return <CreatorCardView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
+  if (view === 'dashboard') {
+    if (!user) {
+      return <AuthView onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
+    }
+    return <CreatorDashboard onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />;
   }
 
   if (view === 'academy') {
@@ -130,16 +127,16 @@ const MainContent: React.FC = () => {
 
   return (
     <div className={`min-h-screen transition-all duration-700 bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <Navbar onAuthClick={handleAuthClick} onThemeToggle={toggleTheme} currentTheme={theme} />
+      <Navbar onAuthClick={handleAuthRedirect} onThemeToggle={toggleTheme} currentTheme={theme} />
       <main>
         <section id="home" className="scroll-mt-24">
-          <Hero onAuthClick={handleAuthClick} />
+          <Hero onAuthClick={handleAuthRedirect} />
         </section>
         
         <Trust />
         
         <section id="about" className="scroll-mt-24">
-          <About onAcademyClick={handleAcademyClick} />
+          <About onApplyClick={handleAuthRedirect} onAcademyClick={handleAcademyClick} />
         </section>
 
         <UVP />
@@ -151,7 +148,7 @@ const MainContent: React.FC = () => {
         </section>
 
         <section id="creators" className="scroll-mt-24">
-          <CreatorVerse onEnterUniverse={handleCreatorUniverseClick} />
+          <CreatorVerse onEnterUniverse={handleAuthRedirect} />
         </section>
         
         <Engagement />
@@ -165,7 +162,7 @@ const MainContent: React.FC = () => {
         </section>
         
         <section id="contact" className="scroll-mt-24">
-          <CTA />
+          <CTA onApplyClick={handleAuthRedirect} />
         </section>
       </main>
       <Footer onAdminClick={navigateToAdmin} />

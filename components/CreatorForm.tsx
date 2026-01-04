@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { CreatorFormData } from './About';
+// Fix: Import CreatorFormData from CreatorCardView where it is defined, instead of About.
+import { CreatorFormData } from './CreatorCardView';
 import { ChevronRight, Loader2, Globe, Instagram, Youtube, Linkedin, Twitter, Users, ArrowRight } from 'lucide-react';
 
 interface CreatorFormProps {
