@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown, LogOut, Sun, Moon, LayoutDashboard } from 'lucide-react';
+import { Menu, X, LogOut, Sun, Moon, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
@@ -33,49 +33,75 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] px-4 pt-6 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-[100] px-2 sm:px-4 pt-4 sm:pt-6 pointer-events-none">
       <nav 
-        className="mx-auto max-w-5xl pointer-events-auto bg-white border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] py-2 px-6 rounded-none transition-all duration-300"
+        className="mx-auto max-w-6xl pointer-events-auto bg-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] py-2 px-3 sm:px-6 rounded-none transition-all duration-300"
       >
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div 
-            className="flex items-center space-x-3 cursor-pointer" 
+            className="flex items-center space-x-2 sm:space-x-3 cursor-pointer shrink-0" 
             onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
           >
-            <div className="w-8 h-8 border-2 border-black bg-white flex items-center justify-center">
-               <div className="w-4 h-4 bg-black"></div>
+            <div className="w-7 h-7 sm:w-8 h-8 border-2 border-black bg-white flex items-center justify-center">
+               <div className="w-3.5 h-3.5 sm:w-4 h-4 bg-black"></div>
             </div>
-            <span className="font-black text-sm tracking-tight uppercase text-black font-display">
+            <span className="font-black text-xs sm:text-sm tracking-tight uppercase text-black font-display">
               REELYWOOD
             </span>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Desktop Links */}
-            <div className="hidden md:flex items-center space-x-6 mr-4">
+            <div className="hidden lg:flex items-center space-x-5 mr-2">
               {navLinks.map((link) => (
                 <a 
                   key={link.name} 
                   href={link.href} 
                   onClick={(e) => handleLinkClick(e, link.href)}
-                  className="text-[10px] font-black uppercase tracking-widest text-black hover:text-[#834bf1] transition-colors"
+                  className="text-[9px] font-black uppercase tracking-widest text-black hover:text-[#834bf1] transition-colors"
                 >
                   {link.name}
                 </a>
               ))}
-              {user && (
-                <button 
-                  onClick={onDashboardClick}
-                  className="text-[10px] font-black uppercase tracking-widest text-[#834bf1] flex items-center space-x-2"
-                >
-                  <LayoutDashboard size={14} />
-                  <span>Dashboard</span>
-                </button>
-              )}
             </div>
 
-            {/* Theme Toggle - Square box from screenshot */}
+            {/* Dashboard Shortcut (Desktop) */}
+            {user && (
+              <button 
+                onClick={onDashboardClick}
+                className="hidden md:flex items-center space-x-2 bg-[#834bf1] text-white px-3 py-1.5 border-[2px] border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-[9px] font-black uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+              >
+                <LayoutDashboard size={12} />
+                <span>Dashboard</span>
+              </button>
+            )}
+
+            {/* Auth Action: Profile Image or Login Button */}
+            {user ? (
+              <button 
+                onClick={onDashboardClick}
+                title="Go to Dashboard"
+                className="w-10 h-10 border-[3px] border-black bg-white overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all group"
+              >
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                    <UserIcon size={20} className="text-black" />
+                  </div>
+                )}
+              </button>
+            ) : (
+              <button 
+                onClick={onAuthClick}
+                className="bg-white text-black px-3 sm:px-4 h-10 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[10px] font-black uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+              >
+                Login
+              </button>
+            )}
+
+            {/* Theme Toggle */}
             <button 
               onClick={onThemeToggle}
               className="w-10 h-10 border-[3px] border-black bg-white flex items-center justify-center hover:bg-slate-50 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
@@ -83,43 +109,56 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
               {currentTheme === 'light' ? <Moon size={18} className="text-black" /> : <Sun size={18} className="text-black" />}
             </button>
 
-            {/* Menu Button - Yellow box from screenshot */}
+            {/* Menu Button */}
             <button 
               className="w-10 h-10 flex items-center justify-center border-[3px] border-black bg-[#ffde59] text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all" 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
-
-            {user && (
-              <button onClick={logout} className="hidden sm:flex w-10 h-10 items-center justify-center border-[3px] border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <LogOut size={16} />
-              </button>
-            )}
           </div>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="mt-4 pt-4 border-t-[3px] border-black flex flex-col space-y-4">
+          <div className="mt-4 pt-4 border-t-[3px] border-black flex flex-col space-y-4 animate-in slide-in-from-top-2 duration-200">
             {navLinks.map((link) => (
               <a 
                 key={link.name}
                 href={link.href} 
                 onClick={(e) => handleLinkClick(e, link.href)} 
-                className="text-sm font-black text-black tracking-widest uppercase py-1"
+                className="text-xs font-black text-black tracking-widest uppercase py-1 hover:text-[#834bf1]"
               >
                 {link.name}
               </a>
             ))}
-            {user && (
-              <button 
-                onClick={onDashboardClick}
-                className="text-sm font-black text-[#834bf1] uppercase tracking-widest py-1 text-left"
-              >
-                Dashboard
-              </button>
-            )}
+            <div className="pt-2 border-t border-black/10 flex flex-col space-y-3">
+              {user ? (
+                <>
+                  <button 
+                    onClick={onDashboardClick}
+                    className="text-xs font-black text-[#834bf1] uppercase tracking-widest text-left flex items-center space-x-2"
+                  >
+                    <LayoutDashboard size={14} />
+                    <span>Go to Dashboard</span>
+                  </button>
+                  <button 
+                    onClick={logout} 
+                    className="text-xs font-black text-rose-600 uppercase tracking-widest text-left flex items-center space-x-2"
+                  >
+                    <LogOut size={14} />
+                    <span>Sign Out</span>
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={onAuthClick}
+                  className="text-xs font-black text-black uppercase tracking-widest text-left"
+                >
+                  Join the Universe
+                </button>
+              )}
+            </div>
           </div>
         )}
       </nav>
