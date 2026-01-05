@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Play, Sparkles, TrendingUp, Instagram, CheckCircle2, Maximize2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Play, Sparkles, TrendingUp, Instagram, CheckCircle2, Maximize2, Loader2, AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
 
 interface CreatorVerseProps {
   onEnterUniverse?: () => void;
@@ -67,45 +67,49 @@ export const CreatorVerse: React.FC<CreatorVerseProps> = ({ onEnterUniverse }) =
   };
 
   return (
-    <section id="creators" className="py-32 bg-[#050505] overflow-hidden scroll-mt-24 relative border-y border-white/5">
-      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(79,70,229,0.15),transparent_70%)] pointer-events-none"></div>
+    <section id="creators" className="py-32 bg-white dark:bg-[#0a0a0a] overflow-hidden scroll-mt-24 relative border-t-[4px] border-black dark:border-white transition-colors duration-500">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px] dark:bg-[radial-gradient(#fff_1.5px,transparent_1.5px)]"></div>
       
       <div className="max-w-7xl mx-auto px-6 relative z-10">
-        <div className="text-center mb-16 space-y-6">
-          <div className="inline-flex items-center space-x-3 bg-white/5 border border-white/10 px-5 py-2 rounded-full text-indigo-400 font-black text-[10px] uppercase tracking-[0.5em] backdrop-blur-md">
+        <div className="text-center mb-20 space-y-8">
+          <div className="inline-flex items-center space-x-3 bg-[#ffde59] border-[3px] border-black px-6 py-2 rounded-none text-black font-black text-[10px] uppercase tracking-[0.4em] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
             <Sparkles size={14} className="animate-pulse" />
             <span>Narrative Engine v4.0</span>
           </div>
-          <h2 className="text-6xl md:text-8xl lg:text-9xl font-black text-white tracking-tighter leading-[0.8] uppercase">
+          
+          <h2 className="text-6xl md:text-8xl lg:text-[110px] font-black text-black dark:text-white tracking-tighter leading-[0.8] uppercase font-display italic">
             Creator <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-400 animate-gradient-x">Verse</span>
+            <span className="text-[#834bf1] drop-shadow-[4px_4px_0px_#000] dark:drop-shadow-[4px_4px_0px_#fff]">Verse</span>
           </h2>
-          <p className="text-slate-400 text-lg md:text-xl font-bold uppercase tracking-[0.3em] max-w-2xl mx-auto opacity-70">
-            {useFallback ? "Streaming Alternate Reel" : "Direct Production Sync"} <br />
-            Engineering Cinema-Grade Marketing Assets.
+          
+          <p className="text-black/60 dark:text-white/60 text-sm md:text-base font-black uppercase tracking-[0.2em] max-w-2xl mx-auto">
+            {useFallback ? "Alternate Reel Protocol" : "Direct Production Sync"} — Engineering Cinema-Grade Marketing Assets with Surgical Precision.
           </p>
         </div>
 
-        <div className="relative w-full max-w-6xl mx-auto group">
-          <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-indigo-500/30 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
-          
-          <div className="relative aspect-video w-full rounded-[2.5rem] lg:rounded-[3.5rem] p-1.5 lg:p-2 bg-gradient-to-br from-white/20 to-transparent border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
-            <div className="relative h-full w-full rounded-[2rem] lg:rounded-[3rem] overflow-hidden bg-[#0a0a0a]">
+        <div className="relative w-full max-w-5xl mx-auto group">
+          {/* Main Neobrutalist Container */}
+          <div className="relative aspect-video w-full p-1.5 lg:p-2 bg-white dark:bg-black border-[6px] border-black dark:border-white shadow-[16px_16px_0px_0px_#834bf1] overflow-hidden transition-all duration-300 group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-[8px_8px_0px_0px_#834bf1]">
+            <div className="relative h-full w-full overflow-hidden bg-black">
               
               {isLoading && !hasError && (
-                <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md">
-                  <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
-                  <p className="text-indigo-400 font-black text-[10px] uppercase tracking-[0.5em] animate-pulse">Syncing Production Assets...</p>
+                <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black">
+                  <Loader2 className="animate-spin text-[#ffde59]" size={48} strokeWidth={3} />
+                  <p className="text-[#ffde59] font-black text-[10px] uppercase tracking-[0.5em] mt-4 animate-pulse">Syncing Production Assets...</p>
                 </div>
               )}
 
               {hasError && (
-                <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/95 p-8 text-center">
-                  <AlertCircle className="text-rose-500 mb-4" size={48} />
-                  <h4 className="text-white font-black text-lg uppercase tracking-tight mb-2">Sync Interrupted</h4>
-                  <p className="text-slate-500 text-sm max-w-xs mx-auto mb-6">The visual stream is temporarily unavailable. Our engineers are notified. Please refresh to attempt reconnection.</p>
-                  <button onClick={() => window.location.reload()} className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
-                    <RefreshCw size={14} />
+                <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#0a0a0a] p-8 text-center">
+                  <AlertCircle className="text-rose-500 mb-4" size={48} strokeWidth={3} />
+                  <h4 className="text-white font-black text-lg uppercase tracking-tight mb-2 italic font-display">Sync Interrupted</h4>
+                  <p className="text-white/40 text-xs font-bold uppercase tracking-widest max-w-xs mx-auto mb-8">Visual stream unavailable. Attempt reconnection protocol.</p>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="flex items-center space-x-3 bg-[#ffde59] text-black px-8 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                  >
+                    <RefreshCw size={14} strokeWidth={3} />
                     <span>Attempt Re-Sync</span>
                   </button>
                 </div>
@@ -124,49 +128,49 @@ export const CreatorVerse: React.FC<CreatorVerseProps> = ({ onEnterUniverse }) =
                   videoRef.current?.play().catch(e => console.log("Play error on load:", e));
                 }}
                 onError={handleVideoError}
-                className={`w-full h-full object-cover transition-opacity duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                className={`w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700 ${isLoading ? 'opacity-0' : 'opacity-80'}`}
               />
 
-              <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-6 lg:p-12 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+              {/* Neobrutalist UI Overlay */}
+              <div className="absolute inset-0 z-20 pointer-events-none p-6 lg:p-10 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                 <div className="flex justify-between items-start">
-                  <div className="flex items-center space-x-3 bg-black/60 backdrop-blur-2xl p-2 pr-5 rounded-full border border-white/10 translate-y-[-10px] group-hover:translate-y-0 transition-transform duration-700">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg">
-                       <span className="text-white font-black text-xs">R</span>
+                  <div className="bg-[#834bf1] border-[3px] border-black p-4 flex items-center space-x-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <div className="w-10 h-10 bg-white border-[2px] border-black flex items-center justify-center">
+                       <span className="text-black font-black text-xs">R</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-white font-black text-[11px] uppercase tracking-tighter leading-none">REELYWOOD STUDIO</span>
-                      <span className="text-indigo-400 font-bold text-[8px] uppercase tracking-[0.3em] mt-1.5 flex items-center space-x-1">
-                        <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping mr-1"></span>
+                      <span className="text-white font-black text-[12px] uppercase tracking-tighter leading-none italic font-display">REELYWOOD STUDIO</span>
+                      <span className="text-white/80 font-bold text-[9px] uppercase tracking-[0.3em] mt-1">
                         {useFallback ? "BACKUP FEED" : "LIVE FEED 16:9"}
                       </span>
                     </div>
                   </div>
-                  <div className="bg-black/60 backdrop-blur-2xl p-4 rounded-2xl border border-white/10 translate-x-[10px] group-hover:translate-x-0 transition-transform duration-700">
-                    <Maximize2 size={20} className="text-white/60" />
+                  
+                  <div className="bg-[#ffde59] border-[3px] border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <Maximize2 size={20} className="text-black" strokeWidth={3} />
                   </div>
                 </div>
 
-                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 translate-y-[20px] group-hover:translate-y-0 transition-transform duration-700">
-                  <div className="space-y-4 max-w-xl">
-                    <div className="inline-flex items-center space-x-3 px-4 py-1.5 bg-indigo-500/20 backdrop-blur-xl rounded-full border border-indigo-500/40">
-                      <CheckCircle2 size={12} className="text-indigo-400" />
-                      <span className="text-[10px] text-indigo-100 font-black uppercase tracking-[0.2em]">Verified High-Fidelity</span>
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                  <div className="space-y-4 bg-white border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] max-w-lg">
+                    <div className="inline-flex items-center space-x-2 text-[#834bf1]">
+                      <CheckCircle2 size={16} strokeWidth={3} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Verified Production</span>
                     </div>
-                    <p className="text-white text-2xl lg:text-4xl font-black leading-tight tracking-tight uppercase">
-                      Cinematic dominance <br />
-                      through visual authority.
+                    <p className="text-black text-xl lg:text-2xl font-black leading-tight tracking-tight uppercase font-display italic">
+                      Cinematic dominance through visual authority.
                     </p>
                   </div>
                   
-                  <div className="flex items-center space-x-10 pb-4">
+                  <div className="flex items-center space-x-8 bg-black border-[3px] border-white p-6 shadow-[6px_6px_0px_0px_#834bf1]">
                      <div className="text-right">
-                        <p className="text-3xl font-black text-white">4.2M</p>
-                        <p className="text-indigo-400 text-[9px] font-black uppercase tracking-[0.3em] mt-1">TOTAL REACH</p>
+                        <p className="text-2xl font-black text-[#ffde59] leading-none">4.2M</p>
+                        <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.3em] mt-2">TOTAL REACH</p>
                      </div>
-                     <div className="h-12 w-px bg-white/20"></div>
+                     <div className="h-10 w-[2px] bg-white/20"></div>
                      <div className="text-right">
-                        <p className="text-3xl font-black text-white">99%</p>
-                        <p className="text-indigo-400 text-[9px] font-black uppercase tracking-[0.3em] mt-1">QUALITY</p>
+                        <p className="text-2xl font-black text-[#ffde59] leading-none">99%</p>
+                        <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.3em] mt-2">FIDELITY</p>
                      </div>
                   </div>
                 </div>
@@ -174,10 +178,10 @@ export const CreatorVerse: React.FC<CreatorVerseProps> = ({ onEnterUniverse }) =
 
               {!isPlaying && !isLoading && !hasError && (
                 <div 
-                  className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer"
+                  className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-[2px] cursor-pointer"
                   onClick={handleManualPlay}
                 >
-                  <div className="w-24 h-24 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-transform">
+                  <div className="w-24 h-24 bg-[#ffde59] border-[4px] border-black flex items-center justify-center text-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:scale-110 active:scale-95 transition-all">
                     <Play size={40} fill="currentColor" className="ml-2" />
                   </div>
                 </div>
@@ -186,29 +190,19 @@ export const CreatorVerse: React.FC<CreatorVerseProps> = ({ onEnterUniverse }) =
           </div>
         </div>
 
-        <div className="mt-20 text-center">
+        <div className="mt-24 text-center">
            <button 
             onClick={onEnterUniverse}
-            className="group relative inline-flex items-center space-x-5 bg-white text-slate-950 px-14 py-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.4em] transition-all hover:bg-indigo-50 hover:scale-[1.05] shadow-2xl shadow-white/5 border border-indigo-500/10"
+            className="group relative inline-flex items-center space-x-6 bg-[#834bf1] text-white px-14 py-8 border-[4px] border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] dark:shadow-[10px_10px_0px_0px_rgba(255,255,255,0.2)] font-black text-sm uppercase tracking-[0.4em] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2"
           >
-              <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-r from-indigo-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <span className="relative z-10">Enter The Universe</span>
+              <span className="relative z-10 italic font-display">Enter The Universe</span>
               <TrendingUp size={20} className="relative z-10 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
            </button>
+           <p className="mt-10 text-[9px] font-black uppercase tracking-[0.5em] text-black/30 dark:text-white/20">
+             High Performance • built for Gen Z • ROI Focused
+           </p>
         </div>
       </div>
-
-      <style>{`
-        @keyframes gradient-x {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-gradient-x {
-          background-size: 200% 200%;
-          animation: gradient-x 12s ease infinite;
-        }
-      `}</style>
     </section>
   );
 };

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, createContext, useContext } from 'react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { gsap } from 'gsap';
@@ -61,7 +62,7 @@ export const Card: React.FC<{ card: CardData; index: number; layout?: boolean }>
             onClick={handleClose}
           />
           <div 
-            className="max-w-5xl mx-auto bg-white dark:bg-neutral-900 h-fit z-[201] my-10 p-4 md:p-10 rounded-3xl relative"
+            className="max-w-5xl mx-auto bg-white dark:bg-neutral-900 h-fit z-[201] my-10 p-4 md:p-10 rounded-[2rem] border-[4px] border-black relative"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -82,7 +83,7 @@ export const Card: React.FC<{ card: CardData; index: number; layout?: boolean }>
       )}
       <button
         onClick={handleOpen}
-        className="rounded-3xl bg-gray-100 dark:bg-neutral-900 h-80 w-56 md:h-[40rem] md:w-96 overflow-hidden flex flex-col items-start justify-start relative z-10 transition-transform hover:scale-[0.98] duration-300 group shadow-xl"
+        className="rounded-[2rem] bg-gray-100 dark:bg-neutral-900 h-80 w-56 md:h-[40rem] md:w-96 overflow-hidden flex flex-col items-start justify-start relative z-10 transition-all hover:scale-[1.03] hover:-translate-y-6 duration-500 ease-out group border-[4px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]"
       >
         <div className="absolute h-full w-full inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent z-30 pointer-events-none" />
         <div className="relative z-40 p-8">
@@ -96,7 +97,7 @@ export const Card: React.FC<{ card: CardData; index: number; layout?: boolean }>
         <img
           src={card.src}
           alt={card.title}
-          className="object-cover absolute z-10 inset-0 h-full w-full grayscale group-hover:grayscale-0 transition-all duration-700"
+          className="object-cover absolute z-10 inset-0 h-full w-full grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110"
         />
       </button>
     </>
@@ -144,11 +145,11 @@ export const Carousel: React.FC<{ items: React.ReactNode[]; initialScroll?: numb
           ref={carouselRef}
           onScroll={checkScrollability}
         >
-          <div className="flex flex-row justify-start gap-4 pl-4 max-w-7xl mx-auto">
+          <div className="flex flex-row justify-start gap-16 pl-4 max-w-7xl mx-auto">
             {items.map((item, index) => (
               <div
                 key={"card" + index}
-                className="last:pr-[5%] md:last:pr-[33%] rounded-3xl"
+                className="last:pr-[5%] md:last:pr-[33%] rounded-[2rem] pt-8"
               >
                 {item}
               </div>

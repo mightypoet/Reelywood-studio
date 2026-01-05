@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUpRight, TrendingUp, Users, Zap, Target, Activity } from 'lucide-react';
+import { ArrowUpRight, TrendingUp, Users, Zap, Target, Activity, Sparkles } from 'lucide-react';
 
 interface CountUpProps {
   value: string;
@@ -74,127 +75,118 @@ export const Leaderboard: React.FC = () => {
       label: "Lead Gain", 
       value: "4.7X", 
       desc: "Via full-funnel architecture", 
-      color: "from-indigo-500 to-blue-500",
-      glow: "rgba(99, 102, 241, 0.15)",
-      icon: <TrendingUp size={20} />
+      bg: "bg-[#834bf1]",
+      textColor: "text-white",
+      icon: <TrendingUp size={24} strokeWidth={3} />
     },
     { 
-      label: "Conversion Rate", 
+      label: "Conversion", 
       value: "2.5X", 
       desc: "Via landing page overhaul", 
-      color: "from-emerald-500 to-teal-500",
-      glow: "rgba(16, 185, 129, 0.15)",
-      icon: <Target size={20} />
+      bg: "bg-[#ffde59]",
+      textColor: "text-black",
+      icon: <Target size={24} strokeWidth={3} />
     },
     { 
       label: "Support Time", 
       value: "-20%", 
       desc: "Reduction in manual tasks", 
-      color: "from-amber-500 to-orange-500",
-      glow: "rgba(245, 158, 11, 0.15)",
-      icon: <Zap size={20} />
+      bg: "bg-black",
+      textColor: "text-white",
+      icon: <Zap size={24} strokeWidth={3} />
     },
     { 
       label: "Onboarding", 
       value: "+12%", 
       desc: "Improvement in digital flow", 
-      color: "from-blue-500 to-cyan-500",
-      glow: "rgba(59, 130, 246, 0.15)",
-      icon: <Users size={20} />
+      bg: "bg-white",
+      textColor: "text-black",
+      icon: <Users size={24} strokeWidth={3} />
     }
   ];
 
   return (
-    <section id="leaderboard" className="py-32 bg-[#05070a] rounded-[4rem] mx-4 sm:mx-8 my-12 overflow-hidden relative scroll-mt-24 border border-white/5">
-      {/* Dynamic Background Glow */}
-      <div className="absolute inset-0 transition-opacity duration-1000">
-        <div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] rounded-full blur-[180px] transition-all duration-700 pointer-events-none opacity-30"
-          style={{ 
-            background: activeStat !== null ? stats[activeStat].glow : 'rgba(79, 70, 229, 0.1)'
-          }}
-        ></div>
-      </div>
+    <section id="leaderboard" className="py-32 bg-white dark:bg-[#0a0a0a] overflow-hidden scroll-mt-24 transition-colors duration-500 relative">
+      {/* Background Grid Pattern */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#000_2px,transparent_2px)] [background-size:32px_32px] dark:bg-[radial-gradient(#fff_2px,transparent_2px)]"></div>
 
-      <div className="max-w-7xl mx-auto px-8 relative z-10">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-20 gap-10">
-          <div className="space-y-6">
-            <div className="inline-flex items-center space-x-3 bg-white/5 border border-white/10 px-5 py-2 rounded-full text-indigo-400 font-black text-[10px] uppercase tracking-[0.4em] backdrop-blur-md">
-              <Activity size={14} className="animate-pulse" />
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-24 gap-12">
+          <div className="space-y-8 animate-in fade-in slide-in-from-left-8 duration-700">
+            <div className="inline-flex items-center space-x-3 bg-black border-[3px] border-black px-6 py-2.5 rounded-none text-white font-black text-[10px] uppercase tracking-[0.4em] shadow-[6px_6px_0px_0px_#834bf1]">
+              <Activity size={14} className="animate-pulse text-[#ffde59]" />
               <span>Real-time Multipliers</span>
             </div>
-            <h2 className="text-5xl lg:text-7xl font-extrabold text-white tracking-tighter leading-[0.9]">
+            <h2 className="text-6xl md:text-8xl lg:text-[100px] font-black text-black dark:text-white leading-[0.85] tracking-tighter font-display uppercase italic">
               Concrete <br /> 
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Outcomes</span>
+              <span className="text-[#834bf1] drop-shadow-[4px_4px_0px_#000] dark:drop-shadow-[4px_4px_0px_#fff]">Outcomes</span>
             </h2>
           </div>
-          <div className="lg:max-w-md">
-            <p className="text-slate-400 text-lg lg:text-xl font-medium leading-relaxed border-l-2 border-indigo-500/30 pl-8">
+          <div className="lg:max-w-md animate-in fade-in slide-in-from-right-8 duration-700">
+            <p className="text-black dark:text-white/70 text-lg lg:text-xl font-black leading-tight tracking-tight uppercase italic border-l-[6px] border-[#ffde59] pl-8">
               We translate marketing efforts into tangible performance metrics. Every strategy is calibrated for maximum ROI and seamless scalability.
             </p>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {stats.map((stat, i) => (
             <div 
               key={i} 
               onMouseEnter={() => setActiveStat(i)}
               onMouseLeave={() => setActiveStat(null)}
-              className="group relative bg-white/[0.02] border border-white/10 p-10 rounded-[3.5rem] transition-all duration-500 hover:bg-white/[0.05] hover:border-white/20 hover:-translate-y-3 cursor-pointer overflow-hidden shadow-2xl"
+              className={`group relative bg-white dark:bg-[#111] border-[4px] border-black dark:border-white p-10 transition-all duration-300 hover:-translate-y-4 hover:translate-x-2 shadow-[12px_12px_0px_0px_#000000] dark:shadow-[12px_12px_0px_0px_#ffffff] hover:shadow-[20px_20px_0px_0px_#834bf1] cursor-pointer flex flex-col justify-between h-full animate-in fade-in slide-in-from-bottom-8 duration-700`}
+              style={{ animationDelay: `${i * 100}ms` }}
             >
-              {/* Card Corner Accent */}
-              <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-10 transition-opacity blur-2xl`}></div>
-
-              <div className="flex justify-between items-start mb-8 relative z-10">
-                <div className={`p-4 rounded-2xl bg-white/5 border border-white/10 text-white group-hover:scale-110 group-hover:text-indigo-400 transition-all duration-500`}>
+              <div className="flex justify-between items-start mb-12">
+                <div className={`w-16 h-16 ${stat.bg} ${stat.textColor} border-[3px] border-black dark:border-white flex items-center justify-center shadow-[4px_4px_0px_0px_#000] transition-transform group-hover:scale-110 group-hover:-rotate-3`}>
                   {stat.icon}
                 </div>
-                <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/20 group-hover:text-white group-hover:border-white/30 transition-all">
-                  <ArrowUpRight size={18} />
+                <div className="w-12 h-12 bg-white dark:bg-black border-[3px] border-black dark:border-white flex items-center justify-center text-black dark:text-white transition-all group-hover:bg-[#ffde59] group-hover:text-black shadow-[4px_4px_0px_0px_#000]">
+                  <ArrowUpRight size={20} strokeWidth={3} />
                 </div>
               </div>
 
-              <div className="space-y-3 relative z-10">
-                <p className={`text-6xl font-black bg-gradient-to-br ${stat.color} bg-clip-text text-transparent group-hover:scale-105 transition-transform origin-left tracking-tighter`}>
+              <div className="space-y-4">
+                <p className={`text-6xl md:text-7xl font-black text-black dark:text-white tracking-tighter leading-none font-display uppercase italic`}>
                   <CountUp value={stat.value} />
                 </p>
-                <div>
-                  <p className="text-white font-black text-sm uppercase tracking-widest mb-1">{stat.label}</p>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-relaxed">
+                <div className="space-y-2">
+                  <p className="text-black dark:text-white font-black text-sm uppercase tracking-[0.2em] bg-[#ffde59] dark:bg-[#834bf1] inline-block px-2 border-[2px] border-black dark:border-white">{stat.label}</p>
+                  <p className="text-black/60 dark:text-white/40 text-[10px] font-black uppercase tracking-widest leading-tight">
                     {stat.desc}
                   </p>
                 </div>
               </div>
 
-              {/* Interactive Progress Line */}
-              <div className="mt-8 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+              {/* Neobrutalist Progress Indicator */}
+              <div className="mt-10 h-4 w-full bg-[#f0f0f0] dark:bg-white/5 border-[3px] border-black dark:border-white overflow-hidden shadow-[4px_4px_0px_0px_#000]">
                 <div 
-                  className={`h-full bg-gradient-to-r ${stat.color} transition-all duration-1000 ease-out`}
-                  style={{ width: activeStat === i ? '100%' : '30%' }}
+                  className={`h-full ${stat.bg} transition-all duration-1000 ease-out`}
+                  style={{ width: activeStat === i ? '100%' : '25%' }}
                 ></div>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center space-x-4">
-            <div className="flex -space-x-3">
+        <div className="mt-32 pt-16 border-t-[4px] border-black dark:border-white flex flex-col md:flex-row items-center justify-between gap-10">
+          <div className="flex items-center space-x-6 bg-white dark:bg-black border-[3px] border-black dark:border-white p-4 shadow-[8px_8px_0px_0px_#ffde59]">
+            <div className="flex -space-x-4">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="w-10 h-10 rounded-full border-2 border-[#05070a] bg-slate-800 overflow-hidden shadow-xl">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=partner${i}`} alt="Partner" />
+                <div key={i} className="w-12 h-12 rounded-none border-[3px] border-black bg-white overflow-hidden shadow-[2px_2px_0px_#000] hover:translate-y-1 transition-transform">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=partner${i}`} alt="Partner" className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">
-              Join <span className="text-white">50+</span> data-driven brands
+            <p className="text-black dark:text-white text-xs font-black uppercase tracking-[0.3em]">
+              Join <span className="bg-[#834bf1] text-white px-2 italic">50+</span> data-driven brands
             </p>
           </div>
           
-          <button className="text-white/40 hover:text-white font-black text-[10px] uppercase tracking-[0.4em] transition-colors flex items-center space-x-3">
-            <span>View Full Case Study Archive</span>
-            <ArrowUpRight size={14} />
+          <button className="group bg-black text-white px-10 py-6 border-[3px] border-black shadow-[8px_8px_0px_0px_#834bf1] font-black text-[10px] uppercase tracking-[0.4em] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 flex items-center space-x-4">
+            <span className="italic font-display">View Mission Archive</span>
+            <Sparkles size={16} className="group-hover:rotate-12 transition-transform text-[#ffde59]" />
           </button>
         </div>
       </div>

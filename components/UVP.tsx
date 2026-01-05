@@ -27,67 +27,67 @@ export const UVP: React.FC = () => {
     {
       category: "Intelligence",
       title: "Resourceful Assets",
-      src: "https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2000&auto=format&fit=crop",
+      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/5.png",
       content: (
         <DummyContent 
           title="Optimized Impact through Innovation."
           body="We develop digital assets that work 24/7. From custom AI wrappers to high-conversion landing pages, our focus is on building tools that reduce operational drag while maximizing market capture."
-          image="https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2000&auto=format&fit=crop"
+          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/5.png"
         />
       ),
     },
     {
       category: "Performance",
       title: "Effective Marketing",
-      src: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2000&auto=format&fit=crop",
+      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/6.png",
       content: (
         <DummyContent 
           title="Data-Driven Scalability."
           body="Marketing isn't a guessing game. Our performance stack leverages advanced attribution and behavioral analytics to ensure every rupee spent on Meta, Google, or TikTok results in measurable growth."
-          image="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2000&auto=format&fit=crop"
+          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/6.png"
         />
       ),
     },
     {
       category: "Connection",
-      title: "Empathetic Approach",
-      src: "https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2000&auto=format&fit=crop",
+      title: "Empathic Approach",
+      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/7.png",
       content: (
         <DummyContent 
           title="Understanding the Human behind the Click."
           body="In an AI world, empathy is the ultimate competitive advantage. We dive into customer psychology to create narratives that resonate on a personal level, fostering long-term brand loyalty."
-          image="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=2000&auto=format&fit=crop"
+          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/7.png"
         />
       ),
     },
     {
       category: "Vision",
       title: "Limitless Passion",
-      src: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=2000&auto=format&fit=crop",
+      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/8.png",
       content: (
         <DummyContent 
           title="Obsessed with Brand Evolution."
           body="We don't settle for 'good enough'. Our team is constantly experimenting with the latest in tech and creative direction to keep your brand at the absolute forefront of your industry."
-          image="https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2000&auto=format&fit=crop"
+          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/8.png"
         />
       ),
     },
     {
       category: "SME Focus",
       title: "Tailored Growth",
-      src: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2000&auto=format&fit=crop",
+      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/6.png",
       content: (
         <DummyContent 
           title="Big Agency Results, Lean Pricing."
           body="Specifically designed for SMEs, our packages provide the technical and creative horsepower of a multinational agency at a fraction of the overhead. Your success is our primary KPI."
-          image="https://images.unsplash.com/photo-1553877522-43269d4ea984?q=80&w=2000&auto=format&fit=crop"
+          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/6.png"
         />
       ),
     },
   ];
 
   const cards = reelData.map((card, index) => (
-    <Card key={card.src} card={card} index={index} />
+    <Card key={card.title + index} card={card} index={index} />
   ));
 
   return (
