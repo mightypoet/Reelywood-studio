@@ -19,11 +19,11 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
   };
 
   return (
-    <footer className="bg-white dark:bg-[#0a0a0a] pt-32 pb-16 border-t-4 border-black dark:border-white transition-colors duration-500">
+    <footer className="bg-white dark:bg-[#0a0a0a] pt-32 pb-[calc(4rem+env(safe-area-inset-bottom))] border-t-4 border-black dark:border-white transition-colors duration-500">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col lg:flex-row justify-between items-start gap-16 mb-24">
           <div className="space-y-10 max-w-sm">
-            <div className="flex items-center space-x-3 cursor-pointer group" onClick={(e) => scrollToId(e as any, 'home')}>
+            <div className="flex items-center space-x-3 cursor-pointer group min-h-[44px]" onClick={(e) => scrollToId(e as any, 'home')}>
               <div className="w-14 h-14 border-[3px] border-black dark:border-white overflow-hidden bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-transform group-hover:scale-110">
                 <img 
                   src={LOGO_IMAGE} 
@@ -37,10 +37,10 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
               Engineering growth ecosystems through Human-AI synergy. The standard for modern brands.
             </p>
             <div className="flex items-center space-x-4">
-              <a href="#" className="w-12 h-12 bg-white dark:bg-[#111] border-4 border-black dark:border-white flex items-center justify-center text-black dark:text-white hover:bg-[#ffde59] dark:hover:bg-[#ffde59] dark:hover:text-black transition-all shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff]">
+              <a href="#" className="w-12 h-12 bg-white dark:bg-[#111] border-4 border-black dark:border-white flex items-center justify-center text-black dark:text-white hover:bg-[#ffde59] dark:hover:bg-[#ffde59] dark:hover:text-black transition-all shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff] min-h-[44px] min-w-[44px]">
                 <Instagram size={20} />
               </a>
-              <a href="#" className="w-12 h-12 bg-white dark:bg-[#111] border-4 border-black dark:border-white flex items-center justify-center text-black dark:text-white hover:bg-[#834bf1] dark:hover:bg-[#834bf1] hover:text-white transition-all shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff]">
+              <a href="#" className="w-12 h-12 bg-white dark:bg-[#111] border-4 border-black dark:border-white flex items-center justify-center text-black dark:text-white hover:bg-[#834bf1] dark:hover:bg-[#834bf1] hover:text-white transition-all shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff] min-h-[44px] min-w-[44px]">
                 <Linkedin size={20} />
               </a>
             </div>
@@ -50,17 +50,17 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
             <div>
               <h4 className="font-black text-black mb-8 text-xs uppercase tracking-widest bg-[#ffde59] inline-block px-2 border border-black dark:border-white">Solutions</h4>
               <ul className="space-y-4 text-black dark:text-white text-sm font-bold uppercase tracking-wide">
-                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#834bf1] dark:hover:text-[#ffde59]">Starter</a></li>
-                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#834bf1] dark:hover:text-[#ffde59]">Pro</a></li>
-                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#834bf1] dark:hover:text-[#ffde59]">Elite</a></li>
+                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#834bf1] dark:hover:text-[#ffde59] min-h-[44px] flex items-center">Starter</a></li>
+                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#834bf1] dark:hover:text-[#ffde59] min-h-[44px] flex items-center">Pro</a></li>
+                <li><a href="#pricing" onClick={(e) => scrollToId(e, 'pricing')} className="hover:text-[#834bf1] dark:hover:text-[#ffde59] min-h-[44px] flex items-center">Elite</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-black text-black dark:text-white mb-8 text-xs uppercase tracking-widest bg-[#834bf1] text-white inline-block px-2 border border-black dark:border-white">Labs</h4>
               <ul className="space-y-4 text-black dark:text-white text-sm font-bold uppercase tracking-wide">
-                <li><div className="flex items-center space-x-2"><span className="opacity-40">Dorky.ai</span><span className="text-[8px] bg-black text-white px-1.5 py-0.5 rounded font-black">BETA</span></div></li>
-                <li><button onClick={onAdminClick} className="hover:text-[#834bf1] dark:hover:text-[#ffde59] flex items-center space-x-2">
+                <li><div className="flex items-center space-x-2 min-h-[44px]"><span className="opacity-40">Dorky.ai</span><span className="text-[8px] bg-black text-white px-1.5 py-0.5 rounded font-black">BETA</span></div></li>
+                <li><button onClick={onAdminClick} className="hover:text-[#834bf1] dark:hover:text-[#ffde59] flex items-center space-x-2 min-h-[44px]">
                   <Lock size={12} />
                   <span>Terminal</span>
                 </button></li>
@@ -70,11 +70,11 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
             <div className="col-span-2 md:col-span-1">
               <h4 className="font-black text-black dark:text-white mb-8 text-xs uppercase tracking-widest bg-black dark:bg-white dark:text-black text-white inline-block px-2 border border-black dark:border-white">Contact</h4>
               <ul className="space-y-4 text-black dark:text-white text-sm font-bold">
-                <li className="flex items-center space-x-2">
+                <li className="flex items-center space-x-2 min-h-[44px]">
                   <Mail size={14} />
                   <span>reelywood@gmail.com</span>
                 </li>
-                <li className="flex items-center space-x-2 text-[#834bf1] dark:text-[#ffde59]">
+                <li className="flex items-center space-x-2 text-[#834bf1] dark:text-[#ffde59] min-h-[44px]">
                   <Phone size={14} />
                   <span>+91 9123961368</span>
                 </li>

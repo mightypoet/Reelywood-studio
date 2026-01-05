@@ -5,7 +5,7 @@ import { Carousel, Card, CardData } from './AppleCardsCarousel';
 const DummyContent = ({ title, body, image }: { title: string; body: string; image: string }) => {
   return (
     <div className="space-y-8">
-      <div className="bg-white dark:bg-[#111] border-4 border-black dark:border-white p-6 sm:p-8 md:p-14 shadow-[8px_8px_0px_0px_#000000] dark:shadow-[8px_8px_0px_0px_#ffffff]">
+      <div className="bg-white dark:bg-[#111] border-4 border-black dark:border-white p-8 md:p-14 shadow-[8px_8px_0px_0px_#000000] dark:shadow-[8px_8px_0px_0px_#ffffff]">
         <p className="text-black dark:text-white text-base md:text-2xl font-bold max-w-3xl mx-auto leading-relaxed">
           <span className="font-black bg-[#ffde59] text-black px-2 border border-black">
             {title}
@@ -15,7 +15,7 @@ const DummyContent = ({ title, body, image }: { title: string; body: string; ima
         <img
           src={image}
           alt="Framework detail"
-          className="w-full md:w-3/4 h-auto mt-10 mx-auto object-cover border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000000] dark:shadow-[8px_8px_0px_0px_#ffffff]"
+          className="md:w-3/4 h-auto mt-10 mx-auto object-cover border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000000] dark:shadow-[8px_8px_0px_0px_#ffffff]"
         />
       </div>
     </div>
@@ -91,12 +91,12 @@ export const UVP: React.FC = () => {
   ));
 
   return (
-    <section className="py-24 sm:py-48 bg-white dark:bg-[#0a0a0a] overflow-hidden scroll-mt-24 transition-colors duration-500">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-16 sm:mb-24">
-        <div className="text-left space-y-6 sm:space-y-8">
-          <h4 className="text-[#834bf1] dark:text-[#ffde59] font-black text-xs sm:text-base uppercase tracking-[0.3em] sm:tracking-[0.5em]">Protocol Framework</h4>
-          <h2 className="text-4xl sm:text-6xl md:text-7xl font-black text-black dark:text-white leading-tight tracking-tighter font-display uppercase">The REEL Standard</h2>
-          <div className="h-2 sm:h-3 w-32 sm:w-48 bg-[#ffde59] border-[2px] sm:border-[3px] border-black dark:border-white"></div>
+    <section className="py-48 bg-white dark:bg-[#0a0a0a] overflow-hidden scroll-mt-24 transition-colors duration-500">
+      <div className="max-w-7xl mx-auto px-6 mb-24">
+        <div className="text-left space-y-8">
+          <h4 className="text-[#834bf1] dark:text-[#ffde59] font-black text-base uppercase tracking-[0.5em]">Protocol Framework</h4>
+          <h2 className="text-6xl md:text-7xl font-black text-black dark:text-white leading-tight tracking-tighter font-display uppercase">The REEL Standard</h2>
+          <div className="h-3 w-48 bg-[#ffde59] border-[3px] border-black dark:border-white"></div>
         </div>
       </div>
       

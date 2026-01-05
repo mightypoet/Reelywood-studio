@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { CreatorFormData } from './About';
 import { ChevronRight, Loader2, Globe, Instagram, Youtube, Linkedin, Twitter, Users, ArrowRight } from 'lucide-react';
@@ -85,7 +84,8 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
 
   const niches = ['Fashion', 'Food', 'Tech', 'Lifestyle', 'Finance', 'Fitness', 'Travel', 'Other'];
 
-  const inputClasses = "peer w-full bg-white dark:bg-white border-[3px] border-black rounded-none px-5 pt-8 pb-3 text-sm text-black focus:outline-none transition-all appearance-none";
+  // Sticking strictly to font-size 16px to prevent auto-zoom on iOS mobile devices
+  const inputClasses = "peer w-full bg-white dark:bg-white border-[3px] border-black rounded-none px-5 pt-8 pb-3 text-[16px] text-black focus:outline-none transition-all appearance-none min-h-[44px]";
   const labelClasses = "absolute left-5 top-3 text-[10px] font-black uppercase tracking-[0.2em] text-black/60 transition-all pointer-events-none";
 
   const followerCount = parseInt(data.followers) || 0;
@@ -160,7 +160,7 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
         <button 
           disabled={isSubmitting}
           type="submit"
-          className="w-full relative group bg-[#834bf1] text-white py-5 sm:py-6 rounded-none font-black text-[10px] sm:text-xs uppercase tracking-[0.4em] transition-all border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          className="w-full relative group bg-[#834bf1] text-white py-5 sm:py-6 rounded-none font-black text-[10px] sm:text-xs uppercase tracking-[0.4em] transition-all border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4 min-h-[44px]"
         >
           <span className="flex items-center justify-center space-x-3">
             {isSubmitting ? (
@@ -175,7 +175,7 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
           <button 
             type="button"
             onClick={onAcademyClick}
-            className="w-full flex items-center justify-center space-x-2 text-black font-black text-[10px] uppercase tracking-[0.2em] hover:text-[#834bf1] transition-colors py-2 group"
+            className="w-full flex items-center justify-center space-x-2 text-black font-black text-[10px] uppercase tracking-[0.2em] hover:text-[#834bf1] transition-colors py-4 group min-h-[44px]"
           >
             <span>Show Me How To Grow</span>
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
