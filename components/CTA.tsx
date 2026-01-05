@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Calendar, ArrowRight, Zap, Sparkles } from 'lucide-react';
+import { Calendar, ArrowRight, Zap, Sparkles, TrendingUp } from 'lucide-react';
 import CurvedLoop from './CurvedLoop';
 
 export const CTA: React.FC = () => {
@@ -9,86 +10,89 @@ export const CTA: React.FC = () => {
   };
 
   return (
-    <section id="contact" className="py-32 px-6 scroll-mt-24 overflow-hidden bg-white dark:bg-[#0a0a0a] transition-colors duration-500">
-      <div className="max-w-7xl mx-auto bg-[#ffde59] border-[6px] border-black relative shadow-[20px_20px_0px_0px_#000000] dark:shadow-[20px_20px_0px_0px_#834bf1] p-12 lg:p-24 overflow-hidden group">
+    <section id="contact" className="py-48 px-6 scroll-mt-24 overflow-hidden bg-white dark:bg-[#0a0a0a] transition-colors duration-500">
+      <div className="max-w-7xl mx-auto bg-[#ffde59] border-[6px] border-black relative shadow-[24px_24px_0px_0px_#000000] dark:shadow-[24px_24px_0px_0px_#834bf1] p-12 lg:p-32 overflow-hidden group transition-all duration-500">
         
         {/* Background Grid Accent */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:16px_16px]"></div>
+        <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#000_2px,transparent_2px)] [background-size:20px_20px]"></div>
 
-        {/* Curved Loop Decoration */}
-        <div className="absolute top-0 left-0 w-full opacity-10 pointer-events-none transform -translate-y-8 z-0">
+        {/* Dynamic Curved Loop Backgrounds */}
+        <div className="absolute top-0 left-0 w-full opacity-5 pointer-events-none transform -translate-y-12 z-0">
           <CurvedLoop 
-            marqueeText="REELYWOOD ✦ AI DRIVEN ✦ GROWTH ✦ AUTOMATION ✦ PERFORMANCE ✦ SCALE ✦"
-            speed={1.5}
-            curveAmount={150}
+            marqueeText="SCALE ✦ AUTOMATE ✦ DOMINATE ✦ REELYWOOD ✦"
+            speed={1}
+            curveAmount={100}
             interactive={false}
-            className="text-black italic font-black text-6xl"
+            className="text-black italic font-black text-8xl"
           />
         </div>
 
-        <div className="relative z-10 text-center space-y-12">
-          <div className="inline-flex items-center space-x-3 bg-black border-[3px] border-black px-6 py-2.5 rounded-none text-white font-black text-[10px] uppercase tracking-[0.4em] shadow-[6px_6px_0px_0px_#834bf1]">
-            <Zap size={14} className="text-[#ffde59] animate-pulse" />
-            <span>Terminal Protocol</span>
+        <div className="relative z-10 text-center space-y-14">
+          <div className="inline-flex items-center space-x-4 bg-black border-[3px] border-black px-8 py-3 rounded-none text-white font-black text-[11px] uppercase tracking-[0.5em] shadow-[8px_8px_0px_0px_#834bf1] animate-in fade-in slide-in-from-top-4 duration-700">
+            <TrendingUp size={16} className="text-[#ffde59] animate-pulse" />
+            <span>Deployment Protocol Ready</span>
           </div>
 
-          <div className="space-y-6">
-            <h2 className="text-5xl lg:text-8xl font-black text-black leading-[0.85] tracking-tighter font-display uppercase italic drop-shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">
+          <div className="space-y-8">
+            <h2 className="text-6xl md:text-8xl lg:text-[110px] font-black text-black leading-[0.85] tracking-tighter font-display uppercase italic drop-shadow-[6px_6px_0px_rgba(0,0,0,0.05)]">
               Ready to automate <br /> 
-              your brand's <span className="text-[#834bf1] drop-shadow-[4px_4px_0px_#fff]">growth</span>?
+              your brand's <span className="text-[#834bf1] drop-shadow-[6px_6px_0px_#fff]">growth</span>?
             </h2>
-            <p className="text-black text-lg md:text-xl max-w-2xl mx-auto font-black uppercase italic tracking-tight opacity-80 border-x-[4px] border-black py-2">
-              Partner with the best. Design the future now. <br className="hidden md:block" /> Schedule your free performance audit.
+            <p className="text-black text-xl md:text-2xl max-w-3xl mx-auto font-black uppercase italic tracking-tight opacity-90 border-l-[8px] border-black pl-8 py-4 bg-white/10 backdrop-blur-sm">
+              Stop guessing. Start Scaling. Partner with the agency that engineers virality through data.
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center space-y-6 sm:space-y-0 sm:space-x-10">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-10 pt-10">
             <button 
               onClick={scrollToAbout}
-              className="w-full sm:w-auto bg-[#834bf1] text-white px-12 py-7 border-[4px] border-black shadow-[8px_8px_0px_0px_#000000] font-black text-xs uppercase tracking-[0.3em] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 flex items-center justify-center space-x-4 group/btn"
+              className="w-full sm:w-auto bg-[#834bf1] text-white px-14 py-8 border-[5px] border-black shadow-[10px_10px_0px_0px_#000000] font-black text-xs uppercase tracking-[0.4em] transition-all hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none flex items-center justify-center space-x-5 group/btn"
             >
-              <Calendar size={20} className="group-hover/btn:rotate-12 transition-transform" />
+              <Calendar size={22} className="group-hover/btn:rotate-12 transition-transform" />
               <span className="italic font-display">Apply for creator card</span>
             </button>
             
-            <button className="w-full sm:w-auto bg-white text-black border-[4px] border-black px-12 py-7 shadow-[8px_8px_0px_0px_#000000] font-black text-xs uppercase tracking-[0.3em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 transition-all flex items-center justify-center space-x-4">
-              <span className="italic font-display">View Case Studies</span>
-              <ArrowRight size={20} strokeWidth={3} />
+            <button className="w-full sm:w-auto bg-white text-black border-[5px] border-black px-14 py-8 shadow-[10px_10px_0px_0px_#000000] font-black text-xs uppercase tracking-[0.4em] hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#834bf1] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center space-x-5 group/btn2">
+              <span className="italic font-display">View Mission Archive</span>
+              <ArrowRight size={22} strokeWidth={3} className="group-hover/btn2:translate-x-2 transition-transform" />
             </button>
           </div>
           
-          <div className="pt-8 flex flex-col items-center space-y-4">
-            <div className="flex -space-x-4">
-               {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="w-12 h-12 border-[3px] border-black bg-white overflow-hidden shadow-[2px_2px_0px_#000]">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=partner${i + 10}`} alt="Partner" className="w-full h-full object-cover" />
+          <div className="pt-12 flex flex-col items-center space-y-6">
+            <div className="flex -space-x-5">
+               {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="w-14 h-14 border-[4px] border-black bg-white overflow-hidden shadow-[4px_4px_0px_#000] transition-transform hover:scale-110 hover:z-20 cursor-help">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=partner${i + 20}`} alt="Partner" className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-black font-black uppercase tracking-[0.5em] italic">100% Trusted • High Impact • ROI Driven</p>
+            <div className="bg-black text-white px-6 py-2 border-[2px] border-black font-black uppercase text-[10px] tracking-[0.6em] italic">
+              ✦ 100% Performance Guarantee ✦
+            </div>
           </div>
         </div>
 
-        {/* Bottom Curved Loop Decoration */}
-        <div className="absolute bottom-0 left-0 w-full opacity-5 pointer-events-none transform translate-y-12">
-          <CurvedLoop 
-            marqueeText="INNOVATE ✦ TRANSFORM ✦ SUCCEED ✦ REELYWOOD ✦"
-            speed={2}
-            curveAmount={-150}
-            direction="right"
-            interactive={false}
-            className="text-black italic font-black text-6xl"
-          />
-        </div>
-
-        {/* Decorative Sparkles */}
-        <div className="absolute top-12 left-12 text-[#834bf1] animate-bounce hidden lg:block">
-          <Sparkles size={48} />
+        {/* Corner Sparkle Decorations */}
+        <div className="absolute top-12 left-12 text-black animate-bounce hidden lg:block opacity-40">
+          <Sparkles size={64} />
         </div>
         <div className="absolute bottom-12 right-12 text-[#834bf1] animate-pulse hidden lg:block">
-          <Sparkles size={32} />
+          <Sparkles size={48} />
+        </div>
+        <div className="absolute top-1/2 right-12 text-black animate-spin-slow hidden lg:block opacity-20">
+          <Zap size={80} fill="currentColor" />
         </div>
       </div>
+      
+      <style>{`
+        .animate-spin-slow {
+          animation: spin 8s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </section>
   );
 };

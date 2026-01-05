@@ -96,9 +96,14 @@ const MainContent: React.FC = () => {
   };
 
   const handleCreatorUniverseClick = () => {
-    setView('creator-card');
-    window.history.pushState({}, '', '/creatorcard');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!user) {
+      setView('auth');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setView('dashboard');
+      window.history.pushState({}, '', '/dashboard');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleAcademyClick = () => {

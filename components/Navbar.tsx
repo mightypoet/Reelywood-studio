@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, LogOut, Sun, Moon, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
     }
   };
 
+  const LOGO_IMAGE = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Black%20and%20White%20Modern%20Streetwear%20Sport%20Logo.png";
+
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] px-2 sm:px-4 pt-4 sm:pt-6 pointer-events-none">
       <nav 
@@ -43,10 +44,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
             className="flex items-center space-x-2 sm:space-x-3 cursor-pointer shrink-0" 
             onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
           >
-            <div className="w-7 h-7 sm:w-8 h-8 border-2 border-black bg-white flex items-center justify-center">
-               <div className="w-3.5 h-3.5 sm:w-4 h-4 bg-black"></div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-black bg-white overflow-hidden flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform hover:scale-105">
+               <img src={LOGO_IMAGE} alt="Reelywood Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="font-black text-xs sm:text-sm tracking-tight uppercase text-black font-display">
+            <span className="font-black text-xs sm:text-sm tracking-tight uppercase text-black font-display italic">
               REELYWOOD
             </span>
           </div>

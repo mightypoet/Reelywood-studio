@@ -31,17 +31,17 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
               <span>Intelligence-First Agency</span>
             </div>
 
-            {/* Heading - Updated to match screenshot request */}
-            <div className="space-y-4">
-              <h1 className="text-5xl md:text-8xl lg:text-[100px] font-black text-white leading-[0.85] tracking-tighter font-display uppercase">
-                Apply for <br />
-                creator <br />
-                card
+            {/* Heading - Stacked vertically as per screenshot */}
+            <div className="space-y-0">
+              <h1 className="flex flex-col text-6xl md:text-8xl lg:text-[110px] font-black text-white leading-[0.8] tracking-tighter font-display uppercase">
+                <span>Apply for</span>
+                <span className="mt-2">creator</span>
+                <span className="mt-2">card</span>
               </h1>
-              <h2 className="text-[#ffde59] text-5xl md:text-8xl lg:text-[100px] italic hero-stroke font-black uppercase tracking-tighter leading-[0.85]">
+              <h2 className="text-[#ffde59] text-6xl md:text-8xl lg:text-[110px] italic hero-stroke font-black uppercase tracking-tighter leading-[0.8] mt-4">
                 With Reelywood
               </h2>
-              <p className="text-base md:text-lg text-white font-bold leading-relaxed max-w-2xl pt-4">
+              <p className="text-base md:text-xl text-white font-bold leading-relaxed max-w-2xl pt-10 tracking-tight">
                 We engineer dynamic brand ecosystems through the synergy of Human Creativity and AI Precision. Scaling SMEs with surgical efficiency.
               </p>
             </div>
@@ -50,20 +50,18 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-4">
               <button 
                 onClick={onDashboardClick}
-                className="group w-full sm:w-auto bg-white text-black px-10 lg:px-12 py-5 lg:py-6 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-between sm:justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2"
+                className="group w-full sm:w-auto bg-white text-black px-12 py-7 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-between sm:justify-center space-x-10 border-[5px] border-black shadow-[10px_10px_0px_0px_#000000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2"
               >
                 <span>Enter Creator Dashboard</span>
-                <div className="flex items-center space-x-2">
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                </div>
+                <ArrowRight size={22} className="group-hover:translate-x-2 transition-transform" />
               </button>
               
               <button 
                 onClick={() => scrollToSection('creators')}
-                className="w-full sm:w-auto bg-[#ffde59] text-black px-10 lg:px-12 py-5 lg:py-6 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-center space-x-6 border-[4px] border-black shadow-[8px_8px_0px_0px_#000000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 group"
+                className="w-full sm:w-auto bg-[#ffde59] text-black px-12 py-7 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-center space-x-8 border-[5px] border-black shadow-[10px_10px_0px_0px_#000000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 group"
               >
-                <div className="w-10 lg:w-12 h-10 lg:h-12 bg-white border-[2.5px] border-black rounded-full flex items-center justify-center text-black shrink-0 shadow-[3px_3px_0px_#000]">
-                  <Play size={20} fill="currentColor" className="ml-1" />
+                <div className="w-12 h-12 bg-white border-[3px] border-black rounded-full flex items-center justify-center text-black shrink-0 shadow-[4px_4px_0px_#000] group-hover:rotate-12 transition-transform">
+                  <Play size={22} fill="currentColor" className="ml-1" />
                 </div>
                 <span>See Works</span>
               </button>
@@ -71,8 +69,8 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
           </div>
 
           <div className="hidden lg:flex lg:col-span-4 relative items-center justify-center animate-in fade-in zoom-in duration-1000 delay-300">
-            <div className="relative w-full aspect-[4/5] max-w-[400px] overflow-hidden border-[6px] border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] bg-black/5">
-              <video src={VIDEO_URL} autoPlay loop muted playsInline className="w-full h-full object-cover mix-blend-screen opacity-90" />
+            <div className="relative w-full aspect-[4/5] max-w-[400px] overflow-hidden border-[6px] border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] bg-black/5 group cursor-pointer transition-all">
+              <video src={VIDEO_URL} autoPlay loop muted playsInline className="w-full h-full object-cover mix-blend-screen opacity-90 group-hover:scale-110 transition-transform duration-[2000ms]" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#834bf1]/20 to-transparent pointer-events-none"></div>
             </div>
           </div>
@@ -88,13 +86,13 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
           animation: pulse-slow 8s ease-in-out infinite;
         }
         .hero-stroke {
-          -webkit-text-stroke: 3px black;
-          text-shadow: 4px 4px 0px black;
+          -webkit-text-stroke: 4px black;
+          text-shadow: 6px 6px 0px black;
         }
         @media (max-width: 640px) {
           .hero-stroke {
             -webkit-text-stroke: 2px black;
-            text-shadow: 3px 3px 0px black;
+            text-shadow: 4px 4px 0px black;
           }
         }
       `}</style>

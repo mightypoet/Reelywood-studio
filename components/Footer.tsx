@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Mail, Phone, Globe, Instagram, Twitter, Linkedin, Lock } from 'lucide-react';
 
@@ -7,7 +6,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
-  const LOGO_URL = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Untitled%20design%20%281%29.mp4";
+  const LOGO_IMAGE = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Black%20and%20White%20Modern%20Streetwear%20Sport%20Logo.png";
 
   const scrollToId = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -25,17 +24,14 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
         <div className="flex flex-col lg:flex-row justify-between items-start gap-16 mb-24">
           <div className="space-y-10 max-w-sm">
             <div className="flex items-center space-x-3 cursor-pointer group" onClick={(e) => scrollToId(e as any, 'home')}>
-              <div className="w-12 h-12 border-2 border-black dark:border-white overflow-hidden bg-black/5">
-                <video 
-                  src={LOGO_URL} 
-                  autoPlay 
-                  loop 
-                  muted 
-                  playsInline 
+              <div className="w-14 h-14 border-[3px] border-black dark:border-white overflow-hidden bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-transform group-hover:scale-110">
+                <img 
+                  src={LOGO_IMAGE} 
+                  alt="Reelywood Logo"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <span className="font-black text-3xl tracking-tighter uppercase text-black dark:text-white font-display">REELYWOOD</span>
+              <span className="font-black text-3xl tracking-tighter uppercase text-black dark:text-white font-display italic">REELYWOOD</span>
             </div>
             <p className="text-black dark:text-white/80 text-sm leading-relaxed font-bold">
               Engineering growth ecosystems through Human-AI synergy. The standard for modern brands.

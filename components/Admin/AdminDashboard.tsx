@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../../lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -46,7 +45,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [isEmailing, setIsEmailing] = useState(false);
 
-  const LOGO_URL = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Untitled%20design%20%281%29.mp4";
+  const LOGO_IMAGE = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Black%20and%20White%20Modern%20Streetwear%20Sport%20Logo.png";
 
   const fetchApplications = () => {
     setRefreshing(true);
@@ -148,13 +147,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     <div className="min-h-screen bg-[#05070a] text-white flex flex-col font-['Plus_Jakarta_Sans']">
       <header className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-black/40 backdrop-blur-xl sticky top-0 z-50">
         <div className="flex items-center space-x-4">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden bg-black/5">
-            <video 
-              src={LOGO_URL} 
-              autoPlay 
-              loop 
-              muted 
-              playsInline 
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border border-white/20">
+            <img 
+              src={LOGO_IMAGE} 
+              alt="Admin Logo"
               className="w-full h-full object-cover"
             />
           </div>
