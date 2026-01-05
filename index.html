@@ -3,7 +3,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reelywood Studio | AI Marketing & Branding</title>
     <link rel="icon" type="image/x-icon" href="https://izz9qoicna213xwc.public.blob.vercel-storage.com/favicon.ico" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,7 @@
           extend: {
             fontFamily: {
               lexend: ['Lexend', 'sans-serif'],
-              display: ['Archivo Black', sans-serif],
+              display: ['Archivo Black', 'sans-serif'],
             },
             colors: {
               purple: '#834bf1',
@@ -36,29 +36,11 @@
       }
       html {
         scroll-behavior: smooth;
-        -webkit-text-size-adjust: 100%;
-      }
-      * {
-        -webkit-tap-highlight-color: transparent;
       }
       body {
         font-family: 'Lexend', sans-serif;
         background-color: var(--white);
         transition: background-color 0.3s ease, color 0.3s ease;
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-        padding-left: env(safe-area-inset-left);
-        padding-right: env(safe-area-inset-right);
-      }
-      /* Prevent iOS zoom on input focus */
-      input, select, textarea {
-        font-size: 16px !important;
-      }
-      /* Minimum touch target size for buttons and links */
-      button, a {
-        min-height: 44px;
-        min-width: 44px;
-        cursor: pointer;
       }
       .dark body {
         background-color: #0a0a0a;
@@ -86,10 +68,6 @@
       .dark .text-stroke {
         -webkit-text-stroke: 1.5px var(--white);
         text-shadow: 3px 3px 0px var(--white);
-      }
-      /* Ensure no horizontal overflow */
-      img, video, canvas, svg {
-        max-width: 100%;
       }
     </style>
   <script type="importmap">
