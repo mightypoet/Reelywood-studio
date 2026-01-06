@@ -12,5 +12,11 @@ export default defineConfig(({ mode }) => {
       'process.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL || ''),
       'process.env.SUPABASE_ANON_KEY': JSON.stringify(env.SUPABASE_ANON_KEY || ''),
     },
+    build: {
+      sourcemap: false, // Disables source maps for production
+    },
+    server: {
+      sourcemapIgnoreList: false, // Configures sourcemap behavior for local development
+    },
   };
 });
