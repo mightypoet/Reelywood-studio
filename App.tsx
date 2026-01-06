@@ -5,6 +5,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { About } from './components/About';
 import { UVP } from './components/UVP';
+import { BrandDNA } from './components/BrandDNA';
 import { Pricing } from './components/Pricing';
 import { ExpertiseSection } from './components/ExpertiseSection';
 import { Leaderboard } from './components/Leaderboard';
@@ -166,6 +167,8 @@ const MainContent: React.FC = () => {
         </section>
 
         <UVP />
+
+        <BrandDNA />
         
         <ExpertiseSection />
         

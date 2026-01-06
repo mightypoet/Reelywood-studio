@@ -6,7 +6,6 @@ export default defineConfig(({ mode }) => {
   // This ensures variables set in hosting dashboards are correctly captured.
   const env = { 
     ...process.env, 
-    // Fix: Property 'cwd' does not exist on type 'Process'. Cast to any to access Node.js process.cwd() method.
     ...loadEnv(mode, (process as any).cwd(), '') 
   };
   
@@ -14,17 +13,18 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY || ''),
-      // Map all common Supabase environment variable names
+      // Map all common Supabase environment variable names, prioritizing VITE_ and NEXT_PUBLIC_ variants
       'process.env.SUPABASE_URL': JSON.stringify(
-        env.SUPABASE_URL || 
+        env.VITE_SUPABASE_URL ||
         env.NEXT_PUBLIC_SUPABASE_URL || 
-        env.VITE_SUPABASE_URL || 
+        env.SUPABASE_URL || 
         ''
       ),
       'process.env.SUPABASE_ANON_KEY': JSON.stringify(
-        env.SUPABASE_ANON_KEY || 
+        env.VITE_SUPABASE_ANON_KEY ||
+        env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
         env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
-        env.VITE_SUPABASE_ANON_KEY || 
+        env.SUPABASE_ANON_KEY || 
         ''
       ),
     },
