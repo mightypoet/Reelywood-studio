@@ -1,6 +1,7 @@
-
-import React, { useEffect, useState } from 'react';
-import { Play, ArrowRight, Zap, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, ArrowRight, Zap, Sparkles, Calendar } from 'lucide-react';
+import { supabase } from '../lib/clients';
+import { auth } from '../lib/firebase';
 
 interface HeroProps {
   onAuthClick: () => void;
@@ -8,9 +9,42 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => {
+  const [isPending, setIsPending] = useState(false);
+
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleApply = async () => {
+    if (!auth.currentUser) {
+      alert("Please log in to apply.");
+      onAuthClick(); // Redirect to login if not authenticated
+      return;
+    }
+
+    console.log("🔥 Sending request to Supabase...");
+    setIsPending(true);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ card_status: 'pending' })
+        .eq('firebase_uid', auth.currentUser.uid);
+
+      if (error) {
+        console.error("❌ Error:", error);
+        alert("Error: " + error.message);
+      } else {
+        console.log("✅ Success!");
+        alert("Application Sent Successfully! Check the Admin Panel.");
+      }
+    } catch (err: any) {
+      console.error("❌ Error:", err);
+      alert("Error: " + (err.message || "Unknown error"));
+    } finally {
+      setIsPending(false);
+    }
   };
 
   const VIDEO_URL = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Untitled%20design%20%282%29.mp4";
@@ -49,22 +83,22 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             </p>
 
             <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-8">
+              {/* PRIMARY CTA: Apply for card (Replaces Enter Creator Hub for conversion focus) */}
               <button 
-                onClick={onDashboardClick}
-                className="group w-full sm:w-auto bg-[#834bf1] text-white px-12 py-8 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-between sm:justify-center space-x-10 border-[4px] border-black shadow-[10px_10px_0px_0px_#000000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2"
+                onClick={handleApply}
+                disabled={isPending}
+                className="group w-full sm:w-auto bg-[#834bf1] text-white px-12 py-8 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-between sm:justify-center space-x-10 border-[4px] border-black shadow-[10px_10px_0px_0px_#000000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 disabled:opacity-50"
               >
-                <span>Enter Creator Hub</span>
-                <ArrowRight size={22} className="group-hover:translate-x-2 transition-transform" />
+                <span>{isPending ? "Processing..." : "Apply for Creator Card"}</span>
+                <Calendar size={22} className="group-hover:rotate-12 transition-transform" />
               </button>
               
               <button 
-                onClick={() => scrollToSection('creators')}
+                onClick={onDashboardClick}
                 className="w-full sm:w-auto bg-white text-black px-12 py-8 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[10px_10px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 group"
               >
-                <span>Watch Showreel</span>
-                <div className="w-10 h-10 bg-black border-[3px] border-black rounded-full flex items-center justify-center text-[#ffde59] shrink-0 group-hover:rotate-12 transition-transform">
-                  <Play size={18} fill="currentColor" className="ml-1" />
-                </div>
+                <span>Enter Creator Hub</span>
+                <ArrowRight size={22} className="group-hover:translate-x-2 transition-transform" />
               </button>
             </div>
           </div>
