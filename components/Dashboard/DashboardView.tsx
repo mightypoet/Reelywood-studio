@@ -1,11 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../lib/firebase';
-import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
-import { LeftPanel } from './LeftPanel';
-import { RightPanel } from './RightPanel';
-import { ArrowLeft, Sparkles, Loader2, Zap, ShieldCheck } from 'lucide-react';
+import { useCreatorDashboard } from '../../hooks/useCreatorDashboard';
+import { DashboardClient } from './DashboardClient';
+import { ArrowLeft, Loader2, Zap, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface DashboardViewProps {
   onBack: () => void;
@@ -13,47 +11,31 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error, refetch } = useCreatorDashboard();
   const [showLanding, setShowLanding] = useState(true);
-  const [cardStatus, setCardStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
-  const [walletBalance, setWalletBalance] = useState(0);
-
-  useEffect(() => {
-    if (!user) return;
-
-    // Listen for Card Status
-    const cardRef = doc(db, 'creator_cards', user.uid);
-    const unsubCard = onSnapshot(cardRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setCardStatus(docSnap.data().status);
-      } else {
-        // Check old application collection too for fallback
-        const appRef = query(collection(db, 'creator_applications'), where('userId', '==', user.uid));
-        getDocs(appRef).then(snap => {
-          if (!snap.empty) setCardStatus('pending');
-        });
-      }
-    });
-
-    // Listen for Wallet
-    const walletRef = doc(db, 'wallets', user.uid);
-    const unsubWallet = onSnapshot(walletRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setWalletBalance(docSnap.data().balance || 0);
-      }
-    });
-
-    setLoading(false);
-    return () => {
-      unsubCard();
-      unsubWallet();
-    };
-  }, [user]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#834bf1]" size={48} />
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center space-y-6">
+        <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={3} />
+        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-black/40 animate-pulse">Establishing Node Sync...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center p-6 text-center">
+        <AlertCircle className="text-rose-500 mb-6" size={64} />
+        <h2 className="text-2xl font-black uppercase italic font-display mb-4">Sync Interrupted</h2>
+        <p className="text-black/60 dark:text-white/60 text-sm max-w-xs mb-8">{error}</p>
+        <button 
+          onClick={() => refetch()}
+          className="bg-black text-white px-8 py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_#834bf1] font-black text-xs uppercase tracking-widest flex items-center space-x-3"
+        >
+          <RefreshCw size={16} />
+          <span>Retry Sync</span>
+        </button>
       </div>
     );
   }
@@ -61,7 +43,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   if (showLanding) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center p-6 relative overflow-hidden">
-        {/* Background Dots Pattern */}
         <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px] dark:bg-[radial-gradient(#fff_1.5px,transparent_1.5px)]"></div>
         
         <div className="max-w-xl w-full text-center space-y-10 animate-in fade-in zoom-in duration-500 relative z-10">
@@ -98,10 +79,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               </button>
             </div>
           </div>
-          
-          <p className="text-[10px] font-black text-black/30 dark:text-white/20 uppercase tracking-[0.5em]">
-            Reelywood Studio • Node 4.01 Secure
-          </p>
         </div>
       </div>
     );
@@ -111,11 +88,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] transition-colors duration-500 relative">
       <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px] dark:bg-[radial-gradient(#fff_1.5px,transparent_1.5px)]"></div>
 
-      {/* Neobrutalist Dashboard Header */}
-      <header className="h-24 border-b-[4px] border-black dark:border-white bg-white dark:bg-[#0a0a0a] px-8 flex items-center justify-between sticky top-0 z-50">
+      <header className="h-24 border-b-[4px] border-black dark:border-white bg-white dark:bg-[#0a0a0a] px-8 flex items-center justify-between sticky top-0 z-50 transition-colors">
         <div className="flex items-center space-x-6">
           <button 
-            onClick={onBack} 
+            onClick={() => setShowLanding(true)} 
             className="w-12 h-12 bg-white border-[3px] border-black shadow-[4px_4px_0px_0px_#000] flex items-center justify-center hover:bg-slate-50 transition-all active:translate-x-1 active:translate-y-1 active:shadow-none"
           >
             <ArrowLeft size={20} strokeWidth={3} className="text-black" />
@@ -125,7 +101,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <div className="w-10 h-10 bg-[#834bf1] border-[3px] border-black text-white flex items-center justify-center font-black italic">R</div>
             <div>
               <span className="font-black text-xs uppercase tracking-[0.2em] text-black dark:text-white block">Creator Hub</span>
-              <span className="text-[8px] font-black text-black/40 dark:text-white/40 uppercase tracking-widest">Active Session</span>
+              <span className="text-[8px] font-black text-black/40 dark:text-white/40 uppercase tracking-widest">
+                {data?.status === 'UNLOCKED' ? 'Authorized Node' : 'Locked Node'}
+              </span>
             </div>
           </div>
         </div>
@@ -133,7 +111,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <div className="flex items-center space-x-6">
           <div className="hidden lg:flex flex-col items-end">
             <span className="text-xs font-black text-black dark:text-white uppercase italic">{user?.displayName}</span>
-            <span className="text-[8px] font-black text-[#834bf1] uppercase tracking-widest">Verified Creator</span>
+            <span className="text-[8px] font-black text-[#834bf1] uppercase tracking-widest">
+              {data?.cardStatus === 'ACTIVE' ? 'Verified Agent' : 'Auth Required'}
+            </span>
           </div>
           <div className="w-12 h-12 border-[3px] border-black bg-[#ffde59] shadow-[4px_4px_0px_0px_#000] overflow-hidden">
             <img src={user?.photoURL || ''} alt="User" className="w-full h-full object-cover" />
@@ -141,13 +121,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </header>
 
-      <main className="max-w-[1440px] mx-auto p-6 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10">
-        <div className="lg:col-span-5 xl:col-span-4">
-          <LeftPanel cardStatus={cardStatus} balance={walletBalance} />
-        </div>
-        <div className="lg:col-span-7 xl:col-span-8">
-          <RightPanel status={cardStatus} />
-        </div>
+      <main className="max-w-[1440px] mx-auto p-6 md:p-10 relative z-10">
+        <DashboardClient 
+          dashboardResult={data} 
+          userName={user?.displayName || "Creator"} 
+        />
       </main>
     </div>
   );
