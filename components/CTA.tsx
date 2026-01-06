@@ -8,29 +8,28 @@ export const CTA: React.FC = () => {
   const [isPending, setIsPending] = useState(false);
 
   const handleApply = async () => {
-    // STEP 1: Aggressive Debugging Log
-    console.log("🔴 Button Clicked: Apply for Creator Card initiated.");
+    // 1. Aggressive Debugging Log
+    console.log("🔴 Button Clicked!");
 
-    // SAFETY CHECK: Ensure supabase client is available before any operation
+    // 2. Database Connection Safety Check
     if (!supabase) {
       console.error("❌ SUPABASE MISSING: Database client not initialized.");
-      alert("Database connection error. Please try again later.");
+      alert("Database connection error");
       return;
     }
 
     try {
-      // STEP 2: Check for Authenticated User
+      // 3. Auth Guard
       const currentUser = auth.currentUser;
-      
       if (!currentUser) {
         console.warn("⚠️ AUTH CHECK: No user session detected.");
-        alert("Please log in to apply for your Creator Card!");
+        alert("Please login first");
         return;
       }
 
       console.log("🟢 User Authenticated:", currentUser.email, "UID:", currentUser.uid);
 
-      // STEP 3: Execute Database Update
+      // 4. Execute Update Protocol
       setIsPending(true);
       
       const { error } = await supabase
@@ -39,19 +38,19 @@ export const CTA: React.FC = () => {
         .eq('firebase_uid', currentUser.uid);
 
       if (error) {
-        console.error("❌ SUPABASE ERROR:", error.message, error);
-        alert("Database Error: " + error.message);
+        console.error("❌ SUPABASE ERROR:", error.message);
+        alert("Error: " + error.message);
         setIsPending(false);
         return;
       }
 
-      // STEP 4: Success Protocol
-      console.log("✅ SYNC SUCCESS: card_status set to 'pending' in Supabase.");
-      alert("Application Sent! Your status is now PENDING. Check back later.");
+      // 5. Success Protocol
+      console.log("✅ SYNC SUCCESS: card_status set to 'pending'.");
+      alert("Application Sent! Status is now PENDING.");
       
     } catch (err: any) {
       console.error("☢️ CRITICAL FAILURE:", err);
-      alert("Application Failed: " + (err.message || "Unknown error"));
+      alert("Error: " + (err.message || "Unknown error"));
       setIsPending(false);
     }
   };
@@ -90,6 +89,7 @@ export const CTA: React.FC = () => {
             </p>
           </div>
           
+          {/* CORRECT VERSION: Button is inside a simple div, no <form> tag */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-10 pt-10">
             <button 
               onClick={handleApply}
