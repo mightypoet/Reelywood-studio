@@ -9,6 +9,7 @@ import {
   createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
+import { syncUserToSupabase } from '../utils/authSync';
 
 interface AuthContextType {
   user: User | null;
@@ -24,7 +25,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        // Ensure user is synced whenever auth state changes to a valid user
+        await syncUserToSupabase(currentUser);
+      }
       setUser(currentUser);
       setLoading(false);
     });
@@ -33,7 +38,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result.user) {
+        // Explicit manual sync right after login for immediate data availability
+        await syncUserToSupabase(result.user);
+      }
     } catch (error) {
       console.error("Google Auth Error:", error);
       throw error;
