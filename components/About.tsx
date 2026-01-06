@@ -1,13 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sparkles, CheckCircle, Loader2, PartyPopper } from 'lucide-react';
 import { ThreeDCard } from './ThreeDCard';
 import { CreatorForm } from './CreatorForm';
-import { db } from '../lib/firebase';
-// @ts-ignore
-import { applyForCard } from '../services/backend';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuth } from '../context/AuthContext';
+import { auth } from '../lib/firebase';
+import { supabase } from '../lib/clients';
 
 export interface CreatorFormData {
   fullName: string;
@@ -36,7 +32,6 @@ interface AboutProps {
 }
 
 export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
-  const { user } = useAuth();
   const [formData, setFormData] = useState<CreatorFormData>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -55,38 +50,59 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
   };
 
   const handleSubmit = async (data: CreatorFormData) => {
+    if (!auth.currentUser) {
+      alert("Please log in first to apply for a Creator Card.");
+      return;
+    }
+
+    if (!supabase) {
+      console.error("Supabase client is missing");
+      alert("System Error: Database connection failed.");
+      return;
+    }
+
     setIsSubmitting(true);
     setShowToast(true);
     setIsSuccess(false);
-    
-    try {
-      // 1. Log to legacy Firebase for real-time tracking
-      await addDoc(collection(db, 'creator_applications'), {
-        ...data,
-        userId: user?.uid || null,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-      });
 
-      // 2. Initiate Supabase Sync if user is authenticated
-      if (user?.uid) {
-        await applyForCard(user.uid);
-      }
-      
-      setIsSubmitting(false);
+    console.log("🔥 Starting Supabase Submission...");
+
+    try {
+      const updates = {
+        card_status: 'pending',
+        display_name: data.fullName,
+        platform: data.platform,
+        niche: data.niche,
+        handle: data.handle,
+        followers: data.followers,
+        phone: data.phone,
+        email: data.email,
+        city: data.city,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('firebase_uid', auth.currentUser.uid);
+
+      if (error) throw error;
+
+      console.log("✅ Database Updated!");
       setIsSuccess(true);
       
       setTimeout(() => {
         setIsSuccess(false);
-        setShowToast(false);
+        setShowToast(false); 
         setFormData({ ...initialFormState }); 
       }, 5000);
 
-    } catch (error) {
-      console.error("Submission Node Error:", error);
-      setIsSubmitting(false);
+    } catch (error: any) {
+      console.error("❌ Submission Error:", error);
+      alert("Error saving application: " + error.message);
       setShowToast(false);
-      setIsSuccess(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

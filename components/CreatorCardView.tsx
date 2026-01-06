@@ -1,11 +1,9 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, Sparkles, CheckCircle, Loader2, PartyPopper, Menu } from 'lucide-react';
 import { ThreeDCard } from './ThreeDCard';
 import { CreatorForm } from './CreatorForm';
-import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuth } from '../context/AuthContext';
+import { auth } from '../lib/firebase';
+import { supabase } from '../lib/clients';
 
 interface CreatorCardViewProps {
   onBack: () => void;
@@ -34,9 +32,7 @@ const initialFormState: CreatorFormData = {
 };
 
 export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
-  const { user } = useAuth();
   const [formData, setFormData] = useState<CreatorFormData>(initialFormState);
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -46,44 +42,66 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
   };
 
   const handleSubmit = async (data: CreatorFormData) => {
-    setIsSubmitting(true);
-    setShowToast(true);
-    setIsSuccess(false);
+    // 1. Auth & Client Checks
+    if (!auth.currentUser) {
+      alert("Please log in first to apply for a Creator Card.");
+      return;
+    }
 
-    const loadingTimeout = setTimeout(() => {
-      if (!isSuccess) setIsSubmitting(false);
-    }, 5000);
+    if (!supabase) {
+      console.error("Supabase client is missing");
+      alert("System Error: Database connection failed.");
+      return;
+    }
+
+    // 2. Start Loading State
+    setIsSubmitting(true);
+    console.log("🔥 Starting Supabase Submission...");
 
     try {
-      await addDoc(collection(db, 'creator_applications'), {
-        ...data,
-        userId: user?.uid || null,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        verifiedBy: null,
-        verificationDate: null,
-        emailSent: false,
-        adminNotes: '',
-        notified: false
-      });
-      
-      clearTimeout(loadingTimeout);
+      // 3. Prepare Update Payload
+      const updates = {
+        card_status: 'pending', // This triggers the Admin Panel!
+        display_name: data.fullName,
+        platform: data.platform,
+        niche: data.niche,
+        handle: data.handle,
+        followers: data.followers,
+        phone: data.phone,
+        email: data.email,
+        city: data.city,
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log("📤 Sending payload:", updates);
+
+      // 4. Send to Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('firebase_uid', auth.currentUser.uid);
+
+      if (error) throw error;
+
+      // 5. Success UI Protocol
+      console.log("✅ Database Updated!");
       setIsSuccess(true);
-      setIsSubmitting(false);
+      setShowToast(true);
       
-      // Exactly 5 seconds later, reset everything to default state and clear the success popup
+      // Reset state after delay
       setTimeout(() => {
         setIsSuccess(false);
         setShowToast(false); 
         setFormData({ ...initialFormState }); 
       }, 5000);
 
-    } catch (error) {
-      console.error("Submission Error:", error);
-      clearTimeout(loadingTimeout);
-      setIsSubmitting(false);
-      setShowToast(false);
+    } catch (error: any) {
+      console.error("❌ Submission Error:", error);
+      alert("Error saving application: " + error.message);
       setIsSuccess(false);
+      setShowToast(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -105,7 +123,7 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-900/10 rounded-full blur-[150px]"></div>
       </div>
 
-      {/* Glass Pill Header */}
+      {/* Header */}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
         <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full px-4 py-2 flex items-center justify-between shadow-2xl">
           <button onClick={onBack} className="flex items-center space-x-3 group">
@@ -123,7 +141,6 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
 
       <main className="relative z-10 flex-1 flex items-center justify-center max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-12 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center w-full">
-          {/* 3D Preview Container */}
           <div className="flex flex-col items-center justify-center w-full order-2 lg:order-1">
             <div className="w-full max-w-[500px] space-y-6 sm:space-y-8">
               <div className="space-y-3 sm:space-y-4 text-center lg:text-left">
@@ -131,7 +148,7 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
                   <Sparkles size={12} className="animate-pulse" />
                   <span>Holographic Render</span>
                 </div>
-                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.9] uppercase">
+                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.9] uppercase font-display">
                   Creator <br className="hidden sm:block"/> Authenticated
                 </h1>
               </div>
@@ -146,7 +163,6 @@ export const CreatorCardView: React.FC<CreatorCardViewProps> = ({ onBack }) => {
             </div>
           </div>
 
-          {/* Form Container */}
           <div className="w-full order-1 lg:order-2">
             <div className="bg-white/[0.03] border border-white/5 p-6 sm:p-10 lg:p-12 rounded-[2.5rem] sm:rounded-[3.5rem] backdrop-blur-3xl shadow-2xl w-full relative min-h-[500px] flex flex-col justify-center">
               {isSuccess && (
