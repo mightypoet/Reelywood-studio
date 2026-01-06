@@ -3,12 +3,6 @@ import { User } from 'firebase/auth';
 
 /**
  * Robustly synchronizes a Firebase User to the Supabase 'profiles' table.
- * 
- * Logic:
- * 1. Log initiation.
- * 2. Check for existing profile by firebase_uid.
- * 3. If missing, insert new profile with default business values.
- * 4. Log outcomes for terminal debugging.
  */
 export const syncUserToSupabase = async (user: User) => {
   if (!user) {
@@ -21,28 +15,29 @@ export const syncUserToSupabase = async (user: User) => {
     return;
   }
 
-  console.log(`SYNC: Starting sync for user... ${user.uid}`);
+  console.log(`SYNC: Starting sync for user... UID: ${user.uid}`);
 
   try {
-    // Check if user already exists in the profiles table
-    const { data, error } = await supabase
+    // 1. Query Supabase for existing profile
+    const { data: existingUser, error: fetchError } = await supabase
       .from('profiles')
       .select('id')
       .eq('firebase_uid', user.uid)
       .single();
 
-    if (data) {
+    // 2. If the user exists: Log and return
+    if (existingUser) {
       console.log("SYNC: User already exists.");
       return;
     }
 
-    // PGRST116 means no rows were found, which is what we expect for a new user
-    if (error && error.code !== 'PGRST116') {
-      console.error("SYNC: Error querying Supabase profile node:", error.message);
+    // 3. Handle specific fetch errors (excluding 'no rows found')
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error("SYNC: Error checking profile:", fetchError.message);
       return;
     }
 
-    // User does not exist, initiate creation protocol
+    // 4. If the user does NOT exist: Execute INSERT
     console.log("SYNC: User missing from database. Initiating INSERT protocol...");
     
     const { error: insertError } = await supabase

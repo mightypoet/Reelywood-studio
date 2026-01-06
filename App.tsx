@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/firebase';
@@ -39,7 +38,7 @@ const MainContent: React.FC = () => {
   });
   const { user } = useAuth();
 
-  // Root level Auth and Sync Logic
+  // --- HARDCODED SYNC LOGIC START (Requested Block) ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -100,6 +99,7 @@ const MainContent: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+  // --- HARDCODED SYNC LOGIC END ---
 
   useEffect(() => {
     setIsVisible(true);

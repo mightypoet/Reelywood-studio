@@ -1,12 +1,41 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Calendar, ArrowRight, Zap, Sparkles, TrendingUp } from 'lucide-react';
 import CurvedLoop from './CurvedLoop';
+import { supabase } from '../lib/clients';
+import { auth } from '../lib/firebase';
 
 export const CTA: React.FC = () => {
-  const scrollToAbout = () => {
-    const el = document.getElementById('about');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  const [isPending, setIsPending] = useState(false);
+
+  const handleApply = async () => {
+    // 1. Check if user is logged in
+    if (!auth.currentUser) {
+      alert("Please log in to apply!");
+      return;
+    }
+
+    // 2. Execute Supabase update
+    try {
+      setIsPending(true);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ card_status: 'pending' })
+        .eq('firebase_uid', auth.currentUser.uid);
+
+      if (error) {
+        console.error("❌ UPDATE FAILED:", error);
+        alert("Database Error: " + error.message);
+        setIsPending(false);
+        return;
+      }
+
+      // 3. Success feedback
+      alert("Application Sent! Check back later.");
+      console.log("✅ Application successfully updated to pending!");
+    } catch (err) {
+      console.error("CRITICAL ERROR during application:", err);
+      setIsPending(false);
+    }
   };
 
   return (
@@ -45,11 +74,11 @@ export const CTA: React.FC = () => {
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-10 pt-10">
             <button 
-              onClick={scrollToAbout}
+              onClick={handleApply}
               className="w-full sm:w-auto bg-[#834bf1] text-white px-14 py-8 border-[5px] border-black shadow-[10px_10px_0px_0px_#000000] font-black text-xs uppercase tracking-[0.4em] transition-all hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none flex items-center justify-center space-x-5 group/btn"
             >
               <Calendar size={22} className="group-hover/btn:rotate-12 transition-transform" />
-              <span className="italic font-display">Apply for creator card</span>
+              <span className="italic font-display">{isPending ? "Pending..." : "Apply for creator card"}</span>
             </button>
             
             <button className="w-full sm:w-auto bg-white text-black border-[5px] border-black px-14 py-8 shadow-[10px_10px_0px_0px_#000000] font-black text-xs uppercase tracking-[0.4em] hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#834bf1] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center space-x-5 group/btn2">
