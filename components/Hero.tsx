@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Play, ArrowRight, Zap, Sparkles, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowRight, Zap, Calendar, Sparkles, MousePointer2 } from 'lucide-react';
 import { supabase } from '../lib/clients';
 import { auth } from '../lib/firebase';
 
@@ -8,124 +8,310 @@ interface HeroProps {
   onDashboardClick?: () => void;
 }
 
+interface PhysicalShape {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  type: 'circle' | 'square' | 'triangle';
+  color: string;
+  rotation: number;
+  rv: number;
+  opacity: number;
+}
+
 export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => {
   const [isPending, setIsPending] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const shapesRef = useRef<PhysicalShape[]>([]);
+  const requestRef = useRef<number>(0);
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  const isMobileRef = useRef(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      isMobileRef.current = window.innerWidth < 768;
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    const colors = ['#834bf1', '#ffde59', '#000000', '#ffffff'];
+    const types: ('circle' | 'square' | 'triangle')[] = ['circle', 'square', 'triangle'];
+
+    const spawnShape = (x: number, y: number, isBurst = false) => {
+      const maxShapes = isMobileRef.current ? 15 : 40;
+      const newShape: PhysicalShape = {
+        x,
+        y,
+        vx: (Math.random() - 0.5) * (isBurst ? 15 : 8),
+        vy: isBurst ? (Math.random() - 0.5) * 15 : (Math.random() * -5),
+        size: isMobileRef.current ? Math.random() * 15 + 10 : Math.random() * 25 + 15,
+        type: types[Math.floor(Math.random() * types.length)],
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * Math.PI * 2,
+        rv: (Math.random() - 0.5) * 0.1,
+        opacity: 0.9
+      };
+
+      shapesRef.current.push(newShape);
+      if (shapesRef.current.length > maxShapes) {
+        shapesRef.current.shift();
+      }
+    };
+
+    // Auto-spawn for mobile
+    const autoSpawnInterval = setInterval(() => {
+      if (isMobileRef.current) {
+        spawnShape(Math.random() * canvas.width, -50);
+      }
+    }, 800);
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const gravity = 0.2;
+      const friction = 0.99;
+      const bounce = 0.6;
+
+      shapesRef.current.forEach((s) => {
+        s.vy += gravity;
+        s.vx *= friction;
+        s.vy *= friction;
+        s.x += s.vx;
+        s.y += s.vy;
+        s.rotation += s.rv;
+
+        // Wall collisions
+        if (s.y + s.size > canvas.height) {
+          s.y = canvas.height - s.size;
+          s.vy *= -bounce;
+        }
+        if (s.x - s.size < 0) {
+          s.x = s.size;
+          s.vx *= -bounce;
+        } else if (s.x + s.size > canvas.width) {
+          s.x = canvas.width - s.size;
+          s.vx *= -bounce;
+        }
+
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(s.rotation);
+        ctx.globalAlpha = s.opacity;
+        ctx.fillStyle = s.color;
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+
+        if (s.type === 'circle') {
+          ctx.arc(0, 0, s.size, 0, Math.PI * 2);
+        } else if (s.type === 'square') {
+          ctx.rect(-s.size, -s.size, s.size * 2, s.size * 2);
+        } else if (s.type === 'triangle') {
+          ctx.moveTo(0, -s.size);
+          ctx.lineTo(s.size, s.size);
+          ctx.lineTo(-s.size, s.size);
+          ctx.closePath();
+        }
+
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      requestRef.current = requestAnimationFrame(animate);
+    };
+
+    requestRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(requestRef.current);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', checkMobile);
+      clearInterval(autoSpawnInterval);
+    };
+  }, []);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isMobileRef.current) return;
+    const dx = Math.abs(e.clientX - lastMousePos.current.x);
+    const dy = Math.abs(e.clientY - lastMousePos.current.y);
+    if (dx + dy > 50) {
+      // Spawn logic in useEffect handles the array
+      const types: ('circle' | 'square' | 'triangle')[] = ['circle', 'square', 'triangle'];
+      const colors = ['#834bf1', '#ffde59', '#000000', '#ffffff'];
+      const newShape: PhysicalShape = {
+        x: e.clientX,
+        y: e.clientY,
+        vx: (e.clientX - lastMousePos.current.x) * 0.2,
+        vy: (e.clientY - lastMousePos.current.y) * 0.2,
+        size: Math.random() * 20 + 10,
+        type: types[Math.floor(Math.random() * types.length)],
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * Math.PI * 2,
+        rv: (Math.random() - 0.5) * 0.1,
+        opacity: 0.9
+      };
+      shapesRef.current.push(newShape);
+      if (shapesRef.current.length > 40) shapesRef.current.shift();
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
+    const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const y = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    if ('touches' in e || e.type === 'mousedown') {
+      if (isMobileRef.current) {
+        // Mobile Burst
+        for (let i = 0; i < 3; i++) {
+          const types: ('circle' | 'square' | 'triangle')[] = ['circle', 'square', 'triangle'];
+          const colors = ['#834bf1', '#ffde59', '#000000', '#ffffff'];
+          shapesRef.current.push({
+            x, y,
+            vx: (Math.random() - 0.5) * 15,
+            vy: (Math.random() - 0.5) * 15,
+            size: Math.random() * 15 + 10,
+            type: types[Math.floor(Math.random() * types.length)],
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * Math.PI * 2,
+            rv: (Math.random() - 0.5) * 0.2,
+            opacity: 0.9
+          });
+        }
+        if (shapesRef.current.length > 15) shapesRef.current = shapesRef.current.slice(-15);
+      } else {
+        // Desktop Repulse
+        shapesRef.current.forEach(s => {
+          const dx = s.x - x;
+          const dy = s.y - y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 300) {
+            const force = (300 - dist) / 15;
+            const angle = Math.atan2(dy, dx);
+            s.vx += Math.cos(angle) * force;
+            s.vy += Math.sin(angle) * force;
+          }
+        });
+      }
+    }
+  };
 
   const handleApply = async () => {
-    // 1. Database Connection Safety Check
-    if (!supabase) {
-      console.error("❌ Supabase client is missing or uninitialized.");
-      alert("System Error: Database connection failed.");
-      return;
-    }
-
-    // 2. Auth Guard
     if (!auth.currentUser) {
-      alert("Please log in first to apply for a Creator Card.");
-      onAuthClick(); // Redirect to login
+      onAuthClick();
       return;
     }
-
-    console.log("🔥 Sending request to Supabase...");
     setIsPending(true);
-
     try {
-      // 3. Update Profile Protocol
-      const { error } = await supabase
-        .from('profiles')
-        .update({ card_status: 'pending' })
-        .eq('firebase_uid', auth.currentUser.uid);
-
-      if (error) {
-        console.error("❌ Error:", error);
-        alert("Error: " + error.message);
-      } else {
-        console.log("✅ Success! Database updated.");
-        alert("✅ Application Sent! Your status is now PENDING.");
+      if (supabase) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ card_status: 'pending' })
+          .eq('firebase_uid', auth.currentUser.uid);
+        if (error) throw error;
+        alert("✅ Application Sent! Syncing Identity Node...");
       }
     } catch (err: any) {
-      console.error("❌ Unexpected Error:", err);
-      alert("Error: " + (err.message || "Unknown error"));
+      alert("Error: " + err.message);
     } finally {
       setIsPending(false);
     }
   };
 
-  const VIDEO_URL = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Untitled%20design%20%282%29.mp4";
-
   return (
-    <section className="relative min-h-[100svh] flex items-center pt-32 pb-24 overflow-hidden bg-white dark:bg-[#0a0a0a]">
-      {/* Dynamic Background Pattern */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-5 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px] dark:bg-[radial-gradient(#fff_1px,transparent_1px)]"></div>
-      
+    <section 
+      className="relative min-h-screen flex items-center pt-24 pb-12 overflow-hidden bg-white dark:bg-[#0a0a0a]"
+      onMouseMove={handleMouseMove}
+      onMouseDown={handleInteraction}
+      onTouchStart={handleInteraction}
+    >
+      {/* PHYSICS LAYER */}
+      <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none" />
+
+      {/* CONTENT LAYER */}
       <div className="max-w-7xl mx-auto px-6 relative z-10 w-full">
-        <div className="grid lg:grid-cols-12 gap-16 lg:gap-24 items-center">
-          
-          <div className="lg:col-span-8 space-y-12 animate-in fade-in slide-in-from-left-8 duration-1000 ease-out">
-            
-            <div className="inline-flex items-center space-x-3 bg-black border-[3px] border-black px-6 py-2.5 rounded-none text-white font-black text-[10px] uppercase tracking-[0.4em] shadow-[6px_6px_0px_0px_#834bf1]">
-              <Zap size={14} className="text-[#ffde59] animate-pulse" />
-              <span>Intelligence-First Brand Engineering</span>
-            </div>
+        <div className="max-w-4xl space-y-8 md:space-y-12">
+          <div className="inline-flex items-center space-x-3 bg-black border-[3px] border-black px-6 py-2.5 rounded-none text-white font-black text-[10px] uppercase tracking-[0.4em] shadow-[6px_6px_0px_0px_#834bf1] animate-in fade-in">
+            <Zap size={14} className="text-[#ffde59] animate-pulse" />
+            <span>High-Performance Brand Systems</span>
+          </div>
 
-            <div className="space-y-4">
-              <h1 className="flex flex-col text-6xl md:text-8xl lg:text-[120px] font-black text-black dark:text-white leading-[0.8] tracking-tighter font-display uppercase italic">
-                <span>Scale</span>
-                <span className="mt-2 text-[#834bf1] drop-shadow-[4px_4px_0px_#000] dark:drop-shadow-[4px_4px_0px_#fff]">Automate</span>
-                <span className="mt-2">Dominate</span>
-              </h1>
-              <div className="flex items-center space-x-6 pt-6">
-                <div className="h-[4px] w-24 bg-[#ffde59]"></div>
-                <p className="text-lg md:text-xl text-black/60 dark:text-white/60 font-black uppercase italic tracking-tight">
-                  For the high-performance SME
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xl md:text-2xl text-black dark:text-white font-bold leading-relaxed max-w-2xl tracking-tight border-l-[8px] border-black dark:border-[#834bf1] pl-8">
-              We engineer dynamic brand ecosystems through the synergy of Human Creativity and AI Precision. Scaling SMEs with surgical efficiency.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-8">
-              {/* PRIMARY CTA: Apply for card - No <form> wrapping, direct handleApply call */}
-              <button 
-                onClick={handleApply}
-                disabled={isPending}
-                className="group w-full sm:w-auto bg-[#834bf1] text-white px-12 py-8 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-between sm:justify-center space-x-10 border-[4px] border-black shadow-[10px_10px_0px_0px_#000000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 disabled:opacity-50"
-              >
-                <span>{isPending ? "Processing..." : "Apply for Creator Card"}</span>
-                <Calendar size={22} className="group-hover:rotate-12 transition-transform" />
-              </button>
-              
-              <button 
-                onClick={onDashboardClick}
-                className="w-full sm:w-auto bg-white text-black px-12 py-8 rounded-none font-black text-sm lg:text-base transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[10px_10px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 group"
-              >
-                <span>Enter Creator Hub</span>
-                <ArrowRight size={22} className="group-hover:translate-x-2 transition-transform" />
-              </button>
+          <div className="space-y-4 animate-in slide-in-from-left-8 duration-700">
+            <h1 className="flex flex-col text-5xl md:text-8xl lg:text-[130px] font-black text-black dark:text-white leading-[0.8] tracking-tighter font-display uppercase italic">
+              <span>Scale</span>
+              <span className="text-[#834bf1] drop-shadow-[4px_4px_0px_#000] dark:drop-shadow-[4px_4px_0px_#fff]">Automate</span>
+              <span className="flex items-center">
+                Dominate
+                <Sparkles className="ml-4 text-[#ffde59] hidden md:block animate-bounce" size={48} />
+              </span>
+            </h1>
+            <div className="pt-6">
+              <p className="text-lg md:text-2xl text-black/70 dark:text-white/70 font-black uppercase italic tracking-tight border-l-[8px] md:border-l-[12px] border-[#ffde59] pl-6 md:pl-10 max-w-2xl leading-tight">
+                Architecting digital dominance through the synergy of Human Creativity and AI Precision. Surgical execution for SMEs.
+              </p>
             </div>
           </div>
 
-          <div className="hidden lg:flex lg:col-span-4 relative items-center justify-center animate-in fade-in zoom-in duration-1000 delay-300">
-            <div className="relative w-full aspect-[4/5] max-w-[400px] overflow-hidden border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] bg-black group cursor-crosshair transition-all">
-              <video src={VIDEO_URL} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-100 transition-all duration-[2000ms]" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
-              
-              <div className="absolute bottom-8 left-8 right-8 z-20">
-                 <div className="bg-white text-black p-4 border-[3px] border-black shadow-[4px_4px_0px_0px_#ffde59] translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-                   <p className="font-black text-[10px] uppercase tracking-widest text-[#834bf1] mb-1">Live Experiment</p>
-                   <p className="font-black text-sm uppercase italic">High-Fidelity Assets</p>
-                 </div>
-              </div>
+          <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-8 animate-in slide-in-from-bottom-8 duration-1000">
+            <button 
+              onClick={handleApply}
+              disabled={isPending}
+              className="group w-full sm:w-auto bg-[#834bf1] text-white px-10 py-7 md:px-12 md:py-8 rounded-none font-black text-sm transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 disabled:opacity-50"
+            >
+              <span>{isPending ? "Syncing..." : "Apply for Creator Card"}</span>
+              <Calendar size={20} className="group-hover:rotate-12 transition-transform" />
+            </button>
+            
+            <button 
+              onClick={onDashboardClick}
+              className="w-full sm:w-auto bg-white text-black px-10 py-7 md:px-12 md:py-8 rounded-none font-black text-sm transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 group"
+            >
+              <span>Enter Creator Hub</span>
+              <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
+            </button>
+          </div>
+          
+          <div className="pt-8 opacity-60">
+            <div className="flex items-center space-x-4">
+               <div className="flex -space-x-3">
+                 {[1,2,3,4].map(i => (
+                   <div key={i} className="w-8 h-8 rounded-none border-2 border-black bg-white overflow-hidden shadow-[2px_2px_0px_#000]">
+                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=agent${i+20}`} alt="Agent" />
+                   </div>
+                 ))}
+               </div>
+               <p className="text-[9px] font-black uppercase tracking-[0.3em] text-black dark:text-white">Active Nodes: 12.4k</p>
             </div>
           </div>
         </div>
       </div>
 
-      <style>{`
-        .font-display { font-family: 'Archivo Black', sans-serif; }
-      `}</style>
+      {/* BACKGROUND DECORATIONS */}
+      <div className="absolute inset-0 z-[-1] opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(#fff_1px,transparent_1px)]"></div>
+      
+      <div className="absolute top-1/4 right-8 pointer-events-none hidden lg:flex flex-col items-end space-y-4">
+         <div className="bg-black text-white px-4 py-2 border-[3px] border-black shadow-[4px_4px_0px_0px_#ffde59] font-black text-[9px] uppercase tracking-widest italic">
+           v4.8 Stable Engine
+         </div>
+         <div className="bg-white text-black px-4 py-2 border-[3px] border-black shadow-[4px_4px_0px_0px_#834bf1] font-black text-[9px] uppercase tracking-widest">
+           Ping: 12ms
+         </div>
+      </div>
     </section>
   );
 };
