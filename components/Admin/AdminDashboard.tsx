@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
@@ -23,7 +22,20 @@ export interface Profile {
   reelcoins: number;
 }
 
+// Define your Admin Emails here
+const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+  // --- SECURITY CHECK ---
+  useEffect(() => {
+    const user = auth.currentUser;
+    // If no user, or email is not in the list -> KICK THEM OUT
+    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
+      alert("⛔ ACCESS DENIED: Admins Only");
+      onLogout(); // Redirects to home
+    }
+  }, []);
+
   // --- STATE ---
   const [activeTab, setActiveTab] = useState<'users' | 'missions' | 'vouchers'>('users');
   const [darkMode, setDarkMode] = useState(() => {
