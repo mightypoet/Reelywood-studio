@@ -47,7 +47,7 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative w-[280px] h-[440px] sm:w-[350px] sm:h-[550px] transition-transform duration-500 ease-out select-none cursor-default"
+        className="relative w-[260px] h-[400px] sm:w-[350px] sm:h-[550px] transition-transform duration-500 ease-out select-none cursor-default"
         style={{
           transform: `rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
           transformStyle: 'preserve-3d',
@@ -96,44 +96,36 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
             </div>
           </div>
 
-          {/* CHIP - Positioned like screenshot */}
-          <div 
-            className="absolute bottom-[35%] left-8 w-12 h-10 sm:w-14 sm:h-12 bg-gradient-to-br from-[#c0c0c0] via-[#e8e8e8] to-[#909090] rounded-lg border border-black/10 overflow-hidden"
-            style={{ transform: 'translateZ(20px)' }}
-          >
-            <div className="w-full h-full opacity-30 border border-black/20 grid grid-cols-3 grid-rows-3">
-              {[...Array(9)].map((_, i) => <div key={i} className="border-[0.5px] border-black/40"></div>)}
-            </div>
-          </div>
+          {/* CHIP REMOVED AS PER REQUEST */}
 
-          {/* CARD NUMBERS - Metallic Silver Monospaced */}
+          {/* CARD NUMBERS - Reduced size and optimized for devices */}
           <div 
-            className="absolute bottom-[24%] left-8 right-8"
+            className="absolute bottom-[26%] left-6 sm:left-8 right-6 sm:right-8"
             style={{ transform: 'translateZ(30px)' }}
           >
-            <p className="text-[#d1d5db] font-mono text-xl sm:text-2xl tracking-[0.15em] italic font-bold drop-shadow-[2px_2px_1px_rgba(0,0,0,0.5)]">
+            <p className="text-[#d1d5db] font-mono text-[14px] sm:text-[18px] lg:text-[20px] tracking-[0.1em] italic font-bold drop-shadow-[2px_2px_1px_rgba(0,0,0,0.5)] whitespace-nowrap">
               1234 5678 9000 0000
             </p>
           </div>
 
           {/* EXPO DATE */}
           <div 
-            className="absolute bottom-[16%] left-1/2 -translate-x-1/2 flex flex-col items-center"
+            className="absolute bottom-[18%] sm:bottom-[16%] left-1/2 -translate-x-1/2 flex flex-col items-center"
             style={{ transform: 'translateZ(25px)' }}
           >
             <div className="flex items-center space-x-1 mb-0.5">
-               <span className="text-[7px] sm:text-[8px] font-black text-[#d1d5db] uppercase tracking-tighter opacity-70">EXPO</span>
-               <span className="text-[7px] sm:text-[8px] font-black text-[#d1d5db] uppercase tracking-tighter opacity-70">DATE</span>
+               <span className="text-[6px] sm:text-[7px] font-black text-[#d1d5db] uppercase tracking-tighter opacity-70">EXPO</span>
+               <span className="text-[6px] sm:text-[7px] font-black text-[#d1d5db] uppercase tracking-tighter opacity-70">DATE</span>
             </div>
-            <span className="text-[#d1d5db] font-mono text-sm sm:text-base tracking-widest font-bold">12/28</span>
+            <span className="text-[#d1d5db] font-mono text-xs sm:text-sm tracking-widest font-bold">12/28</span>
           </div>
 
           {/* CARDHOLDER NAME */}
           <div 
-            className="absolute bottom-8 sm:bottom-10 left-8 right-8"
+            className="absolute bottom-6 sm:bottom-10 left-6 sm:left-8 right-6 sm:right-8"
             style={{ transform: 'translateZ(35px)' }}
           >
-            <p className="text-[#d1d5db] font-bold text-sm sm:text-lg uppercase tracking-widest truncate drop-shadow-md">
+            <p className="text-[#d1d5db] font-bold text-xs sm:text-base uppercase tracking-widest truncate drop-shadow-md">
               {name || "CARDHOLDER NAME"}
             </p>
           </div>
