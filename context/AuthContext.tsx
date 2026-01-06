@@ -22,16 +22,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listen for Firebase Auth changes
+    /**
+     * Auth State Change Listener
+     * Handles both initial session loading and live login/logout events.
+     */
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         console.log("Auth State Changed: User Logged In");
         
-        // CRITICAL: Call sync function immediately upon login or session refresh
+        // IMMEDIATELLY call syncUserToSupabase(user) whenever user is not null.
         try {
           await syncUserToSupabase(currentUser);
-        } catch (err) {
-          console.error("Failed to trigger sync from AuthProvider:", err);
+        } catch (syncErr) {
+          console.error("AuthContext: Failed to trigger background sync:", syncErr);
         }
       } else {
         console.log("Auth State Changed: User Logged Out");
@@ -48,7 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
-        console.log("Google Login Successful, preparing sync...");
+        console.log("Google Login Successful, initiating sync protocol...");
+        // Manual trigger after login for immediate data availability
         await syncUserToSupabase(result.user);
       }
     } catch (error) {

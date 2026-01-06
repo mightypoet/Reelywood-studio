@@ -2,71 +2,69 @@ import { supabase } from '../lib/clients';
 import { User } from 'firebase/auth';
 
 /**
- * Synchronizes a Firebase user object with the Supabase 'profiles' table.
- * This is a critical function to ensure every logged-in user is synced to Supabase immediately.
+ * Robustly synchronizes a Firebase User to the Supabase 'profiles' table.
+ * 
+ * Step 1: Logs "SYNC: Starting sync for user..." with the user's UID.
+ * Step 2: Checks if the user already exists.
+ * Step 3: If missing, inserts them with default values.
  */
-export const syncUserToSupabase = async (user: User) => {
-  if (!user) return;
-
-  if (!supabase) {
-    console.error("Supabase Sync Failed: Database client not found. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+export const syncUserToSupabase = async (firebaseUser: User) => {
+  if (!firebaseUser) {
+    console.log("SYNC: No user object detected. Skipping sync.");
     return;
   }
 
-  console.log("Syncing user to Supabase...");
-  console.log(`Checking user [${user.email}] in Supabase 'profiles' table...`);
+  if (!supabase) {
+    console.error("SYNC ERROR: Supabase client is null. Verify VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set correctly.");
+    return;
+  }
+
+  const { uid, email } = firebaseUser;
+  // Handle case where email might be null (e.g., anonymous or phone auth)
+  const safeEmail = email || "no-email@provided.com";
+
+  console.log(`SYNC: Starting sync for user [${uid}]`);
 
   try {
-    // 1. Check if the user already exists in the profiles table
-    const { data: existingUser, error: fetchError } = await supabase
+    console.log("Checking user...");
+    // 1. Check if the user exists in Supabase
+    const { data, error: fetchError } = await supabase
       .from('profiles')
       .select('firebase_uid')
-      .eq('firebase_uid', user.uid)
-      .single();
+      .eq('firebase_uid', uid);
 
-    // PGRST116 means "no rows found", which is expected for new users
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error("Error checking existing profile:", fetchError.message);
+    if (fetchError) {
+      console.error("SYNC ERROR during profile check:", fetchError.message);
       return;
     }
 
-    if (!existingUser) {
-      console.log("User missing from Supabase, creating new profile node...");
-      
-      // 2. NEW USER: Perform INSERT with mandatory fields
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert([{
-          firebase_uid: user.uid,
-          email: user.email,
-          display_name: user.displayName || 'Anonymous Agent',
-          photo_url: user.photoURL || null,
-          role: 'user',
-          card_status: 'none',
-          reelcoins: 0
-        }]);
+    // 2. If the user is found, exit
+    if (data && data.length > 0) {
+      console.log("SYNC: User already exists.");
+      return;
+    }
 
-      if (insertError) {
-        console.error("Supabase Create Error (INSERT):", insertError.message);
-        console.log("Error details:", insertError.details);
-        console.log("Error hint:", insertError.hint);
-      } else {
-        console.log("User created in Supabase successfully!");
-      }
+    // 3. If the user is missing, perform INSERT
+    console.log("User missing, creating...");
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .insert([{
+        firebase_uid: uid,
+        email: safeEmail,
+        role: 'user',
+        card_status: 'none',
+        reelcoins: 0,
+        display_name: firebaseUser.displayName || 'Agent ' + uid.substring(0, 5),
+        photo_url: firebaseUser.photoURL || null
+      }]);
+
+    if (insertError) {
+      console.error("SYNC ERROR during profile creation:", insertError.message);
+      console.log("Error Detail:", insertError);
     } else {
-      console.log("User already exists in Supabase. Profile verified.");
-      
-      // Optional: Update existing user data to keep emails/names in sync
-      await supabase
-        .from('profiles')
-        .update({
-          email: user.email,
-          display_name: user.displayName,
-          photo_url: user.photoURL
-        })
-        .eq('firebase_uid', user.uid);
+      console.log("User created!");
     }
   } catch (err) {
-    console.error("Auth Sync Critical Exception:", err);
+    console.error("SYNC CRITICAL EXCEPTION:", err);
   }
 };
