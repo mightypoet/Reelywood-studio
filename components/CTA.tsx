@@ -27,7 +27,7 @@ export const CTA: React.FC = () => {
         return;
       }
 
-      console.log("🟢 User Authenticated:", currentUser.email, "UID:", currentUser.uid);
+      console.log("🔥 Sending request to Supabase...");
 
       // 4. Execute Update Protocol
       setIsPending(true);
@@ -38,15 +38,15 @@ export const CTA: React.FC = () => {
         .eq('firebase_uid', currentUser.uid);
 
       if (error) {
-        console.error("❌ SUPABASE ERROR:", error.message);
+        console.error("❌ Error:", error);
         alert("Error: " + error.message);
         setIsPending(false);
         return;
       }
 
       // 5. Success Protocol
-      console.log("✅ SYNC SUCCESS: card_status set to 'pending'.");
-      alert("Application Sent! Status is now PENDING.");
+      console.log("✅ Success!");
+      alert("Application Sent Successfully! Check the Admin Panel.");
       
     } catch (err: any) {
       console.error("☢️ CRITICAL FAILURE:", err);
@@ -89,7 +89,6 @@ export const CTA: React.FC = () => {
             </p>
           </div>
           
-          {/* CORRECT VERSION: Button is inside a simple div, no <form> tag */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-10 pt-10">
             <button 
               onClick={handleApply}

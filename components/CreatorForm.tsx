@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { CreatorFormData } from './About';
 import { ChevronRight, Loader2, Globe, Instagram, Youtube, Linkedin, Twitter, Users, ArrowRight } from 'lucide-react';
@@ -11,7 +10,6 @@ interface CreatorFormProps {
   onAcademyClick?: () => void;
 }
 
-const FORMSPARK_FORM_ID = "REELYWOOD_CREATOR_SYNC_ID"; 
 const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwS8XaS2zURf24cEevwrst4RL8hclcoRAWuCy4Mi6YdAtL-3PAFuF6baFjvcyTM0uo4Sg/exec";
 
 const initialData: CreatorFormData = {
@@ -66,13 +64,6 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
         body: formPayload,
         mode: 'no-cors' 
       });
-
-      // Optional: Silent secondary sync
-      fetch(`https://submit-form.com/${FORMSPARK_FORM_ID}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ ...data, timestamp: new Date().toISOString() }),
-      }).catch(() => {});
       
     } catch (error) {
       console.warn("Minor transmission node failed.");
@@ -159,7 +150,13 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
       <div className="space-y-4">
         <button 
           disabled={isSubmitting}
-          type="submit"
+          type="button"
+          onClick={() => {
+            // Explicitly trigger the form submit logic if the button is clicked
+            // We use type="button" to ensure no accidental form behaviors
+            const form = document.querySelector('form');
+            if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }}
           className="w-full relative group bg-[#834bf1] text-white py-5 sm:py-6 rounded-none font-black text-[10px] sm:text-xs uppercase tracking-[0.4em] transition-all border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
           <span className="flex items-center justify-center space-x-3">
