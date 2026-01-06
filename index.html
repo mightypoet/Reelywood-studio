@@ -3,9 +3,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Reelywood Studio | AI Marketing & Branding</title>
+    <!-- Favicon link -->
     <link rel="icon" type="image/x-icon" href="https://izz9qoicna213xwc.public.blob.vercel-storage.com/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="https://izz9qoicna213xwc.public.blob.vercel-storage.com/favicon.ico" />
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -34,14 +37,35 @@
         --black: #000000;
         --yellow: #ffde59;
       }
-      html {
+      
+      /* Mobile Optimization Resets */
+      html { 
         scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%; 
       }
+      * { 
+        -webkit-tap-highlight-color: transparent; 
+      }
+      input, select, textarea { 
+        font-size: 16px !important; /* Prevents iOS auto-zoom */
+      }
+      
       body {
         font-family: 'Lexend', sans-serif;
         background-color: var(--white);
         transition: background-color 0.3s ease, color 0.3s ease;
+        /* Safe area handling */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
       }
+      
+      /* Touch Targets */
+      button, a {
+        min-height: 44px;
+        min-width: 44px;
+        cursor: pointer;
+      }
+
       .dark body {
         background-color: #0a0a0a;
         color: var(--white);
