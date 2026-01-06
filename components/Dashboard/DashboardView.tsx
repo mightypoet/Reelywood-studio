@@ -3,7 +3,6 @@ import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { 
   LogOut, 
-  Layout, 
   Trophy, 
   Gift, 
   User, 
@@ -14,7 +13,10 @@ import {
   ArrowLeft,
   Loader2,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  Lock,
+  Clock,
+  ShieldAlert
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -42,37 +44,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     try {
       if (!auth.currentUser) return;
 
-      console.log("🔥 Fetching Dashboard Data...");
+      console.log("🔥 Syncing Operational Grid...");
 
-      // 1. Get Profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('firebase_uid', auth.currentUser.uid)
-        .single();
+      // Fetch Profile, Missions, and Rewards concurrently
+      const [profileRes, missionsRes, rewardsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('firebase_uid', auth.currentUser.uid).single(),
+        supabase.from('missions').select('*').order('created_at', { ascending: false }),
+        supabase.from('rewards').select('*').order('created_at', { ascending: false })
+      ]);
 
-      if (profileError && profileError.code !== 'PGRST116') throw profileError;
-      if (profileData) setProfile(profileData);
-
-      // 2. Get Missions
-      const { data: missionsData, error: missionsError } = await supabase
-        .from('missions')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (missionsError) console.error("Missions fetch error:", missionsError);
-      if (missionsData) setMissions(missionsData);
-
-      // 3. Get Rewards
-      const { data: rewardsData, error: rewardsError } = await supabase
-        .from('rewards')
-        .select('*');
-      
-      if (rewardsError) console.error("Rewards fetch error:", rewardsError);
-      if (rewardsData) setRewards(rewardsData);
+      if (profileRes.error && profileRes.error.code !== 'PGRST116') throw profileRes.error;
+      if (profileRes.data) setProfile(profileRes.data);
+      if (missionsRes.data) setMissions(missionsRes.data);
+      if (rewardsRes.data) setRewards(rewardsRes.data);
 
     } catch (error) {
-      console.error("Dashboard Global Error:", error);
+      console.error("Dashboard Global Sync Error:", error);
     } finally {
       setLoading(false);
     }
@@ -87,11 +74,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-6">
         <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
-        <p className="text-[12px] font-black uppercase tracking-[0.5em] text-black animate-pulse">Syncing Production Nodes...</p>
+        <p className="text-[12px] font-black uppercase tracking-[0.5em] text-black animate-pulse">Establishing Secure Link...</p>
       </div>
     );
   }
 
+  const isApproved = profile?.card_status === 'approved';
+  const isPending = profile?.card_status === 'pending';
+  
   const userDisplayName = profile?.display_name || auth.currentUser?.displayName || "Agent";
   const userHandle = profile?.handle || "@reelywood_agent";
   const userNiche = profile?.niche || "Creative Strategy";
@@ -115,9 +105,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-4 bg-[#ffde59] border-[4px] border-black px-5 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-              <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-ping"></div>
-              <span className="text-[11px] font-black uppercase tracking-widest italic">Node Active</span>
+            <div className={`hidden sm:flex items-center space-x-4 border-[4px] border-black px-5 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${isApproved ? 'bg-[#ffde59]' : 'bg-slate-100'}`}>
+              <div className={`w-2.5 h-2.5 rounded-full ${isApproved ? 'bg-green-500 animate-ping' : 'bg-slate-400'}`}></div>
+              <span className="text-[11px] font-black uppercase tracking-widest italic">
+                {isApproved ? 'Node Active' : 'Sync Pending'}
+              </span>
             </div>
             
             <button 
@@ -134,15 +126,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       <main className="max-w-7xl mx-auto p-6 lg:p-12">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16">
           
-          {/* LEFT COLUMN: Identity & Wallet */}
+          {/* LEFT COLUMN: Always fully active for user feedback */}
           <div className="lg:col-span-4 space-y-12">
             
-            {/* Creator Profile Card */}
             <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden group">
               <div className="absolute top-4 right-4 rotate-6 group-hover:rotate-12 transition-transform">
-                <div className="bg-[#4ade80] border-[3px] border-black px-4 py-1.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center space-x-2">
-                  <CheckCircle2 size={14} strokeWidth={3} />
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em]">Verified</span>
+                <div className={`border-[3px] border-black px-4 py-1.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center space-x-2 ${isApproved ? 'bg-[#4ade80]' : 'bg-[#ffde59]'}`}>
+                  {isApproved ? <CheckCircle2 size={14} strokeWidth={3} /> : <Clock size={14} strokeWidth={3} />}
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em]">
+                    {isApproved ? 'Verified' : 'Reviewing'}
+                  </span>
                 </div>
               </div>
 
@@ -177,8 +170,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               </div>
             </div>
 
-            {/* Reelcoin Wallet Card */}
-            <div className="bg-[#834bf1] border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-white relative overflow-hidden group">
+            <div className={`bg-[#834bf1] border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-white relative overflow-hidden group transition-all ${!isApproved ? 'opacity-90' : ''}`}>
               <Star className="absolute -right-8 -top-8 w-48 h-48 text-white/10 rotate-12 group-hover:rotate-[30deg] transition-transform duration-1000" />
               
               <div className="flex items-center justify-between mb-8 relative z-10">
@@ -199,17 +191,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 </div>
               </div>
               
-              <button className="w-full mt-10 bg-black text-white border-[3px] border-white py-4 font-black uppercase text-[11px] tracking-[0.4em] hover:bg-white hover:text-black transition-all shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)] active:scale-95 relative z-10 italic">
-                Withdraw Protocol
+              <button 
+                disabled={!isApproved}
+                className={`w-full mt-10 border-[3px] border-white py-4 font-black uppercase text-[11px] tracking-[0.4em] transition-all shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)] active:scale-95 relative z-10 italic ${isApproved ? 'bg-black text-white hover:bg-white hover:text-black' : 'bg-black/40 text-white/20 cursor-not-allowed border-white/20 shadow-none'}`}
+              >
+                {isApproved ? 'Withdraw Protocol' : 'Sync Required'}
               </button>
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Tabbed Missions & Rewards */}
-          <div className="lg:col-span-8 space-y-10">
+          {/* RIGHT COLUMN: Teaser Mode Logic */}
+          <div className="lg:col-span-8 space-y-10 relative">
             
-            {/* Custom Neo-Brutalist Tabs */}
-            <div className="flex border-[6px] border-black bg-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-2.5">
+            {/* LOCK OVERLAY */}
+            {!isApproved && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none p-12">
+                <div className="bg-[#ffde59] border-[6px] border-black p-10 shadow-[16px_16px_0px_0px_#000] text-center space-y-6 pointer-events-auto transform -rotate-2">
+                  <div className="w-20 h-20 bg-black border-[4px] border-[#ffde59] mx-auto flex items-center justify-center shadow-[6px_6px_0px_0px_#000]">
+                    <Lock size={40} className="text-[#ffde59]" strokeWidth={3} />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-3xl font-black uppercase italic font-display tracking-tight leading-none">Approval Pending</h3>
+                    <p className="text-black font-black text-[10px] uppercase tracking-[0.3em] opacity-60">Verification in progress</p>
+                  </div>
+                  <p className="text-black text-xs font-bold uppercase leading-relaxed max-w-xs mx-auto border-t-[3px] border-black/10 pt-6">
+                    Our team is reviewing your digital authority node. Missions and Rewards will unlock shortly.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* TAB NAV */}
+            <div className={`flex border-[6px] border-black bg-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-2.5 ${!isApproved ? 'grayscale opacity-60 pointer-events-none' : ''}`}>
               <button 
                 onClick={() => setActiveTab('missions')}
                 className={`flex-1 flex items-center justify-center space-x-4 py-5 font-black uppercase text-sm tracking-[0.3em] transition-all italic ${activeTab === 'missions' ? 'bg-[#ffde59] border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : 'hover:bg-slate-50'}`}
@@ -226,40 +239,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               </button>
             </div>
 
-            {/* Tab Panels with High-Fidelity Cards */}
-            <div className="space-y-8 min-h-[600px] animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* CONTENT AREA */}
+            <div className={`space-y-8 min-h-[600px] animate-in fade-in slide-in-from-bottom-4 duration-500 transition-all ${!isApproved ? 'grayscale opacity-40 blur-[1px] pointer-events-none select-none' : ''}`}>
               {activeTab === 'missions' ? (
                 missions.length === 0 ? (
                   <div className="bg-white border-[6px] border-black p-24 text-center shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
                     <Star size={64} className="mx-auto mb-8 text-slate-200" strokeWidth={3} />
-                    <p className="text-sm font-black uppercase tracking-[0.4em] text-black/30">Scanning for brand transmissions...</p>
+                    <p className="text-sm font-black uppercase tracking-[0.4em] text-black/30">Scanning Operational Grid...</p>
                   </div>
                 ) : (
                   missions.map((mission) => (
-                    <div key={mission.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] group hover:-translate-y-2 transition-all cursor-default">
+                    <div key={mission.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] group hover:-translate-y-1 transition-all">
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
                         <div className="space-y-5 flex-1">
                           <div className="flex items-center space-x-4">
                             <span className="bg-[#ffde59] border-[3px] border-black px-4 py-1.5 text-[10px] font-black uppercase tracking-widest italic shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                              New Deployment
+                              Production Mission
                             </span>
-                            <span className="text-[10px] font-black uppercase text-[#834bf1] tracking-[0.2em] italic border-l-[3px] border-black/10 pl-4">
-                              {new Date(mission.created_at || Date.now()).toLocaleDateString()}
+                            <span className="text-[10px] font-black uppercase text-[#834bf1] tracking-[0.2em] italic">
+                              LIVE
                             </span>
                           </div>
                           <h3 className="text-3xl font-black uppercase italic tracking-tighter font-display">{mission.title}</h3>
-                          <p className="text-sm font-bold text-black/60 leading-relaxed uppercase tracking-tight border-l-[6px] border-black/5 pl-6">
-                            {mission.description || "Operational parameters pending. Detailed brief available upon mission initiation."}
+                          <p className="text-sm font-bold text-black/60 leading-relaxed uppercase tracking-tight line-clamp-2">
+                            {mission.description}
                           </p>
                         </div>
-                        
-                        <div className="flex flex-col items-end gap-6 shrink-0 w-full md:w-auto">
-                          <div className="bg-black text-white px-8 py-5 border-[4px] border-black shadow-[6px_6px_0px_0px_#834bf1] w-full md:w-auto text-center md:text-right">
-                            <p className="text-[11px] font-black uppercase tracking-[0.4em] opacity-50 mb-1 leading-none">Yield Reward</p>
+                        <div className="flex flex-col items-end gap-4 w-full md:w-auto">
+                          <div className="bg-black text-white px-8 py-5 border-[4px] border-black shadow-[6px_6px_0px_0px_#834bf1] w-full md:w-auto text-center">
                             <p className="text-4xl font-black text-[#ffde59] italic font-display tracking-tighter">+{mission.reward_amount || 500} RC</p>
                           </div>
-                          <button className="flex items-center justify-center space-x-3 w-full md:w-auto text-[12px] font-black uppercase tracking-[0.4em] group-hover:text-[#834bf1] transition-all hover:translate-x-2 italic">
-                            <span>Initialize Mission</span>
+                          <button className="flex items-center justify-center space-x-3 w-full text-[12px] font-black uppercase tracking-[0.4em] italic group-hover:text-[#834bf1]">
+                            <span>View Brief</span>
                             <ChevronRight size={20} strokeWidth={4} />
                           </button>
                         </div>
@@ -271,31 +282,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 rewards.length === 0 ? (
                   <div className="bg-white border-[6px] border-black p-24 text-center shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
                     <Gift size={64} className="mx-auto mb-8 text-slate-200" strokeWidth={3} />
-                    <p className="text-sm font-black uppercase tracking-[0.4em] text-black/30">Rewards vault encrypted.</p>
+                    <p className="text-sm font-black uppercase tracking-[0.4em] text-black/30">Vault synchronization pending.</p>
                   </div>
                 ) : (
                   rewards.map((reward) => (
-                    <div key={reward.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] group hover:-translate-y-2 transition-all">
+                    <div key={reward.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] group hover:-translate-y-1 transition-all">
                       <div className="flex flex-col md:flex-row justify-between items-center gap-10">
                         <div className="flex items-center space-x-8 flex-1">
-                          <div className="w-24 h-24 bg-[#834bf1] border-[4px] border-black flex items-center justify-center text-white shadow-[6px_6px_0px_0px_#000] rotate-[-2deg] group-hover:rotate-0 transition-transform">
-                            <Gift size={40} strokeWidth={3} />
+                          <div className="w-20 h-20 bg-[#834bf1] border-[4px] border-black flex items-center justify-center text-white shadow-[6px_6px_0px_0px_#000] rotate-[-2deg] group-hover:rotate-0 transition-transform">
+                            <Gift size={32} strokeWidth={3} />
                           </div>
-                          <div className="space-y-2">
-                            <h3 className="text-3xl font-black uppercase italic font-display tracking-tight">{reward.title}</h3>
-                            <div className="flex items-center space-x-3">
-                              <span className="w-3 h-3 bg-[#ffde59] border-[2px] border-black"></span>
-                              <p className="text-[11px] font-black uppercase text-black/40 tracking-widest italic">Elite Tier Redeemable</p>
-                            </div>
+                          <div className="space-y-1">
+                            <h3 className="text-2xl font-black uppercase italic font-display tracking-tight">{reward.title}</h3>
+                            <p className="text-[11px] font-black uppercase text-black/40 tracking-widest italic">Elite Inventory</p>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center space-x-10 w-full md:w-auto justify-between md:justify-end">
-                          <div className="text-right">
-                             <p className="text-[11px] font-black uppercase tracking-[0.3em] opacity-40 mb-1">Asset Cost</p>
-                             <p className="text-3xl font-black text-[#834bf1] italic tracking-tighter">-{reward.cost} RC</p>
-                          </div>
-                          <button className="bg-black text-white px-10 py-5 border-[4px] border-black font-black uppercase text-[12px] tracking-[0.4em] hover:bg-[#ffde59] hover:text-black transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none italic">
+                        <div className="flex items-center space-x-10">
+                          <p className="text-3xl font-black text-[#834bf1] italic tracking-tighter">{reward.cost} RC</p>
+                          <button className="bg-black text-white px-8 py-4 border-[4px] border-black font-black uppercase text-[12px] tracking-[0.4em] italic">
                             Redeem
                           </button>
                         </div>
@@ -312,11 +316,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       <footer className="mt-32 border-t-[6px] border-black p-12 text-center bg-slate-50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <p className="text-[11px] font-black uppercase tracking-[0.6em] text-black/30 italic">
-            REELYWOOD STUDIO • SECURE CREATOR ENVIRONMENT • VER 4.2.0-STABLE
+            REELYWOOD STUDIO • SECURE CREATOR ENVIRONMENT • VER 4.8.2
           </p>
           <div className="flex items-center space-x-8 opacity-40">
              <div className="h-[2px] w-12 bg-black"></div>
-             <p className="text-[10px] font-black uppercase tracking-widest">End-to-End Encryption Enabled</p>
+             <p className="text-[10px] font-black uppercase tracking-widest italic">Encrypted Connection Established</p>
           </div>
         </div>
       </footer>
