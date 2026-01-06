@@ -2,13 +2,16 @@
 import { supabase } from '../lib/clients';
 import { auth } from '../lib/firebase';
 
+const checkClient = () => {
+  if (!supabase) {
+    throw new Error("Database connection unavailable. Check your Supabase environment variables.");
+  }
+};
+
 // --- ADMIN ACTIONS ---
 
-/**
- * 1. Fetch Pending Requests
- * Retrieves all users from Supabase with a 'pending' card status.
- */
 export const fetchPendingUsers = async () => {
+  checkClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -17,11 +20,8 @@ export const fetchPendingUsers = async () => {
   return data;
 };
 
-/**
- * 2. Approve User (Secure)
- * Uses the PostgreSQL RPC function to verify admin authority and issue a card.
- */
 export const approveUser = async (targetUid) => {
+  checkClient();
   const currentUser = auth.currentUser;
   if (!currentUser) throw new Error("Authentication required: No admin session found.");
 
@@ -43,11 +43,8 @@ export const approveUser = async (targetUid) => {
 
 // --- USER ACTIONS ---
 
-/**
- * 3. Apply for Card
- * Initiates the application process for the authenticated user.
- */
 export const applyForCard = async (userUid) => {
+  checkClient();
   const { error } = await supabase
     .from('profiles')
     .update({ card_status: 'pending' })
@@ -55,25 +52,20 @@ export const applyForCard = async (userUid) => {
   if (error) throw error;
 };
 
-/**
- * 4. Get My Profile
- * Fetches the current user's profile including coins and card status.
- */
 export const getMyProfile = async (userUid) => {
+  checkClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('firebase_uid', userUid)
     .single();
   
-  if (error && error.code !== 'PGRST116') throw error; // PGRST116 is 'no rows returned'
+  if (error && error.code !== 'PGRST116') throw error;
   return data;
 };
 
-/**
- * 5. Create Mission (Admin)
- */
 export const createAndAssignMission = async (missionData, targetUserUid = null) => {
+  checkClient();
   const { data: mission, error } = await supabase
     .from('missions')
     .insert([{
