@@ -8,7 +8,14 @@ export const CTA: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const handleApply = async () => {
-    // 1. Check Login
+    // 1. Database Connection Safety Check
+    if (!supabase) {
+      console.error("❌ Supabase client is missing or uninitialized.");
+      alert("System Error: Database connection failed. Please check your configuration.");
+      return;
+    }
+
+    // 2. Check Login State
     if (!auth.currentUser) {
       alert("Please log in first to apply for a Creator Card.");
       return;
@@ -18,8 +25,7 @@ export const CTA: React.FC = () => {
     console.log("🔥 Sending request to Supabase...");
 
     try {
-      // 2. Send Update to Supabase
-      // Assuming 'profiles' table has 'card_status' column and 'firebase_uid' for matching
+      // 3. Send Update to Supabase
       const { error } = await supabase
         .from('profiles')
         .update({ card_status: 'pending' })
@@ -27,12 +33,12 @@ export const CTA: React.FC = () => {
 
       if (error) throw error;
 
-      // 3. Success!
+      // 4. Success Protocol
       alert("✅ Application Sent! Your status is now PENDING.");
       console.log("✅ Success! Database updated.");
       
     } catch (error: any) {
-      console.error("❌ Error:", error);
+      console.error("❌ Error during Supabase update:", error);
       alert("Error: " + error.message);
     } finally {
       setLoading(false);
@@ -43,10 +49,10 @@ export const CTA: React.FC = () => {
     <section id="contact" className="py-48 px-6 scroll-mt-24 overflow-hidden bg-white dark:bg-[#0a0a0a] transition-colors duration-500">
       <div className="max-w-7xl mx-auto bg-[#ffde59] border-[6px] border-black relative shadow-[24px_24px_0px_0px_#000000] dark:shadow-[24px_24px_0px_0px_#834bf1] p-12 lg:p-32 overflow-hidden group transition-all duration-500">
         
-        {/* Background Decorative Pattern */}
+        {/* Background Grid Accent */}
         <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#000_2px,transparent_2px)] [background-size:20px_20px]"></div>
 
-        {/* Dynamic Curved Loop Marquee */}
+        {/* Dynamic Curved Loop Backgrounds */}
         <div className="absolute top-0 left-0 w-full opacity-5 pointer-events-none transform -translate-y-12 z-0">
           <CurvedLoop 
             marqueeText="SCALE ✦ AUTOMATE ✦ DOMINATE ✦ REELYWOOD ✦"
@@ -68,22 +74,20 @@ export const CTA: React.FC = () => {
               Ready to Claim Your <br /> 
               <span className="text-[#834bf1] drop-shadow-[6px_6px_0px_#fff]">Creator Card?</span>
             </h2>
-            <p className="text-black text-xl md:text-2xl max-w-3xl mx-auto font-black uppercase italic tracking-tight border-l-[8px] border-black dark:border-white pl-8 py-4 bg-white/10 backdrop-blur-sm">
+            <p className="text-black text-xl md:text-2xl max-w-3xl mx-auto font-black uppercase italic tracking-tight opacity-90 border-l-[8px] border-black pl-8 py-4 bg-white/10 backdrop-blur-sm">
               Stop guessing. Start Scaling. Join the exclusive network of creators monetizing their influence.
             </p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-10 pt-10">
-            {/* NO <form> tags. Simple button as requested. */}
+            {/* The CRITICAL Apply Button: Pure logic, no form, no type submit */}
             <button 
               onClick={handleApply}
               disabled={loading}
               className="w-full sm:w-auto bg-[#834bf1] text-white px-14 py-8 border-[5px] border-black shadow-[10px_10px_0px_0px_#000000] font-black text-sm uppercase tracking-[0.4em] transition-all hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none flex items-center justify-center space-x-5 group/btn disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Calendar size={22} className="group-hover/btn:rotate-12 transition-transform" />
-              <span className="italic font-display">
-                {loading ? "Processing..." : "Apply for Card Now"}
-              </span>
+              <span className="italic font-display">{loading ? "Processing..." : "Apply for Card Now"}</span>
             </button>
           </div>
           
@@ -91,17 +95,17 @@ export const CTA: React.FC = () => {
             <div className="flex -space-x-5">
                {[1, 2, 3, 4, 5, 6].map(i => (
                 <div key={i} className="w-14 h-14 border-[4px] border-black bg-white overflow-hidden shadow-[4px_4px_0px_#000] transition-transform hover:scale-110 hover:z-20 cursor-help">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=partner${i + 40}`} alt="Partner" className="w-full h-full object-cover" />
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=partner${i + 50}`} alt="Partner" className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
             <div className="bg-black text-white px-6 py-2 border-[2px] border-black font-black uppercase text-[10px] tracking-[0.6em] italic">
-              ✦ 100% Secure Production Node ✦
+              ✦ 100% Performance Guarantee ✦
             </div>
           </div>
         </div>
 
-        {/* Decorative Sparkles */}
+        {/* Corner Sparkle Decorations */}
         <div className="absolute top-12 left-12 text-black animate-bounce hidden lg:block opacity-40">
           <Sparkles size={64} />
         </div>

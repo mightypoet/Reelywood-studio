@@ -11,15 +11,18 @@ interface HeroProps {
 export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => {
   const [isPending, setIsPending] = useState(false);
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const handleApply = async () => {
+    // 1. Database Connection Safety Check
+    if (!supabase) {
+      console.error("❌ Supabase client is missing or uninitialized.");
+      alert("System Error: Database connection failed.");
+      return;
+    }
+
+    // 2. Auth Guard
     if (!auth.currentUser) {
-      alert("Please log in to apply.");
-      onAuthClick(); // Redirect to login if not authenticated
+      alert("Please log in first to apply for a Creator Card.");
+      onAuthClick(); // Redirect to login
       return;
     }
 
@@ -27,6 +30,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
     setIsPending(true);
 
     try {
+      // 3. Update Profile Protocol
       const { error } = await supabase
         .from('profiles')
         .update({ card_status: 'pending' })
@@ -36,11 +40,11 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
         console.error("❌ Error:", error);
         alert("Error: " + error.message);
       } else {
-        console.log("✅ Success!");
-        alert("Application Sent Successfully! Check the Admin Panel.");
+        console.log("✅ Success! Database updated.");
+        alert("✅ Application Sent! Your status is now PENDING.");
       }
     } catch (err: any) {
-      console.error("❌ Error:", err);
+      console.error("❌ Unexpected Error:", err);
       alert("Error: " + (err.message || "Unknown error"));
     } finally {
       setIsPending(false);
@@ -83,7 +87,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             </p>
 
             <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-8">
-              {/* PRIMARY CTA: Apply for card (Replaces Enter Creator Hub for conversion focus) */}
+              {/* PRIMARY CTA: Apply for card - No <form> wrapping, direct handleApply call */}
               <button 
                 onClick={handleApply}
                 disabled={isPending}
