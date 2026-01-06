@@ -1,12 +1,9 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
   signOut, 
-  User,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  User
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { syncUserToSupabase } from '../utils/authSync';
@@ -27,8 +24,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        // Ensure user is synced whenever auth state changes to a valid user
-        await syncUserToSupabase(currentUser);
+        // CRITICAL: Guarantee synchronization every time auth state is resolved to a user
+        try {
+          await syncUserToSupabase(currentUser);
+        } catch (err) {
+          console.error("Sync trigger failed in AuthProvider:", err);
+        }
       }
       setUser(currentUser);
       setLoading(false);
@@ -40,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
-        // Explicit manual sync right after login for immediate data availability
+        // Immediate explicit sync post-login for faster response
         await syncUserToSupabase(result.user);
       }
     } catch (error) {
