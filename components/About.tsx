@@ -4,6 +4,7 @@ import { Sparkles, CheckCircle, Loader2, PartyPopper } from 'lucide-react';
 import { ThreeDCard } from './ThreeDCard';
 import { CreatorForm } from './CreatorForm';
 import { db } from '../lib/firebase';
+import { applyForCard } from '../services/backend';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
@@ -57,29 +58,23 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
     setShowToast(true);
     setIsSuccess(false);
     
-    // Safety timer to ensure loader doesn't run > 5 seconds
-    const loadingTimeout = setTimeout(() => {
-      if (!isSuccess) setIsSubmitting(false);
-    }, 5000);
-
     try {
+      // 1. Log to legacy Firebase for real-time tracking
       await addDoc(collection(db, 'creator_applications'), {
         ...data,
         userId: user?.uid || null,
         status: 'pending',
         createdAt: serverTimestamp(),
-        verifiedBy: null,
-        verificationDate: null,
-        emailSent: false,
-        adminNotes: '',
-        notified: false
       });
+
+      // 2. Initiate Supabase Sync if user is authenticated
+      if (user?.uid) {
+        await applyForCard(user.uid);
+      }
       
-      clearTimeout(loadingTimeout);
       setIsSubmitting(false);
       setIsSuccess(true);
       
-      // Auto-dismiss success popup after exactly 5 seconds and refresh form
       setTimeout(() => {
         setIsSuccess(false);
         setShowToast(false);
@@ -88,7 +83,6 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
 
     } catch (error) {
       console.error("Submission Node Error:", error);
-      clearTimeout(loadingTimeout);
       setIsSubmitting(false);
       setShowToast(false);
       setIsSuccess(false);
