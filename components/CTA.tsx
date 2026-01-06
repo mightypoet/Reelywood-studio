@@ -8,32 +8,50 @@ export const CTA: React.FC = () => {
   const [isPending, setIsPending] = useState(false);
 
   const handleApply = async () => {
-    // 1. Check if user is logged in
-    if (!auth.currentUser) {
-      alert("Please log in to apply!");
+    // STEP 1: Aggressive Debugging Log
+    console.log("🔴 Button Clicked: Apply for Creator Card initiated.");
+
+    // SAFETY CHECK: Ensure supabase client is available before any operation
+    if (!supabase) {
+      console.error("❌ SUPABASE MISSING: Database client not initialized.");
+      alert("Database connection error. Please try again later.");
       return;
     }
 
-    // 2. Execute Supabase update
     try {
+      // STEP 2: Check for Authenticated User
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        console.warn("⚠️ AUTH CHECK: No user session detected.");
+        alert("Please log in to apply for your Creator Card!");
+        return;
+      }
+
+      console.log("🟢 User Authenticated:", currentUser.email, "UID:", currentUser.uid);
+
+      // STEP 3: Execute Database Update
       setIsPending(true);
+      
       const { error } = await supabase
         .from('profiles')
         .update({ card_status: 'pending' })
-        .eq('firebase_uid', auth.currentUser.uid);
+        .eq('firebase_uid', currentUser.uid);
 
       if (error) {
-        console.error("❌ UPDATE FAILED:", error);
+        console.error("❌ SUPABASE ERROR:", error.message, error);
         alert("Database Error: " + error.message);
         setIsPending(false);
         return;
       }
 
-      // 3. Success feedback
-      alert("Application Sent! Check back later.");
-      console.log("✅ Application successfully updated to pending!");
-    } catch (err) {
-      console.error("CRITICAL ERROR during application:", err);
+      // STEP 4: Success Protocol
+      console.log("✅ SYNC SUCCESS: card_status set to 'pending' in Supabase.");
+      alert("Application Sent! Your status is now PENDING. Check back later.");
+      
+    } catch (err: any) {
+      console.error("☢️ CRITICAL FAILURE:", err);
+      alert("Application Failed: " + (err.message || "Unknown error"));
       setIsPending(false);
     }
   };
