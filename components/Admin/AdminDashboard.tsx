@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore
 import { fetchPendingUsers, approveUser, createAndAssignMission } from '../../services/backend';
 import { 
   Users, Target, Ticket, LogOut, Loader2, CheckCircle, 

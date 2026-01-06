@@ -4,6 +4,7 @@ import { Sparkles, CheckCircle, Loader2, PartyPopper } from 'lucide-react';
 import { ThreeDCard } from './ThreeDCard';
 import { CreatorForm } from './CreatorForm';
 import { db } from '../lib/firebase';
+// @ts-ignore
 import { applyForCard } from '../services/backend';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';

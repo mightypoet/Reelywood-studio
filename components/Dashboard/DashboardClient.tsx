@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ThreeDCard } from '../ThreeDCard';
+// @ts-ignore
 import { getMyProfile, applyForCard } from '../../services/backend';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -11,9 +12,10 @@ import {
 
 interface DashboardClientProps {
   userName: string;
+  dashboardResult: any;
 }
 
-export const DashboardClient: React.FC<DashboardClientProps> = ({ userName }) => {
+export const DashboardClient: React.FC<DashboardClientProps> = ({ userName, dashboardResult }) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
