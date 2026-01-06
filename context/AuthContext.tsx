@@ -22,18 +22,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Listen for Firebase Auth changes
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        // CRITICAL: Guarantee synchronization every time auth state is resolved to a user
+        console.log("Auth State Changed: User Logged In");
+        
+        // CRITICAL: Call sync function immediately upon login or session refresh
         try {
           await syncUserToSupabase(currentUser);
         } catch (err) {
-          console.error("Sync trigger failed in AuthProvider:", err);
+          console.error("Failed to trigger sync from AuthProvider:", err);
         }
+      } else {
+        console.log("Auth State Changed: User Logged Out");
       }
+      
       setUser(currentUser);
       setLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -41,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
-        // Immediate explicit sync post-login for faster response
+        console.log("Google Login Successful, preparing sync...");
         await syncUserToSupabase(result.user);
       }
     } catch (error) {
@@ -53,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await signOut(auth);
+      console.log("Sign out successful");
     } catch (error) {
       console.error("Logout Error:", error);
     }
