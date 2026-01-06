@@ -1,5 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './lib/firebase';
+import { supabase } from './lib/clients';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -35,6 +38,68 @@ const MainContent: React.FC = () => {
     return 'light';
   });
   const { user } = useAuth();
+
+  // Root level Auth and Sync Logic
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        console.log("🔥 Firebase User Detected:", user.email);
+
+        // --- DIRECT SYNC LOGIC START ---
+        try {
+          if (!supabase) {
+            console.error("❌ Supabase client not initialized.");
+            return;
+          }
+
+          // 1. Check if user exists
+          const { data: existingUser, error: fetchError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('firebase_uid', user.uid)
+            .single();
+
+          if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error("❌ Error fetching profile:", fetchError);
+          }
+
+          // 2. If no user, create them
+          if (!existingUser) {
+            console.log("👤 User missing in Supabase. Creating now...");
+            
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert([{
+                firebase_uid: user.uid,
+                email: user.email || "no-email",
+                role: 'user',
+                card_status: 'none',
+                reelcoins: 0,
+                display_name: user.displayName || 'Agent ' + user.uid.substring(0, 5),
+                photo_url: user.photoURL || null
+              }]);
+
+            if (insertError) {
+              console.error("❌ INSERT FAILED:", insertError);
+              alert("Database Error: " + insertError.message); // This will tell us WHY
+            } else {
+              console.log("✅ User successfully created in Supabase!");
+            }
+          } else {
+            console.log("✅ User already exists in Supabase.");
+          }
+        } catch (err) {
+          console.error("CRITICAL ERROR:", err);
+        }
+        // --- DIRECT SYNC LOGIC END ---
+
+      } else {
+        console.log("💤 User logged out");
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     setIsVisible(true);

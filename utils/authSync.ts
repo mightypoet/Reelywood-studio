@@ -4,67 +4,65 @@ import { User } from 'firebase/auth';
 /**
  * Robustly synchronizes a Firebase User to the Supabase 'profiles' table.
  * 
- * Step 1: Logs "SYNC: Starting sync for user..." with the user's UID.
- * Step 2: Checks if the user already exists.
- * Step 3: If missing, inserts them with default values.
+ * Logic:
+ * 1. Log initiation.
+ * 2. Check for existing profile by firebase_uid.
+ * 3. If missing, insert new profile with default business values.
+ * 4. Log outcomes for terminal debugging.
  */
-export const syncUserToSupabase = async (firebaseUser: User) => {
-  if (!firebaseUser) {
-    console.log("SYNC: No user object detected. Skipping sync.");
+export const syncUserToSupabase = async (user: User) => {
+  if (!user) {
+    console.log("SYNC: No user detected for synchronization.");
     return;
   }
 
   if (!supabase) {
-    console.error("SYNC ERROR: Supabase client is null. Verify VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set correctly.");
+    console.error("SYNC: Critical Error - Supabase client is not initialized.");
     return;
   }
 
-  const { uid, email } = firebaseUser;
-  // Handle case where email might be null (e.g., anonymous or phone auth)
-  const safeEmail = email || "no-email@provided.com";
-
-  console.log(`SYNC: Starting sync for user [${uid}]`);
+  console.log(`SYNC: Starting sync for user... ${user.uid}`);
 
   try {
-    console.log("Checking user...");
-    // 1. Check if the user exists in Supabase
-    const { data, error: fetchError } = await supabase
+    // Check if user already exists in the profiles table
+    const { data, error } = await supabase
       .from('profiles')
-      .select('firebase_uid')
-      .eq('firebase_uid', uid);
+      .select('id')
+      .eq('firebase_uid', user.uid)
+      .single();
 
-    if (fetchError) {
-      console.error("SYNC ERROR during profile check:", fetchError.message);
-      return;
-    }
-
-    // 2. If the user is found, exit
-    if (data && data.length > 0) {
+    if (data) {
       console.log("SYNC: User already exists.");
       return;
     }
 
-    // 3. If the user is missing, perform INSERT
-    console.log("User missing, creating...");
+    // PGRST116 means no rows were found, which is what we expect for a new user
+    if (error && error.code !== 'PGRST116') {
+      console.error("SYNC: Error querying Supabase profile node:", error.message);
+      return;
+    }
+
+    // User does not exist, initiate creation protocol
+    console.log("SYNC: User missing from database. Initiating INSERT protocol...");
+    
     const { error: insertError } = await supabase
       .from('profiles')
       .insert([{
-        firebase_uid: uid,
-        email: safeEmail,
+        firebase_uid: user.uid,
+        email: user.email || "no-email",
         role: 'user',
         card_status: 'none',
         reelcoins: 0,
-        display_name: firebaseUser.displayName || 'Agent ' + uid.substring(0, 5),
-        photo_url: firebaseUser.photoURL || null
+        display_name: user.displayName || 'Agent ' + user.uid.substring(0, 5),
+        photo_url: user.photoURL || null
       }]);
 
     if (insertError) {
-      console.error("SYNC ERROR during profile creation:", insertError.message);
-      console.log("Error Detail:", insertError);
+      console.error("SYNC: Failed to create new user in Supabase:", insertError.message);
     } else {
-      console.log("User created!");
+      console.log("SYNC: Created new user in Supabase!");
     }
   } catch (err) {
-    console.error("SYNC CRITICAL EXCEPTION:", err);
+    console.error("SYNC: Unexpected critical failure in sync logic:", err);
   }
 };

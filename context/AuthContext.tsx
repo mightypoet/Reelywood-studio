@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   onAuthStateChanged, 
@@ -6,7 +7,6 @@ import {
   User
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
-import { syncUserToSupabase } from '../utils/authSync';
 
 interface AuthContextType {
   user: User | null;
@@ -23,23 +23,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     /**
-     * Auth State Change Listener
-     * Handles both initial session loading and live login/logout events.
+     * Authentication State Listener
+     * Fires on app load and whenever the user signs in or out.
+     * Synchronization is now handled at the App.tsx root level.
      */
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        console.log("Auth State Changed: User Logged In");
-        
-        // IMMEDIATELLY call syncUserToSupabase(user) whenever user is not null.
-        try {
-          await syncUserToSupabase(currentUser);
-        } catch (syncErr) {
-          console.error("AuthContext: Failed to trigger background sync:", syncErr);
-        }
-      } else {
-        console.log("Auth State Changed: User Logged Out");
-      }
-      
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
@@ -49,14 +37,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result.user) {
-        console.log("Google Login Successful, initiating sync protocol...");
-        // Manual trigger after login for immediate data availability
-        await syncUserToSupabase(result.user);
-      }
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error("Google Auth Error:", error);
+      console.error("AUTH: Google Auth Error:", error);
       throw error;
     }
   };
@@ -64,9 +47,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await signOut(auth);
-      console.log("Sign out successful");
     } catch (error) {
-      console.error("Logout Error:", error);
+      console.error("AUTH: Logout Error:", error);
     }
   };
 
