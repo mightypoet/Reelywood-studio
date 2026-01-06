@@ -69,6 +69,7 @@ export const BrandDNA: React.FC = () => {
                 className={`${pillar.bg} border-[4px] border-black p-10 shadow-[10px_10px_0px_0px_#000] dark:shadow-[10px_10px_0px_0px_#834bf1] group hover:-translate-x-1 hover:-translate-y-1 transition-all flex flex-col justify-between h-[320px] ${i === 2 ? 'md:col-span-2' : ''}`}
               >
                 <div className="w-16 h-16 bg-white border-[3px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] group-hover:scale-110 transition-transform">
+                   {/* @ts-ignore */}
                    {React.cloneElement(pillar.icon as React.ReactElement, { className: "text-black w-8 h-8" } as any)}
                 </div>
                 <div className="space-y-4">
