@@ -8,48 +8,39 @@ export const CTA: React.FC = () => {
   const [isPending, setIsPending] = useState(false);
 
   const handleApply = async () => {
-    // 1. Aggressive Debugging Log
-    console.log("🔴 Button Clicked!");
+    // Check for user existence
+    if (!auth.currentUser) {
+      alert("Please log in to apply.");
+      return;
+    }
 
-    // 2. Database Connection Safety Check
+    // Verify database client
     if (!supabase) {
-      console.error("❌ SUPABASE MISSING: Database client not initialized.");
+      console.error("❌ Database connection error");
       alert("Database connection error");
       return;
     }
 
+    console.log("🔥 Sending request to Supabase...");
+    setIsPending(true);
+
     try {
-      // 3. Auth Guard
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.warn("⚠️ AUTH CHECK: No user session detected.");
-        alert("Please login first");
-        return;
-      }
-
-      console.log("🔥 Sending request to Supabase...");
-
-      // 4. Execute Update Protocol
-      setIsPending(true);
-      
       const { error } = await supabase
         .from('profiles')
         .update({ card_status: 'pending' })
-        .eq('firebase_uid', currentUser.uid);
+        .eq('firebase_uid', auth.currentUser.uid);
 
       if (error) {
         console.error("❌ Error:", error);
         alert("Error: " + error.message);
         setIsPending(false);
-        return;
+      } else {
+        console.log("✅ Success!");
+        alert("Application Sent Successfully! Check the Admin Panel.");
+        setIsPending(false);
       }
-
-      // 5. Success Protocol
-      console.log("✅ Success!");
-      alert("Application Sent Successfully! Check the Admin Panel.");
-      
     } catch (err: any) {
-      console.error("☢️ CRITICAL FAILURE:", err);
+      console.error("❌ Error:", err);
       alert("Error: " + (err.message || "Unknown error"));
       setIsPending(false);
     }
@@ -59,10 +50,10 @@ export const CTA: React.FC = () => {
     <section id="contact" className="py-48 px-6 scroll-mt-24 overflow-hidden bg-white dark:bg-[#0a0a0a] transition-colors duration-500">
       <div className="max-w-7xl mx-auto bg-[#ffde59] border-[6px] border-black relative shadow-[24px_24px_0px_0px_#000000] dark:shadow-[24px_24px_0px_0px_#834bf1] p-12 lg:p-32 overflow-hidden group transition-all duration-500">
         
-        {/* Background Grid Accent */}
+        {/* Background Decorative Pattern */}
         <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#000_2px,transparent_2px)] [background-size:20px_20px]"></div>
 
-        {/* Dynamic Curved Loop Backgrounds */}
+        {/* Dynamic Curved Loop Marquee */}
         <div className="absolute top-0 left-0 w-full opacity-5 pointer-events-none transform -translate-y-12 z-0">
           <CurvedLoop 
             marqueeText="SCALE ✦ AUTOMATE ✦ DOMINATE ✦ REELYWOOD ✦"
@@ -84,21 +75,26 @@ export const CTA: React.FC = () => {
               Ready to automate <br /> 
               your brand's <span className="text-[#834bf1] drop-shadow-[6px_6px_0px_#fff]">growth</span>?
             </h2>
-            <p className="text-black text-xl md:text-2xl max-w-3xl mx-auto font-black uppercase italic tracking-tight opacity-90 border-l-[8px] border-black pl-8 py-4 bg-white/10 backdrop-blur-sm">
+            <p className="text-black text-xl md:text-2xl max-w-3xl mx-auto font-black uppercase italic tracking-tight border-l-[8px] border-black dark:border-white pl-8 py-4 bg-white/10 backdrop-blur-sm">
               Stop guessing. Start Scaling. Partner with the agency that engineers virality through data.
             </p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-10 pt-10">
+            {/* The Apply Button - Simple, Functional, and Clean - No <form> tag */}
             <button 
               onClick={handleApply}
-              className="w-full sm:w-auto bg-[#834bf1] text-white px-14 py-8 border-[5px] border-black shadow-[10px_10px_0px_0px_#000000] font-black text-xs uppercase tracking-[0.4em] transition-all hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none flex items-center justify-center space-x-5 group/btn"
+              disabled={isPending}
+              type="button"
+              className="w-full sm:w-auto bg-[#834bf1] text-white px-14 py-8 border-[5px] border-black shadow-[10px_10px_0px_0px_#000000] font-black text-sm uppercase tracking-[0.4em] transition-all hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none flex items-center justify-center space-x-5 group/btn disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Calendar size={22} className="group-hover/btn:rotate-12 transition-transform" />
-              <span className="italic font-display">{isPending ? "Pending..." : "Apply for creator card"}</span>
+              <span className="italic font-display">
+                {isPending ? "Syncing..." : "Apply for creator card"}
+              </span>
             </button>
             
-            <button className="w-full sm:w-auto bg-white text-black border-[5px] border-black px-14 py-8 shadow-[10px_10px_0px_0px_#000000] font-black text-xs uppercase tracking-[0.4em] hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#834bf1] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center space-x-5 group/btn2">
+            <button className="w-full sm:w-auto bg-white text-black border-[5px] border-black px-14 py-8 shadow-[10px_10px_0px_0px_#000000] font-black text-sm uppercase tracking-[0.4em] hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[20px_20px_0px_0px_#834bf1] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center space-x-5 group/btn2">
               <span className="italic font-display">View Mission Archive</span>
               <ArrowRight size={22} strokeWidth={3} className="group-hover/btn2:translate-x-2 transition-transform" />
             </button>
@@ -108,7 +104,7 @@ export const CTA: React.FC = () => {
             <div className="flex -space-x-5">
                {[1, 2, 3, 4, 5, 6].map(i => (
                 <div key={i} className="w-14 h-14 border-[4px] border-black bg-white overflow-hidden shadow-[4px_4px_0px_#000] transition-transform hover:scale-110 hover:z-20 cursor-help">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=partner${i + 20}`} alt="Partner" className="w-full h-full object-cover" />
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=partner${i + 40}`} alt="Partner" className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
@@ -118,7 +114,7 @@ export const CTA: React.FC = () => {
           </div>
         </div>
 
-        {/* Corner Sparkle Decorations */}
+        {/* Decorative Sparkles */}
         <div className="absolute top-12 left-12 text-black animate-bounce hidden lg:block opacity-40">
           <Sparkles size={64} />
         </div>
