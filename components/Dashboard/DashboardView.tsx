@@ -269,10 +269,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   // --- REAL-TIME NOTIFICATION LISTENER ---
   useEffect(() => {
+    // FIX: Check if supabase exists before trying to use it
     if (!currentUser || !supabase) return;
 
     const channel = supabase
-      .channel(`notifications:${currentUser.uid}`)
+      .channel('public:notifications')
       .on(
         'postgres_changes',
         {
