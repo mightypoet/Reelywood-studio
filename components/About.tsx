@@ -50,59 +50,39 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
   };
 
   const handleSubmit = async (data: CreatorFormData) => {
-    if (!auth.currentUser) {
-      alert("Please log in first to apply for a Creator Card.");
-      return;
-    }
+    // Authenticated path: Direct Sync
+    if (auth.currentUser && supabase) {
+      setIsSubmitting(true);
+      try {
+        const updates = {
+          card_status: 'pending',
+          display_name: data.fullName,
+          platform: data.platform,
+          niche: data.niche,
+          handle: data.handle,
+          followers: data.followers,
+          phone: data.phone,
+          email: data.email,
+          city: data.city,
+          updated_at: new Date().toISOString(),
+        };
 
-    if (!supabase) {
-      console.error("Supabase client is missing");
-      alert("System Error: Database connection failed.");
-      return;
-    }
+        const { error } = await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('firebase_uid', auth.currentUser.uid);
 
-    setIsSubmitting(true);
-    setShowToast(true);
-    setIsSuccess(false);
-
-    console.log("🔥 Starting Supabase Submission...");
-
-    try {
-      const updates = {
-        card_status: 'pending',
-        display_name: data.fullName,
-        platform: data.platform,
-        niche: data.niche,
-        handle: data.handle,
-        followers: data.followers,
-        phone: data.phone,
-        email: data.email,
-        city: data.city,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('firebase_uid', auth.currentUser.uid);
-
-      if (error) throw error;
-
-      console.log("✅ Database Updated!");
-      setIsSuccess(true);
-      
-      setTimeout(() => {
-        setIsSuccess(false);
-        setShowToast(false); 
-        setFormData({ ...initialFormState }); 
-      }, 5000);
-
-    } catch (error: any) {
-      console.error("❌ Submission Error:", error);
-      alert("Error saving application: " + error.message);
-      setShowToast(false);
-    } finally {
-      setIsSubmitting(false);
+        if (error) throw error;
+        setIsSuccess(true);
+        setShowToast(true);
+      } catch (error: any) {
+        console.error("❌ Submission Error:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Anonymous path: Handled by CreatorForm's local storage logic
+      console.log("📝 Anonymous Submission Cached locally.");
     }
   };
 
@@ -144,15 +124,6 @@ export const About: React.FC<AboutProps> = ({ onAcademyClick }) => {
 
           <div className="order-1 lg:order-2 w-full">
             <div className="bg-white border-[4px] border-black p-8 sm:p-12 shadow-[12px_12px_0px_0px_#000000] relative min-h-[500px] flex flex-col justify-center transition-colors duration-500">
-              {isSuccess && (
-                <div className="absolute inset-0 z-50 bg-[#834bf1] flex flex-col items-center justify-center text-center p-8 animate-in fade-in duration-500">
-                  <CheckCircle size={64} className="text-white mb-6 animate-bounce" />
-                  <h3 className="text-3xl font-black uppercase tracking-tight text-white mb-2">Authenticated</h3>
-                  <p className="text-white/80 text-[10px] font-black uppercase tracking-[0.3em]">Identity Node Locked In</p>
-                  <p className="text-white/60 text-[10px] mt-4 uppercase font-bold">Refreshing form in 5 seconds...</p>
-                </div>
-              )}
-
               <div className="absolute -top-6 -right-6 bg-[#ffde59] text-black border-[4px] border-black p-6 shadow-[6px_6px_0px_0px_#000000] z-10 flex flex-col items-center min-w-[140px]">
                 <h3 className="text-2xl font-black uppercase tracking-tighter leading-none mb-1 font-display">{waitlistCount}+</h3>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Verified Users</p>

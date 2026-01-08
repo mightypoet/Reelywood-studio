@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CreatorFormData } from './About';
-import { ChevronRight, Loader2, ArrowRight } from 'lucide-react';
+import { ChevronRight, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 interface CreatorFormProps {
   onUpdate: (data: Partial<CreatorFormData>) => void;
@@ -23,6 +23,7 @@ const initialData: CreatorFormData = {
 
 export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, isSubmitting, externalData, onAcademyClick }) => {
   const [data, setData] = useState<CreatorFormData>(initialData);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Sync internal state if parent resets data
   useEffect(() => {
@@ -42,9 +43,49 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
     e.preventDefault();
     if (isSubmitting) return;
 
-    // Trigger parent submission logic (Supabase Sync + UI states)
+    // Validation Check
+    if (!data.fullName || !data.email || !data.handle) {
+      alert("⚠️ DATA ERROR: Identity fields must be populated.");
+      return;
+    }
+
+    // Cache application for later sync after login
+    localStorage.setItem('pending_application', JSON.stringify(data));
+    
+    // Trigger submission logic
+    setIsSubmitted(true);
     onSubmit(data);
   };
+
+  const handleEnterHub = () => {
+    window.history.pushState({}, '', '/dashboard');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (isSubmitted) {
+    return (
+      <div className="space-y-8 py-12 text-center animate-in fade-in zoom-in duration-500">
+        <div className="w-20 h-20 bg-emerald-500 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] mx-auto flex items-center justify-center -rotate-6">
+          <CheckCircle2 size={40} className="text-white" strokeWidth={3} />
+        </div>
+        <div className="space-y-3">
+          <h3 className="text-4xl font-black uppercase italic tracking-tighter font-display text-black">Pre-Approved</h3>
+          <p className="text-xs font-black uppercase tracking-[0.3em] text-black/40">Identity Node Provisionally Linked</p>
+        </div>
+        <p className="text-sm font-bold uppercase leading-relaxed text-black/60 max-w-xs mx-auto border-t-[3px] border-black/10 pt-6">
+          Your credentials have been cached. Verify your account in the hub to finalize the deployment.
+        </p>
+        <button 
+          onClick={handleEnterHub}
+          className="w-full bg-[#834bf1] text-white py-6 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] font-black uppercase tracking-[0.4em] text-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center space-x-4 group"
+        >
+          <span>Enter Reelywood</span>
+          <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" strokeWidth={3} />
+        </button>
+      </div>
+    );
+  }
 
   const platforms = [
     { id: 'Instagram' }, { id: 'YouTube' }, { id: 'LinkedIn' }, { id: 'X' }, { id: 'Snapchat' }
