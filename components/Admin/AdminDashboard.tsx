@@ -6,7 +6,7 @@ import {
   Check, X, Shield, Plus, Moon, Sun, Trash2,
   Loader2, ArrowRight, Activity, Terminal,
   Target, FileText, ArrowDownLeft, ArrowUpRight,
-  Clock, Bell, Megaphone, Info
+  Clock, Bell, Megaphone, Info, CheckCircle2
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -58,7 +58,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   }, [darkMode]);
 
   const fetchAllData = async () => {
-    console.log("🛠️ [ADMIN] Initializing Global Data Fetch...");
     setLoading(true);
     try {
       if (!supabase) throw new Error("Supabase client not initialized");
@@ -82,9 +81,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       setVouchers(rewardsRes.data || []);
       setTransactions(transRes.data || []);
       setAdminLogs(logsRes.data || []);
-
-      console.log("✅ [ADMIN] Data Sync Successful");
-
     } catch (error: any) {
       console.error("❌ [ADMIN] Fetch Error:", error.message);
     } finally {
@@ -92,12 +88,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleApprove = async (uid: string) => {
+  const handleUpdateStatus = async (uid: string, status: string) => {
     setSubmitting(true);
     try {
       const { error } = await supabase!
         .from('profiles')
-        .update({ card_status: 'approved' })
+        .update({ card_status: status })
         .eq('firebase_uid', uid);
 
       if (error) throw error;
@@ -117,7 +113,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       const rewardInt = parseInt(missionForm.reward);
       const assignedVal = missionForm.assignTo === 'all' ? null : missionForm.assignTo;
       
-      // 1. Create Mission
       const { error: missionError } = await supabase!.from('missions').insert([{
         title: missionForm.title,
         description: missionForm.desc,
@@ -126,7 +121,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       }]);
       if (missionError) throw missionError;
 
-      // 2. Broadcast Notification
       const { error: notifError } = await supabase!.from('notifications').insert([{
         user_id: assignedVal || 'global',
         title: "🚀 NEW MISSION DEPLOYED",
@@ -151,7 +145,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     try {
       const costInt = parseInt(voucherForm.cost);
       
-      // 1. Create Reward
       const { error: rewardError } = await supabase!.from('rewards').insert([{
         title: voucherForm.title,
         cost: costInt,
@@ -159,7 +152,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       }]);
       if (rewardError) throw rewardError;
 
-      // 2. Broadcast Notification
       const { error: notifError } = await supabase!.from('notifications').insert([{
         user_id: 'global',
         title: "🎁 NEW REWARD ADDED",
@@ -357,11 +349,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           </span>
                         </td>
                         <td className="p-6 text-right">
-                          {user.card_status === 'pending' && (
-                            <button onClick={() => handleApprove(user.firebase_uid)} disabled={submitting} className="bg-green-500 text-white p-3 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] transition-all disabled:opacity-50">
-                              <Check size={18} strokeWidth={3} />
-                            </button>
-                          )}
+                          <div className="flex justify-end gap-2">
+                            {user.card_status !== 'approved' && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateStatus(user.firebase_uid, 'rejected')}
+                                  className="px-4 py-2 border-2 border-black bg-gray-200 hover:bg-red-500 hover:text-white font-bold text-xs shadow-[2px_2px_0px_0px_#000] transition-all"
+                                >
+                                  REJECT
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateStatus(user.firebase_uid, 'approved')}
+                                  className="px-4 py-2 border-2 border-black bg-[#4ade80] hover:bg-[#22c55e] text-black font-bold text-xs shadow-[2px_2px_0px_0px_#000] transition-all flex items-center gap-2"
+                                >
+                                  <Check size={14} /> APPROVE
+                                </button>
+                              </>
+                            )}
+                            {user.card_status === 'approved' && (
+                              <div className="flex items-center gap-2 text-[#4ade80] font-bold text-xs border-2 border-[#4ade80] px-3 py-1 rounded-full">
+                                <CheckCircle2 size={14} /> VERIFIED AGENT
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

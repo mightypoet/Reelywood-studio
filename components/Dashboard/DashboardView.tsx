@@ -51,7 +51,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
-        handlePostLoginSync(user);
         fetchDashboardData(user);
       } else {
         setLoading(false);
@@ -61,51 +60,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, []);
 
-  // --- POST-LOGIN DATA SYNC LOGIC ---
-  const handlePostLoginSync = async (user: FirebaseUser) => {
-    const cachedApp = localStorage.getItem('pending_application');
-    
-    if (user && cachedApp && supabase) {
-      console.log("⚡ SYNC: Detected cached guest application. Initializing secure upload...");
-      try {
-        const data = JSON.parse(cachedApp);
-        
-        // Map cached guest form fields to Supabase profile schema
-        const updates = {
-          display_name: data.fullName,
-          handle: data.handle,
-          niche: data.niche,
-          city: data.city,
-          phone: data.phone,
-          followers: data.followers,
-          platform: data.platform,
-          card_status: 'pending', // This triggers visibility in the Admin Panel
-          updated_at: new Date().toISOString(),
-        };
+  // --- POST-LOGIN DATA SYNC LOGIC (UPSERT VERSION) ---
+  useEffect(() => {
+    const syncApplicationData = async () => {
+      const pendingData = localStorage.getItem('pending_application');
+      
+      if (currentUser && pendingData && supabase) {
+        console.log("⚡ DETECTED PENDING APPLICATION. SYNCING...");
+        try {
+          const data = JSON.parse(pendingData);
 
-        const { error } = await supabase
-          .from('profiles')
-          .update(updates)
-          .eq('firebase_uid', user.uid);
+          // Use UPSERT instead of UPDATE to handle missing rows
+          const { error } = await supabase
+            .from('profiles')
+            .upsert({
+              firebase_uid: currentUser.uid, 
+              email: currentUser.email || "no-email",
+              display_name: data.fullName || currentUser.displayName,
+              handle: data.handle,
+              niche: data.niche,
+              city: data.city,
+              phone: data.phone,
+              followers: parseInt(data.followers) || 0,
+              platform: data.platform,
+              card_status: 'pending', 
+              updated_at: new Date().toISOString(),
+              role: 'user',
+              reelcoins: 0
+            }, { onConflict: 'firebase_uid' });
 
-        if (!error) {
-          console.log("✅ SYNC: Guest data successfully merged with authenticated node.");
-          localStorage.removeItem('pending_application');
-          
-          // Trigger success UI feedback
-          setShowSyncToast(true);
-          setTimeout(() => setShowSyncToast(false), 5000);
-          
-          // Immediately refresh profile data to show 'pending' status in UI
-          await fetchDashboardData(user);
-        } else {
-          throw error;
+          if (error) {
+            console.error("❌ SYNC FAILED:", error.message);
+          } else {
+            console.log("✅ PROFILE SYNCED SUCCESSFULLY");
+            localStorage.removeItem('pending_application');
+            // Brute force reload to ensure all components see the updated DB state
+            window.location.reload();
+          }
+        } catch (err) {
+          console.error("❌ CRITICAL ERROR:", err);
         }
-      } catch (err) {
-        console.error("❌ SYNC: Transmission error during data merge:", err);
       }
-    }
-  };
+    };
+
+    syncApplicationData();
+  }, [currentUser]);
 
   const handleLogin = async () => {
     try {
