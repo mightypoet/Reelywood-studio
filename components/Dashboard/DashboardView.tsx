@@ -19,6 +19,9 @@ import {
   X,
   History,
   Ticket,
+  Bell,
+  Info,
+  Megaphone
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -31,10 +34,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [missions, setMissions] = useState<any[]>([]);
   const [rewards, setRewards] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
   
   // Wallet & Redemption State
   const [showHistory, setShowHistory] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
 
@@ -50,15 +55,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     }
 
     try {
-      if (!auth.currentUser) return;
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
 
       console.log("🔥 Syncing Operational Grid...");
 
-      const [profileRes, missionsRes, rewardsRes, transRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('firebase_uid', auth.currentUser.uid).single(),
+      const [profileRes, missionsRes, rewardsRes, transRes, notifRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('firebase_uid', currentUser.uid).single(),
         supabase.from('missions').select('*').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').eq('user_uid', auth.currentUser.uid).order('created_at', { ascending: false })
+        supabase.from('transactions').select('*').eq('user_uid', currentUser.uid).order('created_at', { ascending: false }),
+        supabase.from('notifications')
+          .select('*')
+          .or(`user_id.eq.${currentUser.uid},user_id.eq.global`)
+          .order('created_at', { ascending: false })
+          .limit(10)
       ]);
 
       if (profileRes.error && profileRes.error.code !== 'PGRST116') throw profileRes.error;
@@ -66,6 +77,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (missionsRes.data) setMissions(missionsRes.data);
       if (rewardsRes.data) setRewards(rewardsRes.data);
       if (transRes.data) setTransactions(transRes.data);
+      if (notifRes.data) setNotifications(notifRes.data);
 
     } catch (error) {
       console.error("Dashboard Global Sync Error:", error);
@@ -113,6 +125,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     onBack();
   };
 
+  const markNotificationsRead = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || notifications.length === 0) return;
+    
+    // Visually mark as read locally
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    
+    try {
+      await supabase!
+        .from('notifications')
+        .update({ is_read: true })
+        .match({ user_id: currentUser.uid, is_read: false });
+    } catch (err) {
+      console.error("Failed to mark read:", err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-6">
@@ -127,6 +156,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const userHandle = profile?.handle || "@reelywood_agent";
   const userNiche = profile?.niche || "Creative Strategy";
   const coinBalance = profile?.reelcoins || 0;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden">
@@ -174,7 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       )}
 
       {/* HEADER */}
-      <header className="border-b-[6px] border-black bg-white sticky top-0 z-50 px-6 py-5">
+      <header className="border-b-[6px] border-black bg-white sticky top-0 z-[100] px-6 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <button 
@@ -189,6 +219,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Notification Bell */}
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setShowNotifs(!showNotifs);
+                  if (!showNotifs) markNotificationsRead();
+                }}
+                className={`w-12 h-12 flex items-center justify-center border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none bg-white relative ${showNotifs ? 'bg-[#ffde59]' : ''}`}
+              >
+                <Bell size={20} strokeWidth={3} />
+                {unreadCount > 0 && (
+                  <div className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-black w-5 h-5 flex items-center justify-center border-2 border-black rounded-none animate-bounce">
+                    {unreadCount}
+                  </div>
+                )}
+              </button>
+
+              {/* Notification Popup */}
+              {showNotifs && (
+                <div className="absolute top-full right-0 mt-6 w-80 bg-white border-4 border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] z-[110] animate-in slide-in-from-top-2 duration-200">
+                  <div className="p-4 bg-black text-white flex justify-between items-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest italic">Broadcast Center</span>
+                    <button onClick={() => setShowNotifs(false)}><X size={14} strokeWidth={3}/></button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-10 text-center text-black/20 font-black uppercase text-[10px] tracking-widest italic">No new alerts.</div>
+                    ) : (
+                      notifications.map((n, i) => (
+                        <div key={i} className={`p-5 border-b-2 border-black last:border-0 hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-[#834bf1]/5' : ''}`}>
+                          <div className="flex items-center space-x-2 mb-1">
+                            {n.user_id === 'global' ? <Megaphone size={12} className="text-[#834bf1]" /> : <Info size={12} className="text-[#ffde59]" />}
+                            <span className="font-black uppercase text-[9px] tracking-tight">{n.title}</span>
+                          </div>
+                          <p className="text-[10px] font-bold text-black/70 leading-snug">{n.message}</p>
+                          <p className="text-[8px] font-mono text-black/30 mt-2">{new Date(n.created_at).toLocaleDateString()} • {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="p-3 border-t-2 border-black bg-slate-50 text-center">
+                    <button onClick={fetchDashboardData} className="text-[9px] font-black uppercase tracking-widest hover:text-[#834bf1] transition-colors">Refresh Feeds</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className={`hidden sm:flex items-center space-x-4 border-[4px] border-black px-5 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${isApproved ? 'bg-[#ffde59]' : 'bg-slate-100'}`}>
               <div className={`w-2.5 h-2.5 rounded-full ${isApproved ? 'bg-green-500 animate-ping' : 'bg-slate-400'}`}></div>
               <span className="text-[11px] font-black uppercase tracking-widest italic text-black">

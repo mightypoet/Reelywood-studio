@@ -6,8 +6,7 @@ import {
   Check, X, Shield, Plus, Moon, Sun, Trash2,
   Loader2, ArrowRight, Activity, Terminal,
   Target, FileText, ArrowDownLeft, ArrowUpRight,
-  // Add missing Clock import
-  Clock
+  Clock, Bell, Megaphone, Info
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -41,11 +40,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   });
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showNotifMenu, setShowNotifMenu] = useState(false);
   
   const [users, setUsers] = useState<any[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [adminLogs, setAdminLogs] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
 
   const [missionForm, setMissionForm] = useState({ title: '', desc: '', reward: '', assignTo: 'all' });
@@ -62,22 +63,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     try {
       if (!supabase) throw new Error("Supabase client not initialized");
 
-      const [profilesRes, missionsRes, rewardsRes, transRes] = await Promise.all([
+      const [profilesRes, missionsRes, rewardsRes, transRes, logsRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').order('created_at', { ascending: false })
+        supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+        supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(10)
       ]);
 
       if (profilesRes.error) throw profilesRes.error;
       if (missionsRes.error) throw missionsRes.error;
       if (rewardsRes.error) throw rewardsRes.error;
       if (transRes.error) throw transRes.error;
+      if (logsRes.error) throw logsRes.error;
 
       setUsers(profilesRes.data || []);
       setMissions(missionsRes.data || []);
       setVouchers(rewardsRes.data || []);
       setTransactions(transRes.data || []);
+      setAdminLogs(logsRes.data || []);
 
       console.log("✅ [ADMIN] Data Sync Successful");
 
@@ -112,13 +116,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     try {
       const rewardInt = parseInt(missionForm.reward);
       const assignedVal = missionForm.assignTo === 'all' ? null : missionForm.assignTo;
-      const { error } = await supabase!.from('missions').insert([{
+      
+      // 1. Create Mission
+      const { error: missionError } = await supabase!.from('missions').insert([{
         title: missionForm.title,
         description: missionForm.desc,
         reward_amount: rewardInt,
         assigned_to: assignedVal
       }]);
-      if (error) throw error;
+      if (missionError) throw missionError;
+
+      // 2. Broadcast Notification
+      const { error: notifError } = await supabase!.from('notifications').insert([{
+        user_id: assignedVal || 'global',
+        title: "🚀 NEW MISSION DEPLOYED",
+        message: `Mission: ${missionForm.title} is now active. Check your dashboard.`,
+        is_read: false
+      }]);
+      if (notifError) console.error("Broadcast Error:", notifError.message);
+
       setMissionForm({ title: '', desc: '', reward: '', assignTo: 'all' });
       await fetchAllData();
     } catch (error: any) {
@@ -134,12 +150,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setSubmitting(true);
     try {
       const costInt = parseInt(voucherForm.cost);
-      const { error } = await supabase!.from('rewards').insert([{
+      
+      // 1. Create Reward
+      const { error: rewardError } = await supabase!.from('rewards').insert([{
         title: voucherForm.title,
         cost: costInt,
         code: voucherForm.code.toUpperCase(),
       }]);
-      if (error) throw error;
+      if (rewardError) throw rewardError;
+
+      // 2. Broadcast Notification
+      const { error: notifError } = await supabase!.from('notifications').insert([{
+        user_id: 'global',
+        title: "🎁 NEW REWARD ADDED",
+        message: `New inventory available in the Vault: ${voucherForm.title}`,
+        is_read: false
+      }]);
+      if (notifError) console.error("Broadcast Error:", notifError.message);
+
       setVoucherForm({ title: '', cost: '', code: '' });
       await fetchAllData();
     } catch (error: any) {
@@ -198,6 +226,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         <div className="flex items-center space-x-4">
+          <div className="relative">
+            <button 
+              onClick={() => setShowNotifMenu(!showNotifMenu)}
+              className={`p-3 border-4 ${borderColor} bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all relative`}
+            >
+              <Bell size={20} strokeWidth={3} />
+              {adminLogs.length > 0 && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-none border-2 border-black animate-pulse"></div>
+              )}
+            </button>
+            
+            {showNotifMenu && (
+              <div className={`absolute top-full right-0 mt-4 w-80 ${cardColor} border-4 ${borderColor} shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] z-[200] overflow-hidden animate-in slide-in-from-top-2 duration-200`}>
+                <div className={`p-4 border-b-2 ${borderColor} flex justify-between items-center ${isDark ? 'bg-white text-black' : 'bg-black text-white'}`}>
+                   <span className="font-black uppercase text-[10px] tracking-widest">Broadcast Log</span>
+                   <button onClick={() => setShowNotifMenu(false)}><X size={14} strokeWidth={3}/></button>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {adminLogs.length === 0 ? (
+                    <div className="p-8 text-center opacity-40 text-[10px] font-black uppercase tracking-widest italic">No Transmission Logs</div>
+                  ) : (
+                    adminLogs.map((log, i) => (
+                      <div key={i} className={`p-4 border-b-2 ${borderColor} last:border-0 hover:bg-black/5 transition-colors`}>
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-black uppercase text-[9px] tracking-tight truncate mr-2">{log.title}</span>
+                          <span className="text-[8px] font-mono opacity-40">{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p className="text-[9px] font-bold opacity-60 leading-tight">{log.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-3 bg-black/5 text-center">
+                   <button onClick={fetchAllData} className="text-[9px] font-black uppercase tracking-widest hover:text-[#834bf1]">Refresh Grid</button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button onClick={() => setDarkMode(!darkMode)} className={`p-3 border-4 ${borderColor} ${isDark ? 'bg-[#ffde59] text-black' : 'bg-black text-white'} shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all`}>
             {isDark ? <Sun size={20} strokeWidth={3} /> : <Moon size={20} strokeWidth={3} />}
           </button>
@@ -308,7 +375,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <div className="grid lg:grid-cols-12 gap-12">
               <div className="lg:col-span-5">
                 <form onSubmit={handleCreateMission} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
-                  <h3 className="text-2xl font-black uppercase italic mb-8 flex items-center space-x-3"><Plus className="text-pink-500" strokeWidth={4} /><span>Deploy Mission</span></h3>
+                  <div className="flex justify-between items-center mb-8">
+                     <h3 className="text-2xl font-black uppercase italic flex items-center space-x-3"><Plus className="text-pink-500" strokeWidth={4} /><span>Deploy Mission</span></h3>
+                     <div className="bg-black text-white px-3 py-1 border-2 border-white text-[8px] font-black uppercase tracking-widest flex items-center space-x-1">
+                        <Megaphone size={10} className="text-[#ffde59]" />
+                        <span>Auto-Broadcast</span>
+                     </div>
+                  </div>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest opacity-40">Mission Title</label>
@@ -356,7 +429,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <div className="grid lg:grid-cols-12 gap-12">
               <div className="lg:col-span-5">
                 <form onSubmit={handleCreateVoucher} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
-                  <h3 className="text-2xl font-black uppercase italic mb-8 flex items-center space-x-3"><Plus className="text-blue-500" strokeWidth={4} /><span>Mint Voucher</span></h3>
+                  <div className="flex justify-between items-center mb-8">
+                     <h3 className="text-2xl font-black uppercase italic flex items-center space-x-3"><Plus className="text-blue-500" strokeWidth={4} /><span>Mint Voucher</span></h3>
+                     <div className="bg-black text-white px-3 py-1 border-2 border-white text-[8px] font-black uppercase tracking-widest flex items-center space-x-1">
+                        <Megaphone size={10} className="text-[#834bf1]" />
+                        <span>Auto-Broadcast</span>
+                     </div>
+                  </div>
                   <div className="space-y-4">
                     <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-widest opacity-40">Voucher Name</label><input required type="text" value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} className={`w-full bg-transparent border-4 ${borderColor} p-4 font-black focus:outline-none`} placeholder="E.G. EXCLUSIVE ACCESS"/></div>
                     <div className="grid grid-cols-2 gap-4">
@@ -443,7 +522,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       <footer className={`mt-20 border-t-4 ${borderColor} p-12 text-center bg-black/5`}>
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <p className="text-[10px] font-mono font-black uppercase tracking-[0.6em] opacity-30">REELYWOOD STUDIO • SECURE COMMAND CENTER • VER 4.8.6</p>
+          <p className="text-[10px] font-mono font-black uppercase tracking-[0.6em] opacity-30">REELYWOOD STUDIO • SECURE COMMAND CENTER • VER 4.8.8</p>
           <div className="flex items-center space-x-10 opacity-30 text-[10px] font-black uppercase tracking-widest italic">
              <div className="flex items-center space-x-2"><Shield size={14} className={isDark ? 'text-[#39ff14]' : 'text-black'} /><span>Encryption Active</span></div>
              <div className="flex items-center space-x-2"><Activity size={14} className={isDark ? 'text-[#ff00ff]' : 'text-black'} /><span>System Healthy</span></div>
