@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Zap, Calendar, Sparkles, MousePointer2 } from 'lucide-react';
-import { supabase } from '../lib/clients';
+import { ArrowRight, Zap, Calendar, Sparkles } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
 interface HeroProps {
   onAuthClick: () => void;
-  onDashboardClick?: () => void;
+  onDashboardClick: () => void;
 }
 
 interface PhysicalShape {
@@ -22,12 +22,23 @@ interface PhysicalShape {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => {
-  const [isPending, setIsPending] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shapesRef = useRef<PhysicalShape[]>([]);
   const requestRef = useRef<number>(0);
   const lastMousePos = useRef({ x: 0, y: 0 });
   const isMobileRef = useRef(false);
+
+  // --- AUTO-REDIRECT LOGIC START ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("⚡ Auto-Redirect: Authenticated User Detected. Routing to Hub...");
+        onDashboardClick();
+      }
+    });
+    return () => unsubscribe();
+  }, [onDashboardClick]);
+  // --- AUTO-REDIRECT LOGIC END ---
 
   useEffect(() => {
     const checkMobile = () => {
@@ -150,7 +161,6 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
     const dx = Math.abs(e.clientX - lastMousePos.current.x);
     const dy = Math.abs(e.clientY - lastMousePos.current.y);
     if (dx + dy > 50) {
-      // Spawn logic in useEffect handles the array
       const types: ('circle' | 'square' | 'triangle')[] = ['circle', 'square', 'triangle'];
       const colors = ['#834bf1', '#ffde59', '#000000', '#ffffff'];
       const newShape: PhysicalShape = {
@@ -177,7 +187,6 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
 
     if ('touches' in e || e.type === 'mousedown') {
       if (isMobileRef.current) {
-        // Mobile Burst
         for (let i = 0; i < 3; i++) {
           const types: ('circle' | 'square' | 'triangle')[] = ['circle', 'square', 'triangle'];
           const colors = ['#834bf1', '#ffde59', '#000000', '#ffffff'];
@@ -195,7 +204,6 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
         }
         if (shapesRef.current.length > 15) shapesRef.current = shapesRef.current.slice(-15);
       } else {
-        // Desktop Repulse
         shapesRef.current.forEach(s => {
           const dx = s.x - x;
           const dy = s.y - y;
@@ -208,28 +216,6 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
           }
         });
       }
-    }
-  };
-
-  const handleApply = async () => {
-    if (!auth.currentUser) {
-      onAuthClick();
-      return;
-    }
-    setIsPending(true);
-    try {
-      if (supabase) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ card_status: 'pending' })
-          .eq('firebase_uid', auth.currentUser.uid);
-        if (error) throw error;
-        alert("✅ Application Sent! Syncing Identity Node...");
-      }
-    } catch (err: any) {
-      alert("Error: " + err.message);
-    } finally {
-      setIsPending(false);
     }
   };
 
@@ -269,11 +255,10 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
 
           <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-8 animate-in slide-in-from-bottom-8 duration-1000">
             <button 
-              onClick={handleApply}
-              disabled={isPending}
-              className="group w-full sm:w-auto bg-[#834bf1] text-white px-10 py-7 md:px-12 md:py-8 rounded-none font-black text-sm transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 disabled:opacity-50"
+              onClick={onDashboardClick}
+              className="group w-full sm:w-auto bg-[#834bf1] text-white px-10 py-7 md:px-12 md:py-8 rounded-none font-black text-sm transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2"
             >
-              <span>{isPending ? "Syncing..." : "Apply for Creator Card"}</span>
+              <span>Claim & Create Card</span>
               <Calendar size={20} className="group-hover:rotate-12 transition-transform" />
             </button>
             
@@ -301,7 +286,6 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
         </div>
       </div>
 
-      {/* BACKGROUND DECORATIONS */}
       <div className="absolute inset-0 z-[-1] opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(#fff_1px,transparent_1px)]"></div>
       
       <div className="absolute top-1/4 right-8 pointer-events-none hidden lg:flex flex-col items-end space-y-4">
