@@ -16,7 +16,12 @@ import {
   TrendingUp,
   Lock,
   Clock,
-  ShieldAlert
+  ShieldAlert,
+  X,
+  ArrowDownLeft,
+  ArrowUpRight,
+  CreditCard,
+  Send
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -28,7 +33,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [profile, setProfile] = useState<any>(null);
   const [missions, setMissions] = useState<any[]>([]);
   const [rewards, setRewards] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
+  
+  // Wallet Modal State
+  const [showWallet, setShowWallet] = useState(false);
+  const [walletTab, setWalletTab] = useState<'history' | 'withdraw'>('history');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [paymentDetails, setPaymentDetails] = useState('');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -46,17 +59,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       console.log("🔥 Syncing Operational Grid...");
 
-      // Fetch Profile, Missions, and Rewards concurrently
-      const [profileRes, missionsRes, rewardsRes] = await Promise.all([
+      // Fetch Profile, Missions, Rewards, and Transactions
+      const [profileRes, missionsRes, rewardsRes, transRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('firebase_uid', auth.currentUser.uid).single(),
         supabase.from('missions').select('*').order('created_at', { ascending: false }),
-        supabase.from('rewards').select('*').order('created_at', { ascending: false })
+        supabase.from('rewards').select('*').order('created_at', { ascending: false }),
+        supabase.from('transactions').select('*').eq('user_uid', auth.currentUser.uid).order('created_at', { ascending: false })
       ]);
 
       if (profileRes.error && profileRes.error.code !== 'PGRST116') throw profileRes.error;
       if (profileRes.data) setProfile(profileRes.data);
       if (missionsRes.data) setMissions(missionsRes.data);
       if (rewardsRes.data) setRewards(rewardsRes.data);
+      if (transRes.data) setTransactions(transRes.data);
 
     } catch (error) {
       console.error("Dashboard Global Sync Error:", error);
@@ -68,6 +83,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const handleLogout = async () => {
     await auth.signOut();
     onBack();
+  };
+
+  const handleWithdrawalRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseInt(withdrawAmount);
+    
+    if (!amount || amount <= 0) {
+      alert("Invalid Amount");
+      return;
+    }
+    
+    if (amount > (profile?.reelcoins || 0)) {
+      alert("Insufficient Liquid Assets in Vault.");
+      return;
+    }
+
+    setIsWithdrawing(true);
+    console.log("📤 [TRANSFER] Initiating withdrawal request:", { amount, paymentDetails, user: auth.currentUser?.uid });
+
+    // Simulation of admin notification
+    setTimeout(() => {
+      alert("✅ Transfer Request Dispatched! Our finance nodes will verify the transaction within 24 hours.");
+      setIsWithdrawing(false);
+      setShowWallet(false);
+      setWithdrawAmount('');
+      setPaymentDetails('');
+    }, 1500);
   };
 
   if (loading) {
@@ -89,6 +131,119 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   return (
     <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden">
+      
+      {/* WALLET MODAL */}
+      {showWallet && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowWallet(false)}></div>
+          <div className="relative w-full max-w-2xl bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] animate-in zoom-in-95 duration-300">
+            
+            {/* Modal Header */}
+            <div className="border-b-[6px] border-black p-8 flex items-center justify-between bg-[#ffde59]">
+              <div className="flex items-center space-x-4">
+                <ShieldAlert size={32} strokeWidth={3} />
+                <div>
+                  <h2 className="text-3xl font-black uppercase italic tracking-tighter font-display">Encrypted Vault</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 text-black">Asset Management Node</p>
+                </div>
+              </div>
+              <button onClick={() => setShowWallet(false)} className="p-2 border-[4px] border-black bg-white hover:bg-rose-500 hover:text-white transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <X size={24} strokeWidth={4} />
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex border-b-[6px] border-black">
+              <button 
+                onClick={() => setWalletTab('history')}
+                className={`flex-1 py-5 font-black uppercase text-xs tracking-widest transition-all ${walletTab === 'history' ? 'bg-black text-white' : 'hover:bg-slate-50'}`}
+              >
+                Sync Ledger
+              </button>
+              <button 
+                onClick={() => setWalletTab('withdraw')}
+                className={`flex-1 py-5 font-black uppercase text-xs tracking-widest transition-all ${walletTab === 'withdraw' ? 'bg-black text-white' : 'hover:bg-slate-50'}`}
+              >
+                Initiate Transfer
+              </button>
+            </div>
+
+            <div className="p-8 max-h-[60vh] overflow-y-auto">
+              {walletTab === 'history' ? (
+                <div className="space-y-4">
+                  {transactions.length === 0 ? (
+                    <div className="py-16 text-center border-[4px] border-dashed border-black/10">
+                      <Clock size={48} className="mx-auto mb-4 opacity-20" />
+                      <p className="text-xs font-black uppercase tracking-widest opacity-40">No historical data in grid.</p>
+                    </div>
+                  ) : (
+                    transactions.map((tx, i) => (
+                      <div key={i} className="border-[4px] border-black p-5 flex items-center justify-between group hover:bg-slate-50 transition-all">
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-10 h-10 border-[3px] border-black flex items-center justify-center ${tx.amount >= 0 ? 'bg-emerald-500' : 'bg-rose-500'} text-white`}>
+                            {tx.amount >= 0 ? <ArrowDownLeft size={20} strokeWidth={3} /> : <ArrowUpRight size={20} strokeWidth={3} />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black uppercase italic tracking-tight">{tx.description || 'System Transmission'}</p>
+                            <p className="text-[9px] font-bold text-black/40 uppercase tracking-widest">{new Date(tx.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <span className={`text-xl font-black italic tracking-tighter ${tx.amount >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {tx.amount >= 0 ? '+' : ''}{tx.amount} RC
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <form onSubmit={handleWithdrawalRequest} className="space-y-8">
+                  <div className="bg-[#834bf1] border-[4px] border-black p-8 text-white shadow-[8px_8px_0px_0px_#000]">
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60 mb-2">Available for Extraction</p>
+                    <h3 className="text-6xl font-black italic font-display tracking-tighter leading-none">{coinBalance} RC</h3>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="relative">
+                      <label className="absolute -top-3 left-4 bg-white px-2 text-[10px] font-black uppercase tracking-[0.2em] border-[2px] border-black">Amount to Extract</label>
+                      <input 
+                        required
+                        type="number"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        placeholder="0000"
+                        className="w-full border-[4px] border-black p-6 font-black text-xl focus:outline-none focus:bg-slate-50 placeholder:opacity-10"
+                      />
+                    </div>
+                    <div className="relative">
+                      <label className="absolute -top-3 left-4 bg-white px-2 text-[10px] font-black uppercase tracking-[0.2em] border-[2px] border-black">Payment Node (UPI / BANK)</label>
+                      <textarea 
+                        required
+                        value={paymentDetails}
+                        onChange={(e) => setPaymentDetails(e.target.value)}
+                        placeholder="REELYWOOD@UPI"
+                        className="w-full border-[4px] border-black p-6 font-black text-sm focus:outline-none focus:bg-slate-50 placeholder:opacity-10 resize-none h-32"
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    disabled={isWithdrawing}
+                    className="w-full bg-black text-white py-6 border-[4px] border-black font-black uppercase text-sm tracking-[0.4em] shadow-[10px_10px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center space-x-4 disabled:opacity-50"
+                  >
+                    {isWithdrawing ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} strokeWidth={3} />}
+                    <span>{isWithdrawing ? 'Syncing...' : 'Initiate Transfer'}</span>
+                  </button>
+                </form>
+              )}
+            </div>
+            
+            <div className="bg-slate-50 border-t-[4px] border-black p-6 text-center">
+              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-black/30 italic">Secure Finance Node ✦ AES-256 Bit Encryption</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <header className="border-b-[6px] border-black bg-white sticky top-0 z-50 px-6 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -192,8 +347,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               </div>
               
               <button 
+                onClick={() => isApproved && setShowWallet(true)}
                 disabled={!isApproved}
-                className={`w-full mt-10 border-[3px] border-white py-4 font-black uppercase text-[11px] tracking-[0.4em] transition-all shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)] active:scale-95 relative z-10 italic ${isApproved ? 'bg-black text-white hover:bg-white hover:text-black' : 'bg-black/40 text-white/20 cursor-not-allowed border-white/20 shadow-none'}`}
+                className={`w-full mt-10 border-[3px] border-white py-4 font-black uppercase text-[11px] tracking-[0.4em] transition-all shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)] active:scale-95 relative z-10 italic ${isApproved ? 'bg-black text-white hover:bg-white hover:text-black shadow-[6px_6px_0px_0px_#ffde59]' : 'bg-black/40 text-white/20 cursor-not-allowed border-white/20 shadow-none'}`}
               >
                 {isApproved ? 'Withdraw Protocol' : 'Sync Required'}
               </button>
