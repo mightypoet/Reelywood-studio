@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Clock,
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  PartyPopper
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -38,6 +39,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
+  const [showSyncToast, setShowSyncToast] = useState(false);
   
   // Wallet & Redemption State
   const [showHistory, setShowHistory] = useState(false);
@@ -59,22 +61,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, []);
 
+  // --- POST-LOGIN DATA SYNC LOGIC ---
   const handlePostLoginSync = async (user: FirebaseUser) => {
     const cachedApp = localStorage.getItem('pending_application');
-    if (cachedApp && supabase) {
-      console.log("⚡ SYNC: Detected cached guest application. Initializing deployment...");
+    
+    if (user && cachedApp && supabase) {
+      console.log("⚡ SYNC: Detected cached guest application. Initializing secure upload...");
       try {
         const data = JSON.parse(cachedApp);
+        
+        // Map cached guest form fields to Supabase profile schema
         const updates = {
-          card_status: 'pending',
           display_name: data.fullName,
-          platform: data.platform,
-          niche: data.niche,
           handle: data.handle,
-          followers: data.followers,
-          phone: data.phone,
-          email: data.email,
+          niche: data.niche,
           city: data.city,
+          phone: data.phone,
+          followers: data.followers,
+          platform: data.platform,
+          card_status: 'pending', // This triggers visibility in the Admin Panel
           updated_at: new Date().toISOString(),
         };
 
@@ -84,11 +89,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           .eq('firebase_uid', user.uid);
 
         if (!error) {
-          console.log("✅ SYNC: Guest application successfully merged with account.");
+          console.log("✅ SYNC: Guest data successfully merged with authenticated node.");
           localStorage.removeItem('pending_application');
+          
+          // Trigger success UI feedback
+          setShowSyncToast(true);
+          setTimeout(() => setShowSyncToast(false), 5000);
+          
+          // Immediately refresh profile data to show 'pending' status in UI
+          await fetchDashboardData(user);
+        } else {
+          throw error;
         }
       } catch (err) {
-        console.error("❌ SYNC: Failed to merge cached data:", err);
+        console.error("❌ SYNC: Transmission error during data merge:", err);
       }
     }
   };
@@ -210,6 +224,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   return (
     <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden">
       
+      {/* SUCCESS TOAST FOR SYNC */}
+      {showSyncToast && (
+        <div className="fixed top-32 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-10 duration-500">
+          <div className="bg-[#834bf1] text-white px-8 py-5 border-[4px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center space-x-4">
+            <PartyPopper className="text-[#ffde59]" />
+            <span className="font-black text-xs uppercase tracking-[0.2em]">Application Submitted Successfully</span>
+          </div>
+        </div>
+      )}
+
       {/* HISTORY MODAL */}
       {showHistory && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
