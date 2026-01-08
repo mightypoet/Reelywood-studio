@@ -269,11 +269,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   // --- REAL-TIME NOTIFICATION LISTENER ---
   useEffect(() => {
-    // FIX: Check if supabase exists before trying to use it
+    // 1. Safety Check: Stop if currentUser or supabase is missing
     if (!currentUser || !supabase) return;
 
-    const channel = supabase
-      .channel('public:notifications')
+    // 2. Use Optional Chaining (?.channel) and standard channel name
+    const channel = supabase?.channel('public:notifications')
       .on(
         'postgres_changes',
         {
@@ -290,7 +290,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             message: payload.new.message
           });
 
-          // Refresh notifications list locally too
+          // Refresh notifications list locally
           setNotifications(prev => [payload.new, ...prev]);
 
           setTimeout(() => {
@@ -300,8 +300,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       )
       .subscribe();
 
+    // 3. Cleanup function using optional chaining
     return () => {
-      supabase.removeChannel(channel);
+      supabase?.removeChannel(channel);
     };
   }, [currentUser]);
 
