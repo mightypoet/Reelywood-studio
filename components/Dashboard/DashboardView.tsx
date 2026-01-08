@@ -1,11 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import Matter from 'matter-js';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
 import { signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { 
   LogOut, 
-  Gift, 
   User, 
   Wallet, 
   CheckCircle2, 
@@ -18,6 +16,8 @@ import {
   Clock,
   PartyPopper,
   Zap,
+  Sparkles,
+  Gift,
   Target
 } from 'lucide-react';
 
@@ -25,150 +25,216 @@ interface DashboardViewProps {
   onBack: () => void;
 }
 
-const SlingshotGame: React.FC = () => {
-  const sceneRef = useRef<HTMLDivElement>(null);
-  const engineRef = useRef<Matter.Engine | null>(null);
+// --- 1. THE PHYSICS GAME COMPONENT (Background) ---
+const ReelywoodSlingshot: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   useEffect(() => {
-    if (isMobile || !sceneRef.current) return;
+    if (isMobile) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Constraint, Events } = Matter;
-    
-    const engine = Engine.create();
-    engineRef.current = engine;
-    const world = engine.world;
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
 
-    const render = Render.create({
-      element: sceneRef.current,
-      engine: engine,
-      options: {
-        width: window.innerWidth,
-        height: window.innerHeight,
-        wireframes: false,
-        background: 'transparent'
-      }
-    });
+    const GRAVITY = 0.6;
+    const FRICTION = 0.98;
+    const BOUNCE = 0.6;
 
-    // Boundaries
-    const ground = Bodies.rectangle(window.innerWidth / 2, window.innerHeight + 30, window.innerWidth, 100, { isStatic: true });
-    const wallRight = Bodies.rectangle(window.innerWidth + 30, window.innerHeight / 2, 100, window.innerHeight, { isStatic: true });
-    Composite.add(world, [ground, wallRight]);
-
-    // Slingshot Point
-    const anchor = { x: 200, y: window.innerHeight - 250 };
-    
-    // The "Bird" (Owl Logo)
-    const birdRadius = 30;
-    const createBird = () => {
-      return Bodies.circle(anchor.x, anchor.y, birdRadius, {
-        density: 0.004,
-        restitution: 0.5,
-        friction: 0.1,
-        render: {
-          fillStyle: '#834bf1',
-          strokeStyle: '#000000',
-          lineWidth: 4,
-          sprite: {
-            texture: 'https://izz9qoicna213xwc.public.blob.vercel-storage.com/favicon.ico',
-            xScale: 0.15,
-            yScale: 0.15
-          }
-        }
-      });
+    let bird = {
+      x: width * 0.2,
+      y: height * 0.65,
+      vx: 0,
+      vy: 0,
+      radius: 28,
+      isDragging: false,
+      isFlying: false,
+      startX: width * 0.2,
+      startY: height * 0.65
     };
 
-    let bird = createBird();
-    
-    // The Elastic Constraint
-    const elastic = Constraint.create({
-      pointA: anchor,
-      bodyB: bird,
-      stiffness: 0.05,
-      render: {
-        visible: true,
-        lineWidth: 5,
-        strokeStyle: '#000000'
-      }
-    });
+    let boxes: any[] = [];
+    const colors = ['#834bf1', '#ffde59', '#111111'];
 
-    Composite.add(world, [bird, elastic]);
-
-    // Neo-Brutalist Target Stacks
-    const createStack = () => {
-      const stackX = window.innerWidth - 350;
-      const stackY = window.innerHeight - 100;
-      const colors = ['#834bf1', '#ffde59', '#000000'];
+    const initLevel = () => {
+      boxes = [];
+      const boxSize = 55;
+      const startX = width * 0.75; 
+      const groundY = height;
       
-      for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 3; j++) {
-          const box = Bodies.rectangle(
-            stackX + (j * 70), 
-            stackY - (i * 70), 
-            60, 60, 
-            {
-              render: {
-                fillStyle: colors[(i + j) % colors.length],
-                strokeStyle: '#000000',
-                lineWidth: 3
-              }
-            }
-          );
-          Composite.add(world, box);
+      for (let row = 0; row < 6; row++) {
+        for (let col = 0; col <= row; col++) {
+           boxes.push({
+             x: startX + (col * (boxSize + 2)) - (row * boxSize * 0.5),
+             y: groundY - 60 - ((6 - row) * (boxSize + 2)),
+             w: boxSize,
+             h: boxSize,
+             vx: 0,
+             vy: 0,
+             rotation: 0,
+             rv: 0,
+             color: colors[Math.floor(Math.random() * colors.length)],
+             isHit: false
+           });
         }
       }
     };
-    createStack();
 
-    // Interaction
-    const mouse = Mouse.create(render.canvas);
-    const mouseConstraint = MouseConstraint.create(engine, {
-      mouse: mouse,
-      constraint: {
-        stiffness: 0.2,
-        render: { visible: false }
+    initLevel();
+
+    const getPos = (e: MouseEvent | TouchEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      if ('touches' in e) {
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
       }
-    });
-    Composite.add(world, mouseConstraint);
+      return { x: (e as MouseEvent).clientX - rect.left, y: (e as MouseEvent).clientY - rect.top };
+    };
 
-    // Release mechanic
-    Events.on(mouseConstraint, 'enddrag', (event: any) => {
-      if (event.body === bird) {
-        setTimeout(() => {
-          elastic.bodyB = null as any;
-          // Reset bird logic
+    const onStart = (e: any) => {
+      const pos = getPos(e);
+      const dist = Math.hypot(pos.x - bird.x, pos.y - bird.y);
+      if (dist < 80 && !bird.isFlying) bird.isDragging = true;
+    };
+
+    const onMove = (e: any) => {
+      if (!bird.isDragging) return;
+      const pos = getPos(e);
+      const dx = pos.x - bird.startX;
+      const dy = pos.y - bird.startY;
+      const maxDist = 150;
+      const stretch = Math.hypot(dx, dy);
+      if (stretch > maxDist) {
+        const angle = Math.atan2(dy, dx);
+        bird.x = bird.startX + Math.cos(angle) * maxDist;
+        bird.y = bird.startY + Math.sin(angle) * maxDist;
+      } else {
+        bird.x = pos.x;
+        bird.y = pos.y;
+      }
+    };
+
+    const onEnd = () => {
+      if (!bird.isDragging) return;
+      bird.isDragging = false;
+      bird.isFlying = true;
+      bird.vx = (bird.startX - bird.x) * 0.16;
+      bird.vy = (bird.startY - bird.y) * 0.16;
+    };
+
+    canvas.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    canvas.addEventListener('touchstart', onStart, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Grid
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < width; i += 50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke(); }
+      for (let i = 0; i < height; i += 50) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke(); }
+
+      if (bird.isDragging) {
+        ctx.beginPath();
+        ctx.moveTo(bird.startX, bird.startY);
+        ctx.lineTo(bird.x, bird.y);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (bird.isFlying) {
+        bird.vy += GRAVITY;
+        bird.vx *= FRICTION;
+        bird.vy *= FRICTION;
+        bird.x += bird.vx;
+        bird.y += bird.vy;
+
+        if (bird.y + bird.radius > height - 20) {
+          bird.y = height - 20 - bird.radius;
+          bird.vy *= -BOUNCE;
+        }
+        if (bird.x > width || bird.x < 0 || (Math.abs(bird.vx) < 0.2 && Math.abs(bird.vy) < 0.2 && bird.y > height - 100)) {
           setTimeout(() => {
-            Composite.remove(world, bird);
-            bird = createBird();
-            elastic.bodyB = bird;
-            Composite.add(world, bird);
-          }, 3000);
-        }, 20);
+            bird.isFlying = false;
+            bird.x = bird.startX;
+            bird.y = bird.startY;
+          }, 2000);
+        }
+      } else if (!bird.isDragging) {
+        bird.x += (bird.startX - bird.x) * 0.1;
+        bird.y += (bird.startY - bird.y) * 0.1;
       }
-    });
 
-    // Run
-    const runner = Runner.create();
-    Runner.run(runner, engine);
-    Render.run(render);
+      boxes.forEach(box => {
+        if (box.isHit) {
+          box.vy += GRAVITY;
+          box.x += box.vx;
+          box.y += box.vy;
+          box.rotation += box.rv;
+          if (box.y + box.h > height - 20) { box.y = height - 20 - box.h; box.vy *= -0.4; box.vx *= 0.8; }
+        }
 
+        if (bird.isFlying && bird.x + bird.radius > box.x && bird.x - bird.radius < box.x + box.w && 
+            bird.y + bird.radius > box.y && bird.y - bird.radius < box.y + box.h) {
+          box.isHit = true;
+          box.vx = bird.vx * 0.7;
+          box.vy = bird.vy * 0.7;
+          box.rv = (Math.random() - 0.5) * 0.2;
+          bird.vx *= -0.4;
+        }
+
+        ctx.save();
+        ctx.translate(box.x + box.w/2, box.y + box.h/2);
+        ctx.rotate(box.rotation);
+        ctx.fillStyle = box.color;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.rect(-box.w/2, -box.h/2, box.w, box.h);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Bird
+      ctx.save();
+      ctx.translate(bird.x, bird.y);
+      ctx.beginPath(); ctx.arc(0, 0, bird.radius, 0, Math.PI * 2); 
+      ctx.fillStyle = '#834bf1'; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(-8, -5, 9, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(8, -5, 9, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(-8, -4, 4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(8, -4, 4, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      requestAnimationFrame(render);
+    };
+
+    const animId = requestAnimationFrame(render);
     return () => {
-      Render.stop(render);
-      Runner.stop(runner);
-      Engine.clear(engine);
-      render.canvas.remove();
+      cancelAnimationFrame(animId);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
     };
   }, [isMobile]);
 
-  if (isMobile) {
-    return (
-      <div className="absolute inset-0 bg-white opacity-5 pointer-events-none" 
-           style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '40px 40px' }} 
-      />
-    );
-  }
-
-  return <div ref={sceneRef} className="absolute inset-0 z-0 overflow-hidden pointer-events-auto" />;
+  if (isMobile) return <div className="absolute inset-0 bg-[#f8f8f8]" style={{backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '30px 30px', opacity: 0.05}} />;
+  return <canvas ref={canvasRef} className="absolute inset-0 z-0 bg-[#f8f8f8] cursor-crosshair" />;
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
@@ -180,12 +246,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
-  const [showSyncToast, setShowSyncToast] = useState(false);
-  
   const [showHistory, setShowHistory] = useState(false);
-  const [showNotifs, setShowNotifs] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
+  
+  // Real-time Notification State
+  const [toast, setToast] = useState<{ show: boolean; title: string; message: string }>({ 
+    show: false, title: '', message: '' 
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -199,36 +267,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, []);
 
+  // --- REAL-TIME NOTIFICATION LISTENER ---
+  useEffect(() => {
+    if (!currentUser || !supabase) return;
+
+    const channel = supabase
+      .channel(`notifications:${currentUser.uid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${currentUser.uid}`,
+        },
+        (payload) => {
+          console.log('🔔 NEW NOTIFICATION RECEIVED:', payload);
+          setToast({
+            show: true,
+            title: payload.new.title,
+            message: payload.new.message
+          });
+
+          // Refresh notifications list locally too
+          setNotifications(prev => [payload.new, ...prev]);
+
+          setTimeout(() => {
+            setToast(prev => ({ ...prev, show: false }));
+          }, 5000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
+
   useEffect(() => {
     const syncApplicationData = async () => {
       const pendingData = localStorage.getItem('pending_application');
       if (currentUser && pendingData && supabase) {
         try {
           const data = JSON.parse(pendingData);
-          const { error } = await supabase
-            .from('profiles')
-            .upsert({
-              firebase_uid: currentUser.uid, 
-              email: currentUser.email || "no-email",
-              display_name: data.fullName || currentUser.displayName,
-              handle: data.handle,
-              niche: data.niche,
-              city: data.city,
-              phone: data.phone,
-              followers: parseInt(data.followers) || 0,
-              platform: data.platform,
-              card_status: 'pending', 
-              updated_at: new Date().toISOString(),
-              role: 'user',
-              reelcoins: 0
-            }, { onConflict: 'firebase_uid' });
+          const { error } = await supabase.from('profiles').upsert({
+            firebase_uid: currentUser.uid, 
+            email: currentUser.email || "no-email",
+            display_name: data.fullName || currentUser.displayName,
+            handle: data.handle,
+            niche: data.niche,
+            city: data.city,
+            phone: data.phone,
+            followers: parseInt(data.followers) || 0,
+            platform: data.platform,
+            card_status: 'pending', 
+            updated_at: new Date().toISOString(),
+            role: 'user',
+            reelcoins: 0
+          }, { onConflict: 'firebase_uid' });
 
           if (!error) {
             localStorage.removeItem('pending_application');
             window.location.reload();
           }
         } catch (err) {
-          console.error("❌ CRITICAL ERROR:", err);
+          console.error("SYNC ERROR:", err);
         }
       }
     };
@@ -253,20 +356,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         supabase.from('missions').select('*').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').eq('user_uid', user.uid).order('created_at', { ascending: false }),
-        supabase.from('notifications')
-          .select('*')
-          .or(`user_id.eq.${user.uid},user_id.eq.global`)
-          .order('created_at', { ascending: false })
-          .limit(10)
+        supabase.from('notifications').select('*').or(`user_id.eq.${user.uid},user_id.eq.global`).order('created_at', { ascending: false }).limit(10)
       ]);
-
       if (profileRes.data) setProfile(profileRes.data);
       if (missionsRes.data) setMissions(missionsRes.data);
       if (rewardsRes.data) setRewards(rewardsRes.data);
       if (transRes.data) setTransactions(transRes.data);
       if (notifRes.data) setNotifications(notifRes.data);
     } catch (error) {
-      console.error("Dashboard Sync Error:", error);
+      console.error("Data Sync Error:", error);
     } finally {
       setLoading(false);
     }
@@ -299,79 +397,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-6">
         <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
-        <p className="text-[12px] font-black uppercase tracking-[0.5em] text-black animate-pulse">Syncing Hub...</p>
+        <p className="text-[12px] font-black uppercase tracking-[0.5em] text-black animate-pulse">Scanning Bio-Metrics...</p>
       </div>
     );
   }
 
-  // --- GUEST VIEW (Slingshot Game + Login Card) ---
   if (!currentUser) {
     return (
-      <div className="fixed inset-0 z-[1000] bg-white flex items-center justify-center overflow-hidden">
-        <SlingshotGame />
-        
-        <div className="relative z-20 w-full max-w-[380px] px-6">
-          <div className="bg-white border-[4px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-10 space-y-8 animate-in zoom-in-95 duration-300">
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-hidden bg-white">
+        <ReelywoodSlingshot />
+        <div className="relative z-20 w-full max-w-[380px] px-6 pointer-events-auto">
+          <div className="bg-white border-[4px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-8 md:p-10 space-y-8 animate-in zoom-in-95 duration-300">
             <div className="text-center space-y-4">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-[#834bf1] border-[3px] border-black shadow-[4px_4px_0px_0px_#ffde59] mb-2">
-                <Target size={28} className="text-white" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-[#834bf1] border-[3px] border-black shadow-[4px_4px_0px_0px_#000]">
+                <Sparkles className="text-white w-8 h-8" />
               </div>
-              <h1 className="text-3xl font-black uppercase italic tracking-tighter font-display text-black">Enter The Hub</h1>
-              <p className="text-black/60 text-[10px] font-black uppercase tracking-widest leading-relaxed">
-                Identity synchronization required for operational grid access.
-              </p>
+              <h1 className="text-3xl font-black italic tracking-tighter uppercase font-display text-black">Enter The Hub</h1>
+              <p className="text-black/50 text-[9px] font-black uppercase tracking-[0.4em]">Identity Sync Protocol • Reelywood</p>
             </div>
-
             <div className="space-y-4">
               <button 
                 onClick={handleLogin}
-                className="w-full bg-black text-white py-5 border-[3px] border-black font-black uppercase text-[11px] tracking-[0.3em] shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center space-x-4 group"
+                className="w-full bg-white border-[3px] border-black py-4 font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center space-x-3 active:scale-95"
               >
-                <Fingerprint size={18} className="text-[#ffde59]" />
-                <span>Verify Identity</span>
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
+                <span>Verify with Google</span>
               </button>
-              
-              <button 
-                onClick={onBack}
-                className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-black/30 hover:text-black transition-colors"
-              >
-                Return to Studio
-              </button>
+              <button onClick={onBack} className="w-full text-[10px] font-black uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors">Return to Studio</button>
             </div>
-
-            <div className="pt-6 border-t-[3px] border-black/10 text-center">
-              <p className="text-[8px] font-black uppercase text-black/20 tracking-[0.4em]">
-                Protected by Reelywood Protocol • v4.8
-              </p>
+            <div className="bg-[#ffde59] border-[3px] border-black p-4 text-center">
+              <p className="text-[9px] font-black uppercase tracking-wide leading-relaxed">No Platform Access? <br/> Contact Terminal Admin.</p>
+            </div>
+            <div className="text-center border-t-[3px] border-black/10 pt-6">
+               <p className="text-[8px] font-black uppercase text-black/20 tracking-[0.4em]">Protected by Reelywood Protocol</p>
             </div>
           </div>
-          
-          {/* Fun little hint for the game */}
-          <div className="hidden md:block absolute -bottom-24 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 border-[2px] border-white font-black text-[8px] uppercase tracking-widest shadow-[4px_4px_0px_0px_#834bf1]">
-            DRAG THE OWL TO DESTROY THE GRID
-          </div>
+          <div className="hidden md:block absolute -bottom-16 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 border-2 border-white font-black text-[8px] uppercase tracking-widest shadow-[4px_4px_0px_0px_#834bf1]">DRAG THE OWL TO PLAY</div>
         </div>
       </div>
     );
   }
 
-  // --- AUTHENTICATED DASHBOARD ---
+  // --- AUTHENTICATED VIEW ---
   const isApproved = profile?.card_status === 'approved';
   const coinBalance = profile?.reelcoins || 0;
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden">
-      
-      {showSyncToast && (
-        <div className="fixed top-32 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-10 duration-500">
-          <div className="bg-[#834bf1] text-white px-8 py-5 border-[4px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center space-x-4">
-            <PartyPopper className="text-[#ffde59]" />
-            <span className="font-black text-xs uppercase tracking-[0.2em]">Application Submitted Successfully</span>
-          </div>
-        </div>
-      )}
-
       {showHistory && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowHistory(false)}></div>
@@ -381,9 +454,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               <button onClick={() => setShowHistory(false)} className="p-2 border-[3px] border-black bg-white"><X size={20} strokeWidth={4} /></button>
             </div>
             <div className="p-8 max-h-[50vh] overflow-y-auto space-y-4">
-              {transactions.length === 0 ? (
-                <p className="text-center opacity-20 font-black uppercase text-[10px]">No records found.</p>
-              ) : (
+              {transactions.length === 0 ? <p className="text-center opacity-20 font-black uppercase text-[10px]">No records found.</p> : 
                 transactions.map((tx, i) => (
                   <div key={i} className="border-[3px] border-black p-5 flex items-center justify-between">
                     <div>
@@ -394,8 +465,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       {tx.amount >= 0 ? '+' : ''}{tx.amount} RC
                     </span>
                   </div>
-                ))
-              )}
+                ))}
             </div>
           </div>
         </div>
@@ -404,20 +474,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       <header className="border-b-[6px] border-black bg-white sticky top-0 z-[100] px-6 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
-            <button onClick={onBack} className="p-2 border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
-              <ArrowLeft size={24} strokeWidth={3} />
-            </button>
-            <h1 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-display">
-              Creator <span className="text-[#834bf1]">Hub</span>
-            </h1>
+            <button onClick={onBack} className="p-2 border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"><ArrowLeft size={24} strokeWidth={3} /></button>
+            <h1 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-display">Creator <span className="text-[#834bf1]">Hub</span></h1>
           </div>
-          
           <div className="flex items-center space-x-4">
-            <button onClick={() => setShowNotifs(!showNotifs)} className={`w-12 h-12 flex items-center justify-center border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white relative ${showNotifs ? 'bg-[#ffde59]' : ''}`}>
+            <button className="w-12 h-12 flex items-center justify-center border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white relative">
               <Bell size={20} strokeWidth={3} />
               {unreadCount > 0 && <div className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-black w-5 h-5 flex items-center justify-center border-2 border-black">{unreadCount}</div>}
             </button>
-
             <button onClick={() => auth.signOut()} className="flex items-center space-x-3 bg-black text-white px-5 py-2.5 border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[11px] font-black uppercase tracking-widest italic">
               <LogOut size={16} strokeWidth={3} />
               <span>Sign Out</span>
@@ -435,29 +499,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                   <span className="text-[9px] font-black uppercase tracking-[0.2em]">{isApproved ? 'Verified' : 'Syncing'}</span>
                </div>
                <div className="w-40 h-40 border-[6px] border-black shadow-[8px_8px_0px_0px_#834bf1] mx-auto bg-[#ffde59] mt-6 overflow-hidden">
-                  {profile?.photo_url || currentUser?.photoURL ? (
-                    <img src={profile?.photo_url || currentUser?.photoURL} alt="Agent" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"><User size={64} strokeWidth={3} /></div>
-                  )}
+                  {profile?.photo_url || currentUser?.photoURL ? <img src={profile?.photo_url || currentUser?.photoURL} alt="Agent" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><User size={64} strokeWidth={3} /></div>}
                </div>
                <div className="mt-8 space-y-2">
                  <h2 className="text-4xl font-black uppercase tracking-tighter italic font-display">{profile?.display_name || "Agent"}</h2>
                  <p className="text-[#834bf1] font-black text-sm uppercase italic tracking-widest">@{profile?.handle || "unlinked"}</p>
                </div>
             </div>
-
             <div className="bg-[#834bf1] border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-white relative">
               <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center space-x-3">
-                  <Wallet size={24} strokeWidth={3} className="text-[#ffde59]" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.4em]">Liquid Assets</span>
-                </div>
+                <div className="flex items-center space-x-3"><Wallet size={24} strokeWidth={3} className="text-[#ffde59]" /><span className="text-[11px] font-black uppercase tracking-[0.4em]">Liquid Assets</span></div>
               </div>
               <p className="text-7xl font-black tracking-tighter italic font-display">{coinBalance.toLocaleString()} <span className="text-2xl text-[#ffde59]">RC</span></p>
-              <button onClick={() => setShowHistory(true)} className="w-full mt-10 bg-black text-white border-[3px] border-white py-5 font-black uppercase text-[10px] tracking-[0.4em] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-                📜 Vault Ledger
-              </button>
+              <button onClick={() => setShowHistory(true)} className="w-full mt-10 bg-black text-white border-[3px] border-white py-5 font-black uppercase text-[10px] tracking-[0.4em] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">📜 Vault Ledger</button>
             </div>
           </div>
 
@@ -467,34 +521,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 <div className="bg-[#ffde59] border-[6px] border-black p-10 shadow-[16px_16px_0px_0px_#000] text-center space-y-6">
                   <Lock size={40} strokeWidth={3} className="mx-auto" />
                   <h3 className="text-3xl font-black uppercase italic font-display">Node Syncing</h3>
-                  <p className="text-black text-xs font-bold uppercase leading-relaxed max-w-xs mx-auto border-t-[3px] border-black/10 pt-6">
-                    Our team is reviewing your deployment. Grid modules will unlock shortly.
-                  </p>
+                  <p className="text-black text-xs font-bold uppercase leading-relaxed max-w-xs mx-auto border-t-[3px] border-black/10 pt-6">Our team is reviewing your deployment. Grid modules will unlock shortly.</p>
                 </div>
               </div>
             )}
-
             <div className={`flex border-[6px] border-black bg-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-2.5 ${!isApproved ? 'grayscale opacity-60' : ''}`}>
               <button onClick={() => setActiveTab('missions')} className={`flex-1 py-5 font-black uppercase text-sm tracking-[0.3em] italic ${activeTab === 'missions' ? 'bg-[#ffde59] border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : ''}`}>Missions</button>
               <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-5 font-black uppercase text-sm tracking-[0.3em] italic ${activeTab === 'rewards' ? 'bg-[#834bf1] text-white border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : ''}`}>Rewards</button>
             </div>
-
             <div className={`space-y-8 min-h-[600px] ${!isApproved ? 'blur-[1px] pointer-events-none' : ''}`}>
-              {activeTab === 'missions' ? (
-                missions.length === 0 ? (
-                  <div className="bg-white border-[6px] border-black p-24 text-center opacity-30 font-black uppercase text-xs tracking-widest italic">Scanning operational grid...</div>
-                ) : (
-                  missions.map((m) => (
-                    <div key={m.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center gap-10">
-                      <div className="space-y-4 flex-1">
-                        <h3 className="text-3xl font-black uppercase italic tracking-tighter font-display text-black">{m.title}</h3>
-                        <p className="text-xs font-bold text-black/60 uppercase tracking-tight line-clamp-2">{m.description}</p>
-                      </div>
-                      <div className="bg-black text-[#ffde59] px-8 py-5 border-[4px] border-black shadow-[6px_6px_0px_0px_#834bf1] font-black text-4xl italic font-display">+{m.reward_amount} RC</div>
+              {activeTab === 'missions' ? (missions.length === 0 ? <div className="bg-white border-[6px] border-black p-24 text-center opacity-30 font-black uppercase text-xs tracking-widest italic">Scanning operational grid...</div> : 
+                missions.map((m) => (
+                  <div key={m.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center gap-10">
+                    <div className="space-y-4 flex-1">
+                      <h3 className="text-3xl font-black uppercase italic tracking-tighter font-display text-black">{m.title}</h3>
+                      <p className="text-xs font-bold text-black/60 uppercase tracking-tight line-clamp-2">{m.description}</p>
                     </div>
-                  ))
-                )
-              ) : (
+                    <div className="bg-black text-[#ffde59] px-8 py-5 border-[4px] border-black shadow-[6px_6px_0px_0px_#834bf1] font-black text-4xl italic font-display">+{m.reward_amount} RC</div>
+                  </div>
+                ))) : 
                 rewards.map((r) => (
                   <div key={r.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center gap-10">
                     <div className="flex items-center space-x-8 flex-1">
@@ -503,21 +548,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     </div>
                     <div className="flex items-center space-x-10">
                       <p className="text-3xl font-black text-[#834bf1] italic tracking-tighter">{r.cost} RC</p>
-                      <button 
-                        disabled={isProcessing === r.id || !!revealedCodes[r.id]} 
-                        onClick={() => handleRedeem(r)} 
-                        className={`px-8 py-4 border-[4px] border-black font-black uppercase text-[12px] tracking-[0.4em] shadow-[6px_6px_0px_0px_#000] active:scale-95 ${revealedCodes[r.id] ? 'bg-[#ffde59] text-black' : 'bg-black text-white'}`}
-                      >
+                      <button disabled={isProcessing === r.id || !!revealedCodes[r.id]} onClick={() => handleRedeem(r)} className={`px-8 py-4 border-[4px] border-black font-black uppercase text-[12px] tracking-[0.4em] shadow-[6px_6px_0px_0px_#000] active:scale-95 ${revealedCodes[r.id] ? 'bg-[#ffde59] text-black' : 'bg-black text-white'}`}>
                         {isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `CODE: ${revealedCodes[r.id]}` : 'Redeem'}
                       </button>
                     </div>
                   </div>
                 ))
-              )}
+              }
             </div>
           </div>
         </div>
       </main>
+
+      {/* --- REAL-TIME TOAST OVERLAY --- */}
+      {toast.show && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center pointer-events-none p-6">
+          <div className="bg-[#ffde59] border-[4px] border-black p-8 shadow-[16px_16px_0px_0px_#000] max-w-md w-full animate-in fade-in zoom-in duration-300 pointer-events-auto">
+            <div className="flex justify-center -mt-16 mb-6">
+               <div className="bg-black text-white p-4 border-[4px] border-white shadow-[6px_6px_0px_0px_#000]">
+                  <Bell size={32} strokeWidth={3} className="animate-bounce" />
+               </div>
+            </div>
+
+            <h2 className="text-3xl font-black text-center mb-3 italic tracking-tighter uppercase font-display text-black">
+              {toast.title}
+            </h2>
+            
+            <p className="text-center font-bold text-sm tracking-tight mb-8 text-black/80 leading-relaxed uppercase">
+              {toast.message}
+            </p>
+
+            <button 
+              onClick={() => setToast({ ...toast, show: false })}
+              className="w-full bg-black text-white py-5 font-black uppercase text-xs tracking-[0.3em] border-[3px] border-black shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95"
+            >
+              Acknowledge Signal
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
