@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import Matter from 'matter-js';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
 import { signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -6,29 +7,169 @@ import {
   LogOut, 
   Gift, 
   User, 
-  Star, 
-  Zap, 
   Wallet, 
   CheckCircle2, 
   ArrowLeft,
   Loader2,
   Lock,
   X,
-  History,
   Bell,
-  Info,
-  Megaphone,
   Fingerprint,
-  TrendingUp,
   Clock,
-  AlertTriangle,
-  ShieldCheck,
-  PartyPopper
+  PartyPopper,
+  Zap,
+  Target
 } from 'lucide-react';
 
 interface DashboardViewProps {
   onBack: () => void;
 }
+
+const SlingshotGame: React.FC = () => {
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Matter.Engine | null>(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  useEffect(() => {
+    if (isMobile || !sceneRef.current) return;
+
+    const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Constraint, Events } = Matter;
+    
+    const engine = Engine.create();
+    engineRef.current = engine;
+    const world = engine.world;
+
+    const render = Render.create({
+      element: sceneRef.current,
+      engine: engine,
+      options: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        wireframes: false,
+        background: 'transparent'
+      }
+    });
+
+    // Boundaries
+    const ground = Bodies.rectangle(window.innerWidth / 2, window.innerHeight + 30, window.innerWidth, 100, { isStatic: true });
+    const wallRight = Bodies.rectangle(window.innerWidth + 30, window.innerHeight / 2, 100, window.innerHeight, { isStatic: true });
+    Composite.add(world, [ground, wallRight]);
+
+    // Slingshot Point
+    const anchor = { x: 200, y: window.innerHeight - 250 };
+    
+    // The "Bird" (Owl Logo)
+    const birdRadius = 30;
+    const createBird = () => {
+      return Bodies.circle(anchor.x, anchor.y, birdRadius, {
+        density: 0.004,
+        restitution: 0.5,
+        friction: 0.1,
+        render: {
+          fillStyle: '#834bf1',
+          strokeStyle: '#000000',
+          lineWidth: 4,
+          sprite: {
+            texture: 'https://izz9qoicna213xwc.public.blob.vercel-storage.com/favicon.ico',
+            xScale: 0.15,
+            yScale: 0.15
+          }
+        }
+      });
+    };
+
+    let bird = createBird();
+    
+    // The Elastic Constraint
+    const elastic = Constraint.create({
+      pointA: anchor,
+      bodyB: bird,
+      stiffness: 0.05,
+      render: {
+        visible: true,
+        lineWidth: 5,
+        strokeStyle: '#000000'
+      }
+    });
+
+    Composite.add(world, [bird, elastic]);
+
+    // Neo-Brutalist Target Stacks
+    const createStack = () => {
+      const stackX = window.innerWidth - 350;
+      const stackY = window.innerHeight - 100;
+      const colors = ['#834bf1', '#ffde59', '#000000'];
+      
+      for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 3; j++) {
+          const box = Bodies.rectangle(
+            stackX + (j * 70), 
+            stackY - (i * 70), 
+            60, 60, 
+            {
+              render: {
+                fillStyle: colors[(i + j) % colors.length],
+                strokeStyle: '#000000',
+                lineWidth: 3
+              }
+            }
+          );
+          Composite.add(world, box);
+        }
+      }
+    };
+    createStack();
+
+    // Interaction
+    const mouse = Mouse.create(render.canvas);
+    const mouseConstraint = MouseConstraint.create(engine, {
+      mouse: mouse,
+      constraint: {
+        stiffness: 0.2,
+        render: { visible: false }
+      }
+    });
+    Composite.add(world, mouseConstraint);
+
+    // Release mechanic
+    Events.on(mouseConstraint, 'enddrag', (event: any) => {
+      if (event.body === bird) {
+        setTimeout(() => {
+          elastic.bodyB = null as any;
+          // Reset bird logic
+          setTimeout(() => {
+            Composite.remove(world, bird);
+            bird = createBird();
+            elastic.bodyB = bird;
+            Composite.add(world, bird);
+          }, 3000);
+        }, 20);
+      }
+    });
+
+    // Run
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+    Render.run(render);
+
+    return () => {
+      Render.stop(render);
+      Runner.stop(runner);
+      Engine.clear(engine);
+      render.canvas.remove();
+    };
+  }, [isMobile]);
+
+  if (isMobile) {
+    return (
+      <div className="absolute inset-0 bg-white opacity-5 pointer-events-none" 
+           style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '40px 40px' }} 
+      />
+    );
+  }
+
+  return <div ref={sceneRef} className="absolute inset-0 z-0 overflow-hidden pointer-events-auto" />;
+};
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
@@ -41,7 +182,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
   const [showSyncToast, setShowSyncToast] = useState(false);
   
-  // Wallet & Redemption State
   const [showHistory, setShowHistory] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -56,21 +196,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setLoading(false);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
-  // --- POST-LOGIN DATA SYNC LOGIC (UPSERT VERSION) ---
   useEffect(() => {
     const syncApplicationData = async () => {
       const pendingData = localStorage.getItem('pending_application');
-      
       if (currentUser && pendingData && supabase) {
-        console.log("⚡ DETECTED PENDING APPLICATION. SYNCING...");
         try {
           const data = JSON.parse(pendingData);
-
-          // Use UPSERT instead of UPDATE to handle missing rows
           const { error } = await supabase
             .from('profiles')
             .upsert({
@@ -89,12 +223,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               reelcoins: 0
             }, { onConflict: 'firebase_uid' });
 
-          if (error) {
-            console.error("❌ SYNC FAILED:", error.message);
-          } else {
-            console.log("✅ PROFILE SYNCED SUCCESSFULLY");
+          if (!error) {
             localStorage.removeItem('pending_application');
-            // Brute force reload to ensure all components see the updated DB state
             window.location.reload();
           }
         } catch (err) {
@@ -102,7 +232,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         }
       }
     };
-
     syncApplicationData();
   }, [currentUser]);
 
@@ -137,7 +266,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (transRes.data) setTransactions(transRes.data);
       if (notifRes.data) setNotifications(notifRes.data);
     } catch (error) {
-      console.error("Dashboard Data Sync Error:", error);
+      console.error("Dashboard Sync Error:", error);
     } finally {
       setLoading(false);
     }
@@ -170,45 +299,56 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-6">
         <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
-        <p className="text-[12px] font-black uppercase tracking-[0.5em] text-black animate-pulse">Scanning Bio-Metrics...</p>
+        <p className="text-[12px] font-black uppercase tracking-[0.5em] text-black animate-pulse">Syncing Hub...</p>
       </div>
     );
   }
 
-  // --- GUEST LOGIN OVERLAY ---
+  // --- GUEST VIEW (Slingshot Game + Login Card) ---
   if (!currentUser) {
     return (
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
-        <div className="w-full max-w-md bg-white border-[6px] border-black shadow-[20px_20px_0px_0px_#834bf1] animate-in zoom-in-95 duration-300">
-          <div className="bg-[#ffde59] border-b-[4px] border-black p-4 flex items-center space-x-3">
-            <AlertTriangle size={24} strokeWidth={3} className="text-black" />
-            <span className="font-black uppercase italic tracking-widest text-xs">⚠️ SYSTEM ALERT</span>
-          </div>
-          
-          <div className="p-10 space-y-8 text-center">
-            <div className="space-y-4">
-              <h2 className="text-3xl font-black uppercase italic leading-none font-display text-black">Unidentified Signal</h2>
-              <p className="text-black/60 text-xs font-bold uppercase leading-relaxed tracking-tight">
-                Secure your Creator Card and access the Dashboard by verifying your identity.
+      <div className="fixed inset-0 z-[1000] bg-white flex items-center justify-center overflow-hidden">
+        <SlingshotGame />
+        
+        <div className="relative z-20 w-full max-w-[380px] px-6">
+          <div className="bg-white border-[4px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-10 space-y-8 animate-in zoom-in-95 duration-300">
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-[#834bf1] border-[3px] border-black shadow-[4px_4px_0px_0px_#ffde59] mb-2">
+                <Target size={28} className="text-white" />
+              </div>
+              <h1 className="text-3xl font-black uppercase italic tracking-tighter font-display text-black">Enter The Hub</h1>
+              <p className="text-black/60 text-[10px] font-black uppercase tracking-widest leading-relaxed">
+                Identity synchronization required for operational grid access.
               </p>
             </div>
 
-            <div className="flex flex-col space-y-4">
+            <div className="space-y-4">
               <button 
                 onClick={handleLogin}
-                className="w-full bg-black text-white py-6 border-[4px] border-black font-black uppercase text-xs tracking-[0.4em] shadow-[8px_8px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center space-x-4 group"
+                className="w-full bg-black text-white py-5 border-[3px] border-black font-black uppercase text-[11px] tracking-[0.3em] shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center space-x-4 group"
               >
-                <Fingerprint size={20} strokeWidth={3} className="text-[#ffde59]" />
+                <Fingerprint size={18} className="text-[#ffde59]" />
                 <span>Verify Identity</span>
               </button>
               
               <button 
                 onClick={onBack}
-                className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 hover:text-black transition-colors"
+                className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-black/30 hover:text-black transition-colors"
               >
                 Return to Studio
               </button>
             </div>
+
+            <div className="pt-6 border-t-[3px] border-black/10 text-center">
+              <p className="text-[8px] font-black uppercase text-black/20 tracking-[0.4em]">
+                Protected by Reelywood Protocol • v4.8
+              </p>
+            </div>
+          </div>
+          
+          {/* Fun little hint for the game */}
+          <div className="hidden md:block absolute -bottom-24 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 border-[2px] border-white font-black text-[8px] uppercase tracking-widest shadow-[4px_4px_0px_0px_#834bf1]">
+            DRAG THE OWL TO DESTROY THE GRID
           </div>
         </div>
       </div>
@@ -223,7 +363,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   return (
     <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden">
       
-      {/* SUCCESS TOAST FOR SYNC */}
       {showSyncToast && (
         <div className="fixed top-32 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-10 duration-500">
           <div className="bg-[#834bf1] text-white px-8 py-5 border-[4px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center space-x-4">
@@ -233,7 +372,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* HISTORY MODAL */}
       {showHistory && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowHistory(false)}></div>
@@ -263,7 +401,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* HEADER */}
       <header className="border-b-[6px] border-black bg-white sticky top-0 z-[100] px-6 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
