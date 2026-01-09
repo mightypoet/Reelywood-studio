@@ -267,38 +267,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, []);
 
-  // --- REAL-TIME NOTIFICATION LISTENER ---
+  // --- ROBUST REAL-TIME NOTIFICATION LISTENER ---
   useEffect(() => {
     // 1. Safety Check: Stop if currentUser or supabase is missing
     if (!currentUser || !supabase) return;
 
-    // 2. Use Optional Chaining (?.channel) and standard channel name
-    const channel = supabase?.channel('public:notifications')
+    // 2. Listen for BOTH Personal and Global notifications
+    const channel = supabase?.channel('public:notifications:all')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${currentUser.uid}`,
         },
         (payload) => {
-          console.log('🔔 NEW NOTIFICATION RECEIVED:', payload);
-          setToast({
-            show: true,
-            title: payload.new.title,
-            message: payload.new.message
-          });
+          const notif = payload.new;
+          
+          // Client-side Filter: Is this for ME or Everyone?
+          if (notif.user_id === 'global' || notif.user_id === currentUser.uid) {
+            console.log('🔔 LIVE NOTIFICATION RECEIVED:', notif);
+            
+            setToast({
+              show: true,
+              title: notif.title,
+              message: notif.message
+            });
 
-          // Refresh notifications list locally
-          setNotifications(prev => [payload.new, ...prev]);
+            // Refresh local list
+            setNotifications(prev => [notif, ...prev]);
 
-          setTimeout(() => {
-            setToast(prev => ({ ...prev, show: false }));
-          }, 5000);
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+              setToast(prev => ({ ...prev, show: false }));
+            }, 5000);
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+         console.log("SUBSCRIPTION STATUS:", status);
+      });
 
     // 3. Cleanup function using optional chaining
     return () => {
@@ -562,12 +570,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </main>
 
-      {/* --- REAL-TIME TOAST OVERLAY --- */}
+      {/* --- CENTER SCREEN TOAST POPUP --- */}
       {toast.show && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center pointer-events-none p-6">
-          <div className="bg-[#ffde59] border-[4px] border-black p-8 shadow-[16px_16px_0px_0px_#000] max-w-md w-full animate-in fade-in zoom-in duration-300 pointer-events-auto">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-none">
+          <div className="bg-[#ffde59] border-[4px] border-black p-8 shadow-[16px_16px_0px_0px_#000] max-w-md w-full relative animate-in zoom-in-95 duration-300 pointer-events-auto">
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setToast({ ...toast, show: false })}
+              className="absolute top-4 right-4 p-1 hover:bg-black hover:text-white transition-colors"
+            >
+              <X size={20} strokeWidth={3} />
+            </button>
+
+            {/* Icon */}
             <div className="flex justify-center -mt-16 mb-6">
-               <div className="bg-black text-white p-4 border-[4px] border-white shadow-[6px_6px_0px_0px_#000]">
+               <div className="bg-black text-white p-4 border-4 border-white shadow-[6px_6px_0px_0px_#000]">
                   <Bell size={32} strokeWidth={3} className="animate-bounce" />
                </div>
             </div>
@@ -576,6 +594,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               {toast.title}
             </h2>
             
+            <div className="h-1.5 w-20 bg-black mx-auto mb-6"></div>
+
             <p className="text-center font-bold text-sm tracking-tight mb-8 text-black/80 leading-relaxed uppercase">
               {toast.message}
             </p>
