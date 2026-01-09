@@ -18,7 +18,8 @@ import {
   Zap,
   Sparkles,
   Gift,
-  Target
+  Target,
+  Info
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -119,8 +120,7 @@ const ReelywoodSlingshot: React.FC = () => {
     };
 
     const onEnd = () => {
-      if (!bird.isDragging) return;
-      bird.isDragging = false;
+      if (!bird.isDragging) bird.isDragging = false;
       bird.isFlying = true;
       bird.vx = (bird.startX - bird.x) * 0.16;
       bird.vy = (bird.startY - bird.y) * 0.16;
@@ -244,22 +244,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [missions, setMissions] = useState<any[]>([]);
   const [rewards, setRewards] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  
+  // --- NOTIFICATION STATE ---
+  const [isNotifPanelOpen, setIsNotifPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
   const [showHistory, setShowHistory] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   
-  // Real-time Notification State
+  // Real-time Notification State for Toast
   const [toast, setToast] = useState<{ show: boolean; title: string; message: string }>({ 
     show: false, title: '', message: '' 
   });
+
+  const fetchNotifications = async (user: FirebaseUser) => {
+    if (!user || !supabase) return;
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .or(`user_id.eq.${user.uid},user_id.eq.global`)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (data) {
+      setNotifications(data);
+      setUnreadCount(data.length);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
         fetchDashboardData(user);
+        fetchNotifications(user);
       } else {
         setLoading(false);
       }
@@ -269,10 +290,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   // --- ROBUST REAL-TIME NOTIFICATION LISTENER ---
   useEffect(() => {
-    // 1. Safety Check: Stop if currentUser or supabase is missing
     if (!currentUser || !supabase) return;
 
-    // 2. Listen for BOTH Personal and Global notifications
     const channel = supabase?.channel('public:notifications:all')
       .on(
         'postgres_changes',
@@ -284,7 +303,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         (payload) => {
           const notif = payload.new;
           
-          // Client-side Filter: Is this for ME or Everyone?
+          // Filter for ME or Broadcast
           if (notif.user_id === 'global' || notif.user_id === currentUser.uid) {
             console.log('🔔 LIVE NOTIFICATION RECEIVED:', notif);
             
@@ -294,10 +313,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               message: notif.message
             });
 
-            // Refresh local list
+            // Update local list and unread count
             setNotifications(prev => [notif, ...prev]);
+            setUnreadCount(prev => prev + 1);
 
-            // Auto-hide after 5 seconds
+            // Auto-hide toast after 5 seconds
             setTimeout(() => {
               setToast(prev => ({ ...prev, show: false }));
             }, 5000);
@@ -308,7 +328,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
          console.log("SUBSCRIPTION STATUS:", status);
       });
 
-    // 3. Cleanup function using optional chaining
     return () => {
       supabase?.removeChannel(channel);
     };
@@ -361,18 +380,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const fetchDashboardData = async (user: FirebaseUser) => {
     if (!supabase) return;
     try {
-      const [profileRes, missionsRes, rewardsRes, transRes, notifRes] = await Promise.all([
+      const [profileRes, missionsRes, rewardsRes, transRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('firebase_uid', user.uid).single(),
         supabase.from('missions').select('*').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').eq('user_uid', user.uid).order('created_at', { ascending: false }),
-        supabase.from('notifications').select('*').or(`user_id.eq.${user.uid},user_id.eq.global`).order('created_at', { ascending: false }).limit(10)
+        supabase.from('transactions').select('*').eq('user_uid', user.uid).order('created_at', { ascending: false })
       ]);
       if (profileRes.data) setProfile(profileRes.data);
       if (missionsRes.data) setMissions(missionsRes.data);
       if (rewardsRes.data) setRewards(rewardsRes.data);
       if (transRes.data) setTransactions(transRes.data);
-      if (notifRes.data) setNotifications(notifRes.data);
     } catch (error) {
       console.error("Data Sync Error:", error);
     } finally {
@@ -451,10 +468,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   // --- AUTHENTICATED VIEW ---
   const isApproved = profile?.card_status === 'approved';
   const coinBalance = profile?.reelcoins || 0;
-  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden">
+      {/* Vault History Modal */}
       {showHistory && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowHistory(false)}></div>
@@ -487,11 +504,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <button onClick={onBack} className="p-2 border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"><ArrowLeft size={24} strokeWidth={3} /></button>
             <h1 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-display">Creator <span className="text-[#834bf1]">Hub</span></h1>
           </div>
+          
           <div className="flex items-center space-x-4">
-            <button className="w-12 h-12 flex items-center justify-center border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white relative">
-              <Bell size={20} strokeWidth={3} />
-              {unreadCount > 0 && <div className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-black w-5 h-5 flex items-center justify-center border-2 border-black">{unreadCount}</div>}
-            </button>
+            {/* NOTIFICATION BELL WRAPPER */}
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setIsNotifPanelOpen(!isNotifPanelOpen);
+                  if (!isNotifPanelOpen) setUnreadCount(0); // Reset unread when opening
+                }}
+                className="relative p-3 border-[4px] border-black bg-white hover:bg-[#ffde59] shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              >
+                <Bell size={20} className="text-black" strokeWidth={3} />
+                {unreadCount > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black h-6 w-6 flex items-center justify-center border-2 border-black rounded-none animate-pulse">
+                    {unreadCount}
+                  </div>
+                )}
+              </button>
+
+              {/* DROPDOWN PANEL */}
+              {isNotifPanelOpen && (
+                <div className="absolute top-16 right-0 w-80 md:w-96 bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] z-50 animate-in slide-in-from-top-2 duration-200">
+                  <div className="bg-black text-white p-4 flex justify-between items-center">
+                    <span className="font-black italic tracking-widest text-xs uppercase">Incoming Signals</span>
+                    <button onClick={() => setIsNotifPanelOpen(false)} className="hover:text-[#ffde59] transition-colors">
+                      <X size={16} strokeWidth={3} />
+                    </button>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto bg-white">
+                    {notifications.length === 0 ? (
+                      <div className="p-12 text-center opacity-30">
+                        <Bell size={32} className="mx-auto mb-4" strokeWidth={3} />
+                        <p className="text-[10px] font-black uppercase tracking-widest">No New Transmissions</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div key={notif.id} className="p-6 border-b-2 border-black hover:bg-slate-50 transition-colors flex gap-4 items-start group">
+                          <div className="min-w-[32px] h-[32px] bg-[#ffde59] border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_#000] group-hover:rotate-6 transition-transform">
+                            <Info size={16} strokeWidth={3} />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="font-black text-xs uppercase italic leading-none">{notif.title}</h4>
+                            <p className="text-[10px] font-bold text-black/60 leading-relaxed uppercase">{notif.message}</p>
+                            <span className="text-[8px] font-mono text-black/30 uppercase tracking-widest block pt-1">
+                              {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-4 border-t-4 border-black bg-slate-50 text-center">
+                    <button 
+                       onClick={() => setNotifications([])}
+                       className="text-[9px] font-black uppercase tracking-widest hover:text-red-600 transition-colors"
+                    >
+                      Clear Terminal History
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button onClick={() => auth.signOut()} className="flex items-center space-x-3 bg-black text-white px-5 py-2.5 border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[11px] font-black uppercase tracking-widest italic">
               <LogOut size={16} strokeWidth={3} />
               <span>Sign Out</span>
@@ -527,7 +604,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
           <div className="lg:col-span-8 space-y-10 relative">
             {!isApproved && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center p-12 bg-white/20 backdrop-blur-[2px]">
+              <div className="absolute inset-0 z-40 flex items-center justify-center p-12 bg-white/20 backdrop-blur-[2px]">
                 <div className="bg-[#ffde59] border-[6px] border-black p-10 shadow-[16px_16px_0px_0px_#000] text-center space-y-6">
                   <Lock size={40} strokeWidth={3} className="mx-auto" />
                   <h3 className="text-3xl font-black uppercase italic font-display">Node Syncing</h3>
@@ -570,7 +647,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </main>
 
-      {/* --- CENTER SCREEN TOAST POPUP --- */}
+      {/* --- CENTER SCREEN TOAST POPUP MODAL --- */}
       {toast.show && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-none">
           <div className="bg-[#ffde59] border-[4px] border-black p-8 shadow-[16px_16px_0px_0px_#000] max-w-md w-full relative animate-in zoom-in-95 duration-300 pointer-events-auto">
@@ -578,7 +655,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             {/* Close Button */}
             <button 
               onClick={() => setToast({ ...toast, show: false })}
-              className="absolute top-4 right-4 p-1 hover:bg-black hover:text-white transition-colors"
+              className="absolute top-2 right-2 p-1 hover:bg-black hover:text-white transition-colors"
             >
               <X size={20} strokeWidth={3} />
             </button>
@@ -590,21 +667,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                </div>
             </div>
 
-            <h2 className="text-3xl font-black text-center mb-3 italic tracking-tighter uppercase font-display text-black">
+            <h2 className="text-3xl font-black text-center mb-3 italic tracking-tighter uppercase font-display leading-none text-black">
               {toast.title}
             </h2>
             
-            <div className="h-1.5 w-20 bg-black mx-auto mb-6"></div>
+            <div className="h-1 w-20 bg-black mx-auto mb-4"></div>
 
-            <p className="text-center font-bold text-sm tracking-tight mb-8 text-black/80 leading-relaxed uppercase">
+            <p className="text-center font-bold text-lg tracking-wide mb-8 text-black leading-tight uppercase">
               {toast.message}
             </p>
 
             <button 
               onClick={() => setToast({ ...toast, show: false })}
-              className="w-full bg-black text-white py-5 font-black uppercase text-xs tracking-[0.3em] border-[3px] border-black shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95"
+              className="w-full bg-black text-white py-4 font-black text-xl hover:bg-white hover:text-black border-[4px] border-black transition-all shadow-[4px_4px_0px_0px_#fff] active:scale-95"
             >
-              Acknowledge Signal
+              ACKNOWLEDGE
             </button>
           </div>
         </div>
