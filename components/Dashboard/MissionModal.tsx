@@ -44,7 +44,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-5xl h-[90vh] md:h-auto md:max-h-[85vh] overflow-y-auto border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] relative flex flex-col md:flex-row animate-in zoom-in-95">
         
-        <button onClick={onClose} className="absolute top-6 right-6 z-50 bg-black text-white p-3 border-2 border-white hover:bg-rose-500 transition-colors shadow-[4px_4px_0px_0px_#000]">
+        <button onClick={onClose} className="absolute top-6 right-6 z-50 bg-black text-white p-3 border-2 border-white hover:rotate-90 transition-transform shadow-[4px_4px_0px_0px_#000]">
           <X size={24} strokeWidth={4} />
         </button>
 
@@ -52,7 +52,8 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
         <div className="w-full md:w-5/12 relative bg-black border-r-[6px] border-black overflow-hidden group">
            <img 
               src={mission.partner_brands?.cover_image_url || mission.image_url || "https://images.unsplash.com/photo-1492684223066-81342ee5ff30"} 
-              className="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-1000 grayscale hover:grayscale-0" 
+              className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-all duration-1000" 
+              alt="Mission cover"
            />
            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
            
@@ -61,10 +62,16 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                  PROTOCOL: {mission.partner_brands?.name || "REELYWOOD"}
               </div>
               <h2 className="text-5xl font-black italic uppercase font-display tracking-tighter leading-none text-white drop-shadow-lg">{mission.title}</h2>
-              <div className="flex items-center space-x-3 font-black text-xs text-white/70 uppercase tracking-widest">
-                 <MapPin size={16} strokeWidth={3} className="text-[#ffde59]" /> 
-                 <span>{mission.partner_brands?.location_text || "Global Sync"}</span>
-              </div>
+              
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mission.location || mission.partner_brands?.location_text || "Kolkata")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center space-x-3 font-black text-xs text-gray-300 uppercase tracking-widest hover:text-[#ffde59] hover:underline transition-all cursor-pointer group/loc"
+              >
+                 <MapPin size={16} strokeWidth={3} className="text-[#ffde59] group-hover/loc:scale-110 transition-transform" /> 
+                 <span>{mission.location || mission.partner_brands?.location_text || "Global Sync"} (View Map)</span>
+              </a>
            </div>
         </div>
 
