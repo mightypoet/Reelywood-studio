@@ -552,27 +552,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     </button>
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto bg-white scrollbar-hide">
+                  <div className="max-h-96 overflow-y-auto bg-white scrollbar-hide p-4">
                     {notifications.length === 0 ? (
                       <div className="p-12 text-center opacity-30">
                         <Bell size={32} className="mx-auto mb-4" strokeWidth={3} />
                         <p className="text-[10px] font-black uppercase tracking-widest">No New Transmissions</p>
                       </div>
                     ) : (
-                      notifications.map((notif) => (
-                        <div key={notif.id} className="p-6 border-b-2 border-black hover:bg-slate-50 transition-colors flex gap-4 items-start group">
-                          <div className="min-w-[32px] h-[32px] bg-[#ffde59] border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_#000] group-hover:rotate-6 transition-transform">
-                            <Info size={16} strokeWidth={3} />
+                      <div className="space-y-4 pr-2">
+                        {notifications.map((notif) => (
+                          <div key={notif.id} className="bg-white border-b-2 border-black py-4 flex gap-4 items-start group">
+                            
+                            {/* 1. THE ICON / LOGO LOGIC */}
+                            <div className="shrink-0">
+                              {notif.metadata?.image ? (
+                                // A: IF BRAND IMAGE EXISTS -> SHOW LOGO
+                                <div className="w-12 h-12 bg-white border-2 border-black p-1 shrink-0 group-hover:shadow-[2px_2px_0px_0px_#834bf1] transition-all">
+                                   <img 
+                                     src={notif.metadata.image} 
+                                     alt="Brand" 
+                                     className="w-full h-full object-contain" 
+                                   />
+                                </div>
+                              ) : (
+                                // B: NO IMAGE -> SHOW DEFAULT 'INFO' ICON
+                                <div className="w-12 h-12 bg-[#ffde59] border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_#000] shrink-0 group-hover:rotate-6 transition-transform">
+                                   <Info size={20} className="text-black" strokeWidth={3} />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 2. THE TEXT CONTENT */}
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-black italic uppercase text-xs mb-1 truncate">{notif.title}</h4>
+                              <p className="font-bold text-[10px] text-gray-500 uppercase tracking-wide leading-relaxed">
+                                {notif.message}
+                              </p>
+                              <span className="text-[8px] font-mono text-gray-300 mt-2 block uppercase tracking-widest">
+                                 {new Date(notif.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </span>
+                            </div>
+
                           </div>
-                          <div className="space-y-1">
-                            <h4 className="font-black text-xs uppercase italic leading-none">{notif.title}</h4>
-                            <p className="text-[10px] font-bold text-black/60 leading-relaxed uppercase">{notif.message}</p>
-                            <span className="text-[8px] font-mono text-black/30 uppercase tracking-widest block pt-1">
-                              {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
 
