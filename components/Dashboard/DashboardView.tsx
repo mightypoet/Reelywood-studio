@@ -120,7 +120,8 @@ const ReelywoodSlingshot: React.FC = () => {
     };
 
     const onEnd = () => {
-      if (!bird.isDragging) bird.isDragging = false;
+      if (!bird.isDragging) return;
+      bird.isDragging = false;
       bird.isFlying = true;
       bird.vx = (bird.startX - bird.x) * 0.16;
       bird.vy = (bird.startY - bird.y) * 0.16;
@@ -303,7 +304,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         (payload) => {
           const notif = payload.new;
           
-          // Filter for ME or Broadcast
           if (notif.user_id === 'global' || notif.user_id === currentUser.uid) {
             console.log('🔔 LIVE NOTIFICATION RECEIVED:', notif);
             
@@ -511,7 +511,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               <button 
                 onClick={() => {
                   setIsNotifPanelOpen(!isNotifPanelOpen);
-                  if (!isNotifPanelOpen) setUnreadCount(0); // Reset unread when opening
+                  if (!isNotifPanelOpen) setUnreadCount(0); // Reset unread count when opening history
                 }}
                 className="relative p-3 border-[4px] border-black bg-white hover:bg-[#ffde59] shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
               >
@@ -533,7 +533,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     </button>
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto bg-white">
+                  <div className="max-h-80 overflow-y-auto bg-white scrollbar-hide">
                     {notifications.length === 0 ? (
                       <div className="p-12 text-center opacity-30">
                         <Bell size={32} className="mx-auto mb-4" strokeWidth={3} />
@@ -655,7 +655,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             {/* Close Button */}
             <button 
               onClick={() => setToast({ ...toast, show: false })}
-              className="absolute top-2 right-2 p-1 hover:bg-black hover:text-white transition-colors"
+              className="absolute top-4 right-4 p-1 hover:bg-black hover:text-white transition-colors"
             >
               <X size={20} strokeWidth={3} />
             </button>
@@ -671,7 +671,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               {toast.title}
             </h2>
             
-            <div className="h-1 w-20 bg-black mx-auto mb-4"></div>
+            <div className="h-1.5 w-20 bg-black mx-auto mb-6"></div>
 
             <p className="text-center font-bold text-lg tracking-wide mb-8 text-black leading-tight uppercase">
               {toast.message}
