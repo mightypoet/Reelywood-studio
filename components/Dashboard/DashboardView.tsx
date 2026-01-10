@@ -247,6 +247,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [missions, setMissions] = useState<any[]>([]);
   const [rewards, setRewards] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
   
   // --- NOTIFICATION STATE ---
   const [isNotifPanelOpen, setIsNotifPanelOpen] = useState(false);
@@ -291,12 +292,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (user) {
         fetchDashboardData(user);
         fetchNotifications(user);
+        fetchMySubmissions(user);
       } else {
         setLoading(false);
       }
     });
     return () => unsubscribe();
   }, []);
+
+  const fetchMySubmissions = async (user: FirebaseUser) => {
+    if (!supabase) return;
+    const { data } = await supabase
+      .from('submissions')
+      .select('mission_id, status')
+      .eq('user_id', user.uid);
+    if (data) setUserSubmissions(data);
+  };
 
   // --- ROBUST REAL-TIME NOTIFICATION LISTENER ---
   useEffect(() => {
@@ -451,7 +462,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 <Sparkles className="text-white w-8 h-8" />
               </div>
               <h1 className="text-3xl font-black italic tracking-tighter uppercase font-display text-black">Enter The Hub</h1>
-              <p className="text-black/50 text-[9px] font-black uppercase tracking-[0.4em]">Identity Sync Protocol • Reelywood</p>
+              <p className="text-black/50 dark:text-white/50 text-[10px] font-black uppercase tracking-[0.4em]">Identity Sync Protocol • Reelywood</p>
             </div>
             <div className="space-y-4">
               <button 
@@ -486,7 +497,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <MissionModal 
           mission={selectedMission} 
           user={currentUser} 
-          onClose={() => setSelectedMission(null)} 
+          onClose={() => {
+            setSelectedMission(null);
+            fetchMySubmissions(currentUser);
+          }} 
         />
       )}
 
@@ -660,38 +674,78 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             </div>
             <div className={`space-y-8 min-h-[600px] ${!isApproved ? 'blur-[1px] pointer-events-none' : ''}`}>
               {activeTab === 'missions' ? (missions.length === 0 ? <div className="bg-white border-[6px] border-black p-24 text-center opacity-30 font-black uppercase text-xs tracking-widest italic">Scanning operational grid...</div> : 
-                missions.map((m) => (
-                  <div key={m.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center gap-10 group">
-                    <div className="flex items-center gap-6 flex-1 min-w-0">
-                      <div className="w-20 h-20 bg-slate-50 border-[3px] border-black p-2 shrink-0 shadow-[4px_4px_0px_0px_#000] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
-                         {m.partner_brands?.logo_url ? (
-                            <img 
-                              src={m.partner_brands.logo_url} 
-                              className="w-full h-full object-contain" 
-                              alt="Brand"
-                            />
-                         ) : (
-                            <div className="w-full h-full bg-black flex items-center justify-center text-white font-black text-2xl italic font-display">R</div>
-                         )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {missions.map((m) => {
+                    const submission = userSubmissions.find(sub => sub.mission_id === m.id);
+                    const status = submission ? submission.status : 'idle';
+
+                    let cardStyle = "border-black bg-white";
+                    let buttonText = "DEPLOY MISSION PROTOCOL";
+                    let isLockedCard = false;
+
+                    if (status === 'pending') {
+                       cardStyle = "border-black bg-[#ffde59]"; 
+                       buttonText = "VERIFICATION IN PROGRESS...";
+                       isLockedCard = true;
+                    } else if (status === 'approved') {
+                       cardStyle = "border-[#4ade80] bg-[#dcfce7]"; 
+                       buttonText = "MISSION COMPLETED ✅";
+                       isLockedCard = true;
+                    }
+
+                    return (
+                      <div key={m.id} className={`border-[4px] p-6 shadow-[8px_8px_0px_0px_#000] relative flex flex-col transition-all ${cardStyle} group`}>
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-16 h-16 bg-white border-2 border-black p-1 shrink-0 shadow-[2px_2px_0px_0px_#000]">
+                             {m.partner_brands?.logo_url ? (
+                                <img 
+                                  src={m.partner_brands.logo_url} 
+                                  className="w-full h-full object-contain" 
+                                  alt="Brand"
+                                />
+                             ) : (
+                                <div className="w-full h-full bg-black flex items-center justify-center text-white font-black text-xl italic font-display">R</div>
+                             )}
+                          </div>
+                          <div className="min-w-0">
+                             <h3 className="font-black text-xl uppercase leading-none truncate mb-1">{m.title}</h3>
+                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                {m.partner_brands?.name || "REELYWOOD ORIGINAL"}
+                             </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold text-black/60 leading-relaxed uppercase line-clamp-3">
+                            {m.description}
+                          </p>
+                        </div>
+
+                        <div className="mt-6 flex items-center justify-between mb-4">
+                           <div className="bg-black text-[#ffde59] px-3 py-1.5 border-2 border-black font-black text-sm italic">
+                             +{m.reward_amount} RC
+                           </div>
+                           {status === 'approved' && <CheckCircle2 className="text-emerald-500" size={24} />}
+                        </div>
+
+                        <div className="mt-auto pt-6">
+                           <button 
+                             onClick={() => !isLockedCard && setSelectedMission(m)}
+                             disabled={isLockedCard}
+                             className={`w-full py-4 font-black uppercase text-[10px] tracking-[0.2em] border-[3px] border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${
+                                isLockedCard 
+                                ? 'opacity-70 cursor-not-allowed bg-black text-white' 
+                                : 'bg-[#834bf1] text-white hover:bg-black hover:shadow-[4px_4px_0px_0px_#fff]'
+                             }`}
+                           >
+                             {buttonText}
+                           </button>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                         <h3 className="text-3xl font-black uppercase italic tracking-tighter font-display text-black truncate mb-1">{m.title}</h3>
-                         <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-[0.3em] italic">
-                            {m.partner_brands?.name || "REELYWOOD ORIGINAL"}
-                         </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-6">
-                       <div className="bg-black text-[#ffde59] px-6 py-4 border-[4px] border-black shadow-[4px_4px_0px_0px_#834bf1] font-black text-2xl italic font-display">+{m.reward_amount} RC</div>
-                       <button 
-                        onClick={() => setSelectedMission(m)}
-                        className="bg-white text-black px-6 py-4 border-[4px] border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
-                       >
-                         View Brief
-                       </button>
-                    </div>
-                  </div>
-                ))) : 
+                    );
+                  })}
+                </div>
+              ) : 
                 rewards.map((r) => (
                   <div key={r.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center gap-10">
                     <div className="flex items-center space-x-8 flex-1">
