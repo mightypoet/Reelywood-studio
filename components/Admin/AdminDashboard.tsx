@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
@@ -7,9 +8,10 @@ import {
   Loader2, ArrowRight, Activity, Terminal,
   Target, FileText, ArrowDownLeft, ArrowUpRight,
   Clock, Bell, Megaphone, Info, CheckCircle2,
-  Building2, Image as ImageIcon, MapPin
+  Building2, Image as ImageIcon, MapPin, ListChecks
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
+import { VerificationModal } from './VerificationModal';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -27,7 +29,7 @@ export interface Profile {
 const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'missions' | 'vouchers' | 'ledger' | 'brands'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'missions' | 'vouchers' | 'ledger' | 'brands' | 'submissions'>('users');
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('admin-theme');
     return saved ? saved === 'dark' : true;
@@ -42,6 +44,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [adminLogs, setAdminLogs] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
 
   const [missionForm, setMissionForm] = useState({ 
@@ -51,7 +55,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     assignTo: 'all',
     brand_id: '',
     location: '',
-    image_url: ''
+    image_url: '',
+    checkpoints: ['', '', '']
   });
   const [voucherForm, setVoucherForm] = useState({ title: '', cost: '', code: '' });
 
@@ -73,13 +78,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     try {
       if (!supabase) throw new Error("Supabase client not initialized");
 
-      const [profilesRes, missionsRes, rewardsRes, transRes, logsRes, brandsRes] = await Promise.all([
+      const [profilesRes, missionsRes, rewardsRes, transRes, logsRes, brandsRes, submissionsRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(10),
-        supabase.from('partner_brands').select('*').order('name', { ascending: true })
+        supabase.from('partner_brands').select('*').order('name', { ascending: true }),
+        supabase.from('submissions').select('*, profiles(display_name, email), missions(title, reward_amount, checkpoints)').eq('status', 'pending').order('created_at', { ascending: false })
       ]);
 
       setUsers(profilesRes.data || []);
@@ -88,6 +94,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       setTransactions(transRes.data || []);
       setAdminLogs(logsRes.data || []);
       setBrands(brandsRes.data || []);
+      setSubmissions(submissionsRes.data || []);
     } catch (error: any) {
       console.error("❌ [ADMIN] Fetch Error:", error.message);
     } finally {
@@ -141,7 +148,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         assigned_to: assignedVal,
         brand_id: missionForm.brand_id || null,
         location: missionForm.location,
-        image_url: missionForm.image_url
+        image_url: missionForm.image_url,
+        checkpoints: missionForm.checkpoints.filter(c => c.trim() !== '')
       }]);
       if (missionError) throw missionError;
 
@@ -152,7 +160,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         is_read: false
       }]);
 
-      setMissionForm({ title: '', desc: '', reward: '', assignTo: 'all', brand_id: '', location: '', image_url: '' });
+      setMissionForm({ title: '', desc: '', reward: '', assignTo: 'all', brand_id: '', location: '', image_url: '', checkpoints: ['', '', ''] });
       await fetchAllData();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -161,25 +169,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
+  /**
+   * FIX: Added handleCreateVoucher to process the voucher creation form.
+   */
   const handleCreateVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!voucherForm.title || !voucherForm.cost) return alert("Title and Cost required");
+    if (!voucherForm.title || !voucherForm.cost || !voucherForm.code) {
+      return alert("Title, Cost, and Hash Code are required.");
+    }
     setSubmitting(true);
     try {
-      const { error: rewardError } = await supabase!.from('rewards').insert([{
+      if (!supabase) throw new Error("Supabase client unavailable.");
+      const { error } = await supabase.from('rewards').insert([{
         title: voucherForm.title,
         cost: parseInt(voucherForm.cost),
-        code: voucherForm.code.toUpperCase(),
+        code: voucherForm.code.toUpperCase()
       }]);
-      if (rewardError) throw rewardError;
-
-      await supabase!.from('notifications').insert([{
-        user_id: 'global',
-        title: "🎁 NEW REWARD ADDED",
-        message: `New inventory available in Vault: ${voucherForm.title}`,
-        is_read: false
-      }]);
-
+      if (error) throw error;
       setVoucherForm({ title: '', cost: '', code: '' });
       await fetchAllData();
     } catch (error: any) {
@@ -226,6 +232,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   return (
     <div className={`min-h-screen ${bgColor} ${textColor} font-lexend transition-colors duration-500 overflow-x-hidden pb-32`}>
+      {selectedSubmission && (
+        <VerificationModal 
+          submission={selectedSubmission} 
+          onClose={() => setSelectedSubmission(null)} 
+          onRefresh={fetchAllData} 
+        />
+      )}
+      
       <header className={`border-b-4 ${borderColor} ${cardColor} px-8 py-6 flex items-center justify-between sticky top-0 z-[100] backdrop-blur-md bg-opacity-80`}>
         <div className="flex items-center space-x-6">
           <div className={`${primaryAccent} w-12 h-12 flex items-center justify-center border-4 ${borderColor} shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`}>
@@ -249,12 +263,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </header>
 
       <main className="max-w-[1600px] mx-auto p-8 space-y-12">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-8">
           {[
             { label: 'Agents', val: users.length, icon: Users, accent: 'bg-[#834bf1]' },
             { label: 'Pending', val: users.filter(u => u.card_status === 'pending').length, icon: Search, accent: 'bg-[#ffde59]' },
             { label: 'Alliance', val: brands.length, icon: Building2, accent: 'bg-[#39ff14]' },
             { label: 'Missions', val: missions.length, icon: Zap, accent: 'bg-[#ff00ff]' },
+            { label: 'Queued', val: submissions.length, icon: ListChecks, accent: 'bg-rose-500' },
             { label: 'Tx Volume', val: transactions.length, icon: Activity, accent: 'bg-white' }
           ].map((stat, i) => (
             <div key={i} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group`}>
@@ -272,6 +287,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <div className={`flex border-4 ${borderColor} p-1.5 ${cardColor} shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]`}>
           {[
             { id: 'users', label: 'Command', icon: <Users size={18}/> },
+            { id: 'submissions', label: 'Queued', icon: <ListChecks size={18}/> },
             { id: 'brands', label: 'Alliance', icon: <Building2 size={18}/> },
             { id: 'missions', label: 'Console', icon: <Target size={18}/> },
             { id: 'vouchers', label: 'Vault', icon: <Gift size={18}/> },
@@ -336,6 +352,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           )}
 
+          {activeTab === 'submissions' && (
+            <div className="space-y-8">
+              <h3 className="text-3xl font-black italic uppercase font-display">Mission Queue</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {submissions.map(sub => (
+                  <div key={sub.id} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col space-y-6 group hover:-translate-y-1 transition-all`}>
+                    <div className="flex justify-between items-start">
+                      <div className="w-12 h-12 bg-[#834bf1] border-2 border-black flex items-center justify-center text-white shadow-[3px_3px_0px_0px_#000]">
+                        <Clock size={24} />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Submitted At</p>
+                        <p className="text-xs font-bold">{new Date(sub.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-black text-xl uppercase italic mb-1">{sub.profiles?.display_name || 'Agent'}</h4>
+                      <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">{sub.missions?.title}</p>
+                    </div>
+                    <div className="bg-white border-2 border-black p-4 text-xs font-bold text-blue-600 underline truncate shadow-[2px_2px_0px_0px_#000]">
+                      {sub.link}
+                    </div>
+                    <button 
+                      onClick={() => setSelectedSubmission(sub)}
+                      className="w-full bg-[#ffde59] py-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all active:scale-95 flex items-center justify-center space-x-3"
+                    >
+                      <ListChecks size={18} />
+                      <span>Execute Verification</span>
+                    </button>
+                  </div>
+                ))}
+                {submissions.length === 0 && (
+                  <div className="col-span-full py-24 text-center opacity-30 font-black uppercase tracking-[0.4em] text-xs">
+                    Clear Terminal. No Submissions Queued.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'brands' && <BrandManager />}
 
           {activeTab === 'missions' && (
@@ -362,6 +418,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Intelligence Brief</label>
                       <textarea required rows={3} value={missionForm.desc} onChange={e => setMissionForm({...missionForm, desc: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none resize-none shadow-[4px_4px_0px_0px_#000] text-black`} placeholder="DELIVERABLES..."/>
                     </div>
+                    
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Mission Checkpoints (Criteria)</label>
+                       {missionForm.checkpoints.map((pt, idx) => (
+                          <input 
+                            key={idx}
+                            type="text" 
+                            placeholder={`Checkpoint ${idx + 1}`}
+                            className={`w-full bg-white border-2 ${borderColor} p-2 font-black text-[10px] focus:outline-none shadow-[2px_2px_0px_0px_#000] text-black mb-1`}
+                            value={pt}
+                            onChange={(e) => {
+                               const pts = [...missionForm.checkpoints];
+                               pts[idx] = e.target.value;
+                               setMissionForm({ ...missionForm, checkpoints: pts });
+                            }}
+                          />
+                       ))}
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Reward (RC)</label><input required type="number" value={missionForm.reward} onChange={e => setMissionForm({...missionForm, reward: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none shadow-[4px_4px_0px_0px_#000] text-black`}/></div>
                       <div><label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Target Agent</label>

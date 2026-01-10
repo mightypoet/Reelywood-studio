@@ -21,6 +21,7 @@ import {
   Target,
   Info
 } from 'lucide-react';
+import { MissionModal } from './MissionModal';
 
 interface DashboardViewProps {
   onBack: () => void;
@@ -255,6 +256,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
+  const [selectedMission, setSelectedMission] = useState<any>(null);
   
   // Real-time Notification State for Toast
   const [toast, setToast] = useState<{ show: boolean; title: string; message: string }>({ 
@@ -382,7 +384,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     try {
       const [profileRes, missionsRes, rewardsRes, transRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('firebase_uid', user.uid).single(),
-        supabase.from('missions').select('*').order('created_at', { ascending: false }),
+        supabase.from('missions').select('*, partner_brands(name, location_text, cover_image_url)').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').eq('user_uid', user.uid).order('created_at', { ascending: false })
       ]);
@@ -471,6 +473,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   return (
     <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden">
+      {selectedMission && (
+        <MissionModal 
+          mission={selectedMission} 
+          user={currentUser} 
+          onClose={() => setSelectedMission(null)} 
+        />
+      )}
+
       {/* Vault History Modal */}
       {showHistory && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -624,7 +634,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       <h3 className="text-3xl font-black uppercase italic tracking-tighter font-display text-black">{m.title}</h3>
                       <p className="text-xs font-bold text-black/60 uppercase tracking-tight line-clamp-2">{m.description}</p>
                     </div>
-                    <div className="bg-black text-[#ffde59] px-8 py-5 border-[4px] border-black shadow-[6px_6px_0px_0px_#834bf1] font-black text-4xl italic font-display">+{m.reward_amount} RC</div>
+                    <div className="flex items-center space-x-6">
+                       <div className="bg-black text-[#ffde59] px-6 py-4 border-[4px] border-black shadow-[4px_4px_0px_0px_#834bf1] font-black text-2xl italic font-display">+{m.reward_amount} RC</div>
+                       <button 
+                        onClick={() => setSelectedMission(m)}
+                        className="bg-white text-black px-6 py-4 border-[4px] border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                       >
+                         View Brief
+                       </button>
+                    </div>
                   </div>
                 ))) : 
                 rewards.map((r) => (
