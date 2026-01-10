@@ -19,7 +19,8 @@ import {
   Sparkles,
   Gift,
   Target,
-  Info
+  Info,
+  MapPin
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 
@@ -258,9 +259,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
   
-  // Real-time Notification State for Toast
-  const [toast, setToast] = useState<{ show: boolean; title: string; message: string }>({ 
-    show: false, title: '', message: '' 
+  // Updated Real-time Notification State for Enhanced Toast
+  const [toast, setToast] = useState<{ 
+    show: boolean; 
+    title: string; 
+    message: string;
+    image: string;
+    location: string;
+  }>({ 
+    show: false, title: '', message: '', image: '', location: '' 
   });
 
   const fetchNotifications = async (user: FirebaseUser) => {
@@ -312,7 +319,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             setToast({
               show: true,
               title: notif.title,
-              message: notif.message
+              message: notif.message,
+              image: notif.metadata?.image || '',
+              location: notif.metadata?.location || ''
             });
 
             // Update local list and unread count
@@ -321,7 +330,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
             // Auto-hide toast after 5 seconds
             setTimeout(() => {
-              setToast(prev => ({ ...prev, show: false }));
+              setToast(prev => ({ ...prev, show: false, title: '', message: '', image: '', location: '' }));
             }, 5000);
           }
         }
@@ -384,7 +393,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     try {
       const [profileRes, missionsRes, rewardsRes, transRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('firebase_uid', user.uid).single(),
-        supabase.from('missions').select('*, partner_brands(name, location_text, cover_image_url)').order('created_at', { ascending: false }),
+        supabase.from('missions').select('*, partner_brands ( name, logo_url )').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').eq('user_uid', user.uid).order('created_at', { ascending: false })
       ]);
@@ -629,10 +638,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <div className={`space-y-8 min-h-[600px] ${!isApproved ? 'blur-[1px] pointer-events-none' : ''}`}>
               {activeTab === 'missions' ? (missions.length === 0 ? <div className="bg-white border-[6px] border-black p-24 text-center opacity-30 font-black uppercase text-xs tracking-widest italic">Scanning operational grid...</div> : 
                 missions.map((m) => (
-                  <div key={m.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center gap-10">
-                    <div className="space-y-4 flex-1">
-                      <h3 className="text-3xl font-black uppercase italic tracking-tighter font-display text-black">{m.title}</h3>
-                      <p className="text-xs font-bold text-black/60 uppercase tracking-tight line-clamp-2">{m.description}</p>
+                  <div key={m.id} className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center gap-10 group">
+                    <div className="flex items-center gap-6 flex-1 min-w-0">
+                      <div className="w-20 h-20 bg-slate-50 border-[3px] border-black p-2 shrink-0 shadow-[4px_4px_0px_0px_#000] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
+                         {m.partner_brands?.logo_url ? (
+                            <img 
+                              src={m.partner_brands.logo_url} 
+                              className="w-full h-full object-contain" 
+                              alt="Brand"
+                            />
+                         ) : (
+                            <div className="w-full h-full bg-black flex items-center justify-center text-white font-black text-2xl italic font-display">R</div>
+                         )}
+                      </div>
+                      <div className="min-w-0">
+                         <h3 className="text-3xl font-black uppercase italic tracking-tighter font-display text-black truncate mb-1">{m.title}</h3>
+                         <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-[0.3em] italic">
+                            {m.partner_brands?.name || "REELYWOOD ORIGINAL"}
+                         </p>
+                      </div>
                     </div>
                     <div className="flex items-center space-x-6">
                        <div className="bg-black text-[#ffde59] px-6 py-4 border-[4px] border-black shadow-[4px_4px_0px_0px_#834bf1] font-black text-2xl italic font-display">+{m.reward_amount} RC</div>
@@ -665,42 +689,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </main>
 
-      {/* --- CENTER SCREEN TOAST POPUP MODAL --- */}
+      {/* --- ENHANCED CENTER SCREEN TOAST MODAL --- */}
       {toast.show && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-none">
-          <div className="bg-[#ffde59] border-[4px] border-black p-8 shadow-[16px_16px_0px_0px_#000] max-w-md w-full relative animate-in zoom-in-95 duration-300 pointer-events-auto">
+          <div className="bg-white border-[4px] border-black shadow-[16px_16px_0px_0px_#834bf1] max-w-md w-full relative animate-in zoom-in-95 duration-300 pointer-events-auto flex flex-col overflow-hidden">
             
             {/* Close Button */}
             <button 
-              onClick={() => setToast({ ...toast, show: false })}
-              className="absolute top-4 right-4 p-1 hover:bg-black hover:text-white transition-colors"
+              onClick={() => setToast({ ...toast, show: false, title: '', message: '', image: '', location: '' })}
+              className="absolute top-4 right-4 z-10 p-1 bg-white border-2 border-black hover:bg-black hover:text-white transition-colors shadow-[2px_2px_0px_0px_#000]"
             >
               <X size={20} strokeWidth={3} />
             </button>
 
-            {/* Icon */}
-            <div className="flex justify-center -mt-16 mb-6">
-               <div className="bg-black text-white p-4 border-4 border-white shadow-[6px_6px_0px_0px_#000]">
-                  <Bell size={32} strokeWidth={3} className="animate-bounce" />
+            {/* TOP IMAGE SECTION */}
+            {toast.image ? (
+               <div className="h-56 w-full bg-slate-50 border-b-4 border-black relative overflow-hidden group">
+                  <img src={toast.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="Notification" />
+                  
+                  {/* LOCATION BADGE */}
+                  {toast.location && (
+                     <div className="absolute bottom-4 left-4 bg-[#ffde59] text-black font-black text-[10px] px-3 py-1.5 border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center gap-2 uppercase tracking-widest italic animate-in slide-in-from-left-4 duration-500 delay-200">
+                        <MapPin size={12} strokeWidth={3} /> {toast.location}
+                     </div>
+                  )}
+               </div>
+            ) : (
+               <div className="flex justify-center mt-12 mb-6">
+                 <div className="bg-black text-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_#ffde59]">
+                    <Bell size={32} strokeWidth={3} className="animate-bounce" />
+                 </div>
+               </div>
+            )}
+
+            {/* CONTENT SECTION */}
+            <div className="p-10 text-center bg-white">
+              <h2 className="text-3xl font-black text-center mb-3 italic tracking-tighter uppercase font-display leading-none text-[#834bf1]">
+                {toast.title}
+              </h2>
+              
+              <div className="h-1.5 w-20 bg-black mx-auto mb-6"></div>
+
+              <p className="text-center font-bold text-base tracking-wide mb-10 text-black/70 leading-relaxed uppercase">
+                {toast.message}
+              </p>
+
+              <button 
+                onClick={() => setToast({ ...toast, show: false, title: '', message: '', image: '', location: '' })}
+                className="w-full bg-black text-white py-5 font-black text-xl hover:bg-[#ffde59] hover:text-black border-[4px] border-black transition-all shadow-[6px_6px_0px_0px_#834bf1] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 uppercase italic font-display tracking-tight"
+              >
+                Acknowledge Intel
+              </button>
+            </div>
+            
+            <div className="bg-slate-50 border-t-2 border-black py-2 px-4 flex justify-between items-center">
+               <span className="text-[8px] font-black uppercase text-black/30 tracking-[0.3em]">Protocol Node v4.1</span>
+               <div className="flex gap-1">
+                  <div className="w-1 h-1 bg-emerald-500 rounded-full"></div>
+                  <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
                </div>
             </div>
-
-            <h2 className="text-3xl font-black text-center mb-3 italic tracking-tighter uppercase font-display leading-none text-black">
-              {toast.title}
-            </h2>
-            
-            <div className="h-1.5 w-20 bg-black mx-auto mb-6"></div>
-
-            <p className="text-center font-bold text-lg tracking-wide mb-8 text-black leading-tight uppercase">
-              {toast.message}
-            </p>
-
-            <button 
-              onClick={() => setToast({ ...toast, show: false })}
-              className="w-full bg-black text-white py-4 font-black text-xl hover:bg-white hover:text-black border-[4px] border-black transition-all shadow-[4px_4px_0px_0px_#fff] active:scale-95"
-            >
-              ACKNOWLEDGE
-            </button>
           </div>
         </div>
       )}
