@@ -84,10 +84,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       onLogout();
     }
     fetchAllData();
+
+    // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
+    if (supabase) {
+      const channel = supabase
+        .channel('admin-dashboard-live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+          console.log('⚡ User Data Changed - Auto Refreshing...');
+          fetchAllData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
+          console.log('⚡ Mission Data Changed - Auto Refreshing...');
+          fetchAllData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
+          console.log('⚡ Submission Received - Auto Refreshing...');
+          fetchAllData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
+          console.log('⚡ Voucher Data Changed - Auto Refreshing...');
+          fetchAllData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_brands' }, () => {
+          console.log('⚡ Brand Data Changed - Auto Refreshing...');
+          fetchAllData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+          console.log('⚡ Ledger Updated - Auto Refreshing...');
+          fetchAllData();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, []);
 
   const fetchAllData = async () => {
-    setLoading(true);
     try {
       if (!supabase) throw new Error("Supabase client not initialized");
 
@@ -108,8 +142,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       setSubmissions(submissionsRes.data || []);
     } catch (error: any) {
       console.error("❌ [ADMIN] Fetch Error:", error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -119,7 +151,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     );
   };
 
-  // --- MISSION DEPLOYMENT ---
   const handleDeployMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) {
@@ -134,20 +165,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
     setSubmitting(true);
     try {
-      // 1. AUTO-FETCH BRAND DETAILS
       const brand = brands.find(b => b.id === missionForm.brand_id);
       if (!brand) throw new Error("Critical Error: Brand Node Not Found");
 
-      // 2. BUILD PAYLOAD WITH BRAND DATA & CHECKPOINTS
       const missionPayload = {
         title: missionForm.title,
-        description: brand.description || "Mission Brief Loading...", // Fallback or auto-fill
+        description: brand.description || "Mission Brief Loading...",
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
-        // Automatically attach brand location & cover image
         location: brand.location_text || 'Global', 
         image_url: brand.cover_image_url || '',
-        // Combine the 3 key factor inputs into the array
         checkpoints: [
           missionForm.checkpoint1 || "Verify Link Authority",
           missionForm.checkpoint2 || "Quality Control Check",
@@ -164,7 +191,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         checkpoint1: '', checkpoint2: '', checkpoint3: '' 
       });
       setSelectedAgentIds([]);
-      await fetchAllData();
       alert("🚀 MISSION PROTOCOL DEPLOYED SUCCESSFULLY");
     } catch (error: any) {
       alert(error.message);
@@ -173,7 +199,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  // --- VOUCHER DEPLOYMENT ---
   const handleDeployVoucher = async () => {
     if (!voucherForm.brandId || !voucherForm.title || !voucherForm.cost || !voucherForm.code) {
       alert("⚠️ DATA MISSING: Fill all voucher fields.");
@@ -201,7 +226,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       alert("🎟️ VOUCHER MINTED & DEPLOYED");
       setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
       setSelectedAgentIds([]);
-      await fetchAllData();
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -214,7 +238,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     try {
       const { error } = await supabase!.from('missions').delete().eq('id', id);
       if (error) throw error;
-      await fetchAllData();
     } catch (error: any) {
       alert(error.message);
     }
@@ -228,7 +251,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         .update({ card_status: status })
         .eq('firebase_uid', uid);
       if (error) throw error;
-      await fetchAllData();
     } catch (error: any) {
       alert("Error: " + error.message);
     } finally {
@@ -294,7 +316,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
-        {/* NAVIGATION */}
         <div className={`flex border-4 ${borderColor} p-1 ${cardColor} shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-x-auto`}>
           {[
             { id: 'users', label: 'COMMAND', icon: <Users size={16}/> },
@@ -314,18 +335,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
-        {/* CONTENT */}
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-400">
           {activeTab === 'missions' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Left: Input Console */}
               <div className="flex flex-col h-full">
                 <h2 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
                   <span className="text-purple-600">+</span> MISSION CONSOLE
                 </h2>
                 <form onSubmit={handleDeployMission} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
-                  
-                  {/* Brand Link */}
                   <div>
                     <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">LINK ECOSYSTEM PARTNER</label>
                     <select 
@@ -339,7 +356,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </select>
                   </div>
 
-                  {/* Objective */}
                   <div>
                     <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">OBJECTIVE HEADER</label>
                     <input 
@@ -365,7 +381,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </div>
                   </div>
 
-                  {/* 3 KEY FACTORS (Checkpoints) */}
                   <div className="bg-slate-50 border-2 border-black p-4 space-y-3">
                      <label className="block text-[9px] font-black uppercase text-gray-400 flex items-center gap-2">
                        <ShieldCheck size={14} className="text-purple-600" /> 3 KEY VERIFICATION FACTORS
@@ -378,7 +393,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         value={missionForm.checkpoint3} onChange={e => setMissionForm({...missionForm, checkpoint3: e.target.value})} />
                   </div>
 
-                  {/* DEPLOYMENT TARGETING */}
                   <div className="bg-gray-100 dark:bg-black/20 border-2 border-dashed border-black dark:border-white/20 p-4">
                     <label className="block text-[9px] font-black uppercase text-black dark:text-white mb-3 flex items-center gap-2">
                       <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
@@ -444,11 +458,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         </table>
                       </div>
                     )}
-                    {targetMode === 'SELECT' && (
-                      <div className="mt-2 text-[9px] font-black uppercase text-right text-purple-600 italic">
-                        {selectedAgentIds.length} AGENTS TARGETED
-                      </div>
-                    )}
                   </div>
 
                   <button 
@@ -463,7 +472,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </form>
               </div>
               
-              {/* Right: Live Sync Grid */}
               <div className="flex flex-col h-full">
                 <h2 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
                   <Activity className="text-emerald-500" /> ACTIVE SYNC GRID
@@ -481,7 +489,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         </div>
                       </div>
                       
-                      {/* Visual Data Injection */}
                       <div className="flex gap-4 items-center mb-4">
                          <img src={m.partner_brands?.logo_url} alt="Brand" className="w-12 h-12 border-2 border-black object-cover bg-gray-200" 
                               onError={(e) => {e.currentTarget.src = 'https://via.placeholder.com/48'}}/>
@@ -493,7 +500,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                          </div>
                       </div>
 
-                      {/* Checkpoints Preview */}
                       {m.checkpoints && m.checkpoints.length > 0 && (
                         <div className="bg-gray-50 border-t-2 border-black pt-2 mt-2 space-y-1">
                            {m.checkpoints.map((pt: string, i: number) => (
@@ -606,7 +612,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Hash Code</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black uppercase" placeholder="RW-XXX"/></div>
                     </div>
 
-                    {/* VOUCHER TARGETING */}
                     <div className="bg-gray-100 dark:bg-black/20 border-2 border-dashed border-black dark:border-white/20 p-4">
                       <label className="block text-[9px] font-black uppercase text-black dark:text-white mb-3 flex items-center gap-2">
                         <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
@@ -646,8 +651,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <div className="bg-black text-white p-2 border border-white">
                          {v.partner_brands?.logo_url ? <img src={v.partner_brands.logo_url} className="w-4 h-4 object-cover"/> : <Box size={16}/>}
                       </div>
-                      <span className={`text-[8px] font-black uppercase bg-yellow-400 text-black px-1 border border-black`}>
-                        {v.partner_brands?.name || 'ORIGINAL'}
+                      <span className={`text-[8px] font-black uppercase px-1 border border-black ${v.assigned_to ? 'bg-blue-300 text-black' : 'bg-yellow-400 text-black'}`}>
+                        {v.assigned_to ? 'RESTRICTED' : 'PUBLIC'}
                       </span>
                     </div>
                     <h4 className="font-black uppercase text-sm">{v.title}</h4>

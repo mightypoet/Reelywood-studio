@@ -260,7 +260,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
   
-  // Updated Real-time Notification State for Enhanced Toast
   const [toast, setToast] = useState<{ 
     show: boolean; 
     title: string; 
@@ -271,9 +270,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     show: false, title: '', message: '', image: '', location: '' 
   });
 
+  const fetchUserData = () => {
+    if (currentUser) {
+      fetchDashboardData(currentUser);
+      fetchNotifications(currentUser);
+      fetchMySubmissions(currentUser);
+    }
+  };
+
   const fetchNotifications = async (user: FirebaseUser) => {
     if (!user || !supabase) return;
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('notifications')
       .select('*')
       .or(`user_id.eq.${user.uid},user_id.eq.global`)
@@ -293,6 +300,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         fetchDashboardData(user);
         fetchNotifications(user);
         fetchMySubmissions(user);
+
+        // --- AUTO-REFRESH LISTENER ---
+        if (supabase) {
+          const channel = supabase
+            .channel('user-dashboard-live')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
+              fetchDashboardData(user);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
+              fetchDashboardData(user);
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${user?.uid}` }, () => {
+              fetchDashboardData(user);
+            })
+            .subscribe();
+
+          return () => {
+            supabase.removeChannel(channel);
+          };
+        }
       } else {
         setLoading(false);
       }
@@ -309,7 +336,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     if (data) setUserSubmissions(data);
   };
 
-  // --- ROBUST REAL-TIME NOTIFICATION LISTENER ---
   useEffect(() => {
     if (!currentUser || !supabase) return;
 
@@ -335,20 +361,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               location: notif.metadata?.location || ''
             });
 
-            // Update local list and unread count
             setNotifications(prev => [notif, ...prev]);
             setUnreadCount(prev => prev + 1);
 
-            // Auto-hide toast after 5 seconds
             setTimeout(() => {
               setToast(prev => ({ ...prev, show: false, title: '', message: '', image: '', location: '' }));
             }, 5000);
           }
         }
       )
-      .subscribe((status) => {
-         console.log("SUBSCRIPTION STATUS:", status);
-      });
+      .subscribe();
 
     return () => {
       supabase?.removeChannel(channel);
@@ -487,7 +509,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     );
   }
 
-  // --- AUTHENTICATED VIEW ---
   const isApproved = profile?.card_status === 'approved';
   const coinBalance = profile?.reelcoins || 0;
 
@@ -504,7 +525,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         />
       )}
 
-      {/* Vault History Modal */}
       {showHistory && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowHistory(false)}></div>
@@ -539,12 +559,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           </div>
           
           <div className="flex items-center space-x-4">
-            {/* NOTIFICATION BELL WRAPPER */}
             <div className="relative">
               <button 
                 onClick={() => {
                   setIsNotifPanelOpen(!isNotifPanelOpen);
-                  if (!isNotifPanelOpen) setUnreadCount(0); // Reset unread count when opening history
+                  if (!isNotifPanelOpen) setUnreadCount(0);
                 }}
                 className="relative p-3 border-[4px] border-black bg-white hover:bg-[#ffde59] shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
               >
@@ -556,7 +575,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 )}
               </button>
 
-              {/* DROPDOWN PANEL */}
               {isNotifPanelOpen && (
                 <div className="absolute top-16 right-0 w-80 md:w-96 bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] z-50 animate-in slide-in-from-top-2 duration-200">
                   <div className="bg-black text-white p-4 flex justify-between items-center">
@@ -576,11 +594,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       <div className="space-y-4 pr-2">
                         {notifications.map((notif) => (
                           <div key={notif.id} className="bg-white border-b-2 border-black py-4 flex gap-4 items-start group">
-                            
-                            {/* 1. THE ICON / LOGO LOGIC */}
                             <div className="shrink-0">
                               {notif.metadata?.image ? (
-                                // A: IF BRAND IMAGE EXISTS -> SHOW LOGO
                                 <div className="w-12 h-12 bg-white border-2 border-black p-1 shrink-0 group-hover:shadow-[2px_2px_0px_0px_#834bf1] transition-all">
                                    <img 
                                      src={notif.metadata.image} 
@@ -589,14 +604,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                    />
                                 </div>
                               ) : (
-                                // B: NO IMAGE -> SHOW DEFAULT 'INFO' ICON
                                 <div className="w-12 h-12 bg-[#ffde59] border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_#000] shrink-0 group-hover:rotate-6 transition-transform">
                                    <Info size={20} className="text-black" strokeWidth={3} />
                                 </div>
                               )}
                             </div>
-
-                            {/* 2. THE TEXT CONTENT */}
                             <div className="min-w-0 flex-1">
                               <h4 className="font-black italic uppercase text-xs mb-1 truncate">{notif.title}</h4>
                               <p className="font-bold text-[10px] text-gray-500 uppercase tracking-wide leading-relaxed">
@@ -606,7 +618,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                  {new Date(notif.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                               </span>
                             </div>
-
                           </div>
                         ))}
                       </div>
@@ -766,25 +777,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </main>
 
-      {/* --- ENHANCED CENTER SCREEN TOAST MODAL --- */}
       {toast.show && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-none">
           <div className="bg-white border-[4px] border-black shadow-[16px_16px_0px_0px_#834bf1] max-w-md w-full relative animate-in zoom-in-95 duration-300 pointer-events-auto flex flex-col overflow-hidden">
-            
-            {/* Close Button */}
             <button 
               onClick={() => setToast({ ...toast, show: false, title: '', message: '', image: '', location: '' })}
               className="absolute top-4 right-4 z-10 p-1 bg-white border-2 border-black hover:bg-black hover:text-white transition-colors shadow-[2px_2px_0px_0px_#000]"
             >
               <X size={20} strokeWidth={3} />
             </button>
-
-            {/* TOP IMAGE SECTION */}
             {toast.image ? (
                <div className="h-56 w-full bg-slate-50 border-b-4 border-black relative overflow-hidden group">
                   <img src={toast.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="Notification" />
-                  
-                  {/* LOCATION BADGE */}
                   {toast.location && (
                      <div className="absolute bottom-4 left-4 bg-[#ffde59] text-black font-black text-[10px] px-3 py-1.5 border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center gap-2 uppercase tracking-widest italic animate-in slide-in-from-left-4 duration-500 delay-200">
                         <MapPin size={12} strokeWidth={3} /> {toast.location}
@@ -798,19 +802,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                  </div>
                </div>
             )}
-
-            {/* CONTENT SECTION */}
             <div className="p-10 text-center bg-white">
               <h2 className="text-3xl font-black text-center mb-3 italic tracking-tighter uppercase font-display leading-none text-[#834bf1]">
                 {toast.title}
               </h2>
-              
               <div className="h-1.5 w-20 bg-black mx-auto mb-6"></div>
-
               <p className="text-center font-bold text-base tracking-wide mb-10 text-black/70 leading-relaxed uppercase">
                 {toast.message}
               </p>
-
               <button 
                 onClick={() => setToast({ ...toast, show: false, title: '', message: '', image: '', location: '' })}
                 className="w-full bg-black text-white py-5 font-black text-xl hover:bg-[#ffde59] hover:text-black border-[4px] border-black transition-all shadow-[6px_6px_0px_0px_#834bf1] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 uppercase italic font-display tracking-tight"
@@ -818,7 +817,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 Acknowledge Intel
               </button>
             </div>
-            
             <div className="bg-slate-50 border-t-2 border-black py-2 px-4 flex justify-between items-center">
                <span className="text-[8px] font-black uppercase text-black/30 tracking-[0.3em]">Protocol Node v4.1</span>
                <div className="flex gap-1">
