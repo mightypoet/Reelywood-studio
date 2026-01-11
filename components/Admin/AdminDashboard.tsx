@@ -8,13 +8,14 @@ import {
 } from 'lucide-react';
 
 // --- TYPES ---
-type Tab = 'COMMAND' | 'QUEUED' | 'ALLIANCE' | 'CONSOLE' | 'VAULT' | 'LEDGER';
-type TargetMode = 'ALL' | 'SELECT';
+export type Tab = 'COMMAND' | 'QUEUED' | 'ALLIANCE' | 'CONSOLE' | 'VAULT' | 'LEDGER';
+export type TargetMode = 'ALL' | 'SELECT';
 
-interface Agent {
+export interface Agent {
   id: string;
   name: string;
   username: string;
+  email: string;
   status: 'ACTIVE' | 'PENDING' | 'BANNED';
   missions_done: number;
   rc_inflow: number;
@@ -24,7 +25,7 @@ interface Agent {
   niche: string;
 }
 
-interface Brand {
+export interface Brand {
   id: string;
   name: string;
   category: string;
@@ -34,7 +35,7 @@ interface Brand {
   cover: string;
 }
 
-interface DeployedItem {
+export interface DeployedItem {
   id: string;
   type: 'MISSION' | 'VOUCHER';
   title: string;
@@ -49,11 +50,11 @@ interface DeployedItem {
 
 // --- MOCK DATA ---
 const MOCK_AGENTS: Agent[] = [
-  { id: '01', name: 'ROHAN SEN', username: '@rohan_sen', status: 'ACTIVE', missions_done: 42, rc_inflow: 15000, rc_outflow: 4200, followers: '12.5K', platform: 'INSTAGRAM', niche: 'LIFESTYLE' },
-  { id: '02', name: 'SARAH JENKINS', username: '@sarah.j_vlogs', status: 'ACTIVE', missions_done: 15, rc_inflow: 5000, rc_outflow: 1200, followers: '450K', platform: 'YOUTUBE', niche: 'TECH' },
-  { id: '03', name: 'MIKE TYSON', username: '@iron_mike', status: 'BANNED', missions_done: 8, rc_inflow: 2400, rc_outflow: 0, followers: '1.2M', platform: 'TWITTER', niche: 'SPORTS' },
-  { id: '04', name: 'PRIYA DAS', username: '@priya.style', status: 'ACTIVE', missions_done: 65, rc_inflow: 32000, rc_outflow: 28000, followers: '89K', platform: 'INSTAGRAM', niche: 'FASHION' },
-  { id: '05', name: 'ALEX CHEN', username: '@chen_codes', status: 'ACTIVE', missions_done: 12, rc_inflow: 8000, rc_outflow: 1000, followers: '22K', platform: 'YOUTUBE', niche: 'EDUCATION' },
+  { id: '01', name: 'ROHAN SEN', username: '@rohan_sen', email: 'rohan@reelywood.com', status: 'ACTIVE', missions_done: 42, rc_inflow: 15000, rc_outflow: 4200, followers: '12.5K', platform: 'INSTAGRAM', niche: 'LIFESTYLE' },
+  { id: '02', name: 'SARAH JENKINS', username: '@sarah.j_vlogs', email: 'sarah.j@gmail.com', status: 'ACTIVE', missions_done: 15, rc_inflow: 5000, rc_outflow: 1200, followers: '450K', platform: 'YOUTUBE', niche: 'TECH' },
+  { id: '03', name: 'MIKE TYSON', username: '@iron_mike', email: 'mike@box.com', status: 'BANNED', missions_done: 8, rc_inflow: 2400, rc_outflow: 0, followers: '1.2M', platform: 'TWITTER', niche: 'SPORTS' },
+  { id: '04', name: 'PRIYA DAS', username: '@priya.style', email: 'priya@yahoo.com', status: 'ACTIVE', missions_done: 65, rc_inflow: 32000, rc_outflow: 28000, followers: '89K', platform: 'INSTAGRAM', niche: 'FASHION' },
+  { id: '05', name: 'ALEX CHEN', username: '@chen_codes', email: 'alex.c@tech.io', status: 'ACTIVE', missions_done: 12, rc_inflow: 8000, rc_outflow: 1000, followers: '22K', platform: 'YOUTUBE', niche: 'EDUCATION' },
 ];
 
 const MOCK_BRANDS: Brand[] = [
@@ -120,17 +121,22 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       alert("⚠️ SYSTEM ERROR: ALL FIELDS REQUIRED");
       return;
     }
+    
+    // 2. Target Validation
     if (targetMode === 'SELECT' && selectedAgentIds.length === 0) {
-      alert("⚠️ TARGET ERROR: SELECT AGENTS OR SWITCH TO GLOBAL");
+      alert("⚠️ TARGET ERROR: NO AGENTS SELECTED. SELECT AGENTS OR SWITCH TO GLOBAL.");
       return;
     }
 
     setIsDeploying(true);
 
     setTimeout(() => {
-      // 2. Fetch Full Brand Details (Simulating DB Lookup)
+      // 3. Fetch Full Brand Details (Simulating DB Lookup)
       const brandData = MOCK_BRANDS.find(b => b.id === form.brandId);
       
+      // 4. DETERMINE TARGET AUDIENCE
+      const finalTarget = targetMode === 'ALL' ? ['GLOBAL'] : [...selectedAgentIds];
+
       const newItem: DeployedItem = {
         id: Date.now().toString(),
         type,
@@ -141,13 +147,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         brandLogo: brandData?.logo || '',
         brandLocation: brandData?.location || 'Unknown Location',
         brandCover: brandData?.cover || '',
-        targetAudience: targetMode === 'ALL' ? ['GLOBAL'] : [...selectedAgentIds]
+        targetAudience: finalTarget
       };
 
-      // 3. Update State
+      // 5. Update State
       setActiveDeployments([newItem, ...activeDeployments]);
       
-      // 4. Reset
+      // 6. Reset Forms
       setMissionForm({ brandId: '', title: '', bounty: '' });
       setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
       setIsDeploying(false);
@@ -209,7 +215,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         {/* --- MAIN CONTENT --- */}
         <div className="bg-white border-4 border-black min-h-[600px] p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative">
           
-          {/* TAB: AGENT COMMAND */}
           {activeTab === 'COMMAND' && (
             <div>
               <div className="flex justify-between items-end mb-6 border-b-4 border-black pb-4">
@@ -243,7 +248,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                             </div>
                             <div>
                               <div className="font-black text-lg uppercase">{agent.name}</div>
-                              <div className="text-gray-500 text-xs uppercase">{agent.username}</div>
+                              <div className="text-gray-500 text-xs uppercase">{agent.email}</div>
                             </div>
                           </div>
                         </td>
@@ -263,10 +268,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             </div>
           )}
 
-          {/* TAB: MISSION CONSOLE */}
           {activeTab === 'CONSOLE' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Creator */}
               <div className="flex flex-col h-full">
                 <h2 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
                   <span className="text-purple-600">+</span> MISSION CONSOLE
@@ -303,7 +306,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     />
                   </div>
                   
-                  {/* Target Selector */}
                   <TargetSelector 
                     agents={agents} 
                     targetMode={targetMode} 
@@ -316,19 +318,17 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     onClick={() => deployItem('MISSION')}
                     disabled={isDeploying}
                     className={`w-full text-white border-4 border-black py-5 font-black text-xl uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2
-                      ${isDeploying ? 'bg-gray-400' : 'bg-[#F0F] hover:bg-purple-600'}`}
+                      ${isDeploying ? 'bg-gray-400' : 'bg-[#834bf1] hover:bg-purple-600'}`}
                   >
                     {isDeploying ? <Loader2 className="w-6 h-6 animate-spin"/> : "DEPLOY MISSION PROTOCOL"}
                   </button>
                 </div>
               </div>
               
-              {/* Preview Grid (User View) */}
               <ActiveSyncGrid deployments={activeDeployments} onDelete={deleteItem} />
             </div>
           )}
 
-          {/* TAB: VOUCHER VAULT */}
           {activeTab === 'VAULT' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="flex flex-col h-full">
@@ -367,7 +367,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                      </div>
                   </div>
 
-                  {/* Target Selector */}
                   <TargetSelector 
                     agents={agents} 
                     targetMode={targetMode} 
@@ -380,14 +379,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     onClick={() => deployItem('VOUCHER')}
                     disabled={isDeploying}
                     className={`w-full text-white border-4 border-black py-5 font-black text-xl uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2
-                      ${isDeploying ? 'bg-gray-400' : 'bg-[#8B5CF6] hover:bg-purple-700'}`}
+                      ${isDeploying ? 'bg-gray-400' : 'bg-[#ffde59] text-black hover:bg-yellow-500'}`}
                   >
                     {isDeploying ? <Loader2 className="w-6 h-6 animate-spin"/> : "AUTHORIZE INVENTORY"}
                   </button>
                 </div>
               </div>
 
-              {/* Preview Grid */}
               <ActiveSyncGrid deployments={activeDeployments} onDelete={deleteItem} />
             </div>
           )}
@@ -469,7 +467,6 @@ function ActiveSyncGrid({ deployments, onDelete }: { deployments: DeployedItem[]
       <div className="space-y-4 overflow-y-auto flex-1 pr-2">
           {deployments.map((item) => (
             <div key={item.id} className="bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex gap-4">
-               {/* Brand Image Preview */}
                <div className="w-16 h-16 border-2 border-black bg-gray-200 overflow-hidden shrink-0">
                   <img src={item.brandLogo} alt="brand" className="w-full h-full object-cover"/>
                </div>
