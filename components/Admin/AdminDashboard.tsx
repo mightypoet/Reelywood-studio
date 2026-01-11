@@ -36,13 +36,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'incoming' | 'console' | 'ledger' | 'alliance'>('incoming');
   const [loading, setLoading] = useState(false);
   
-  // DATA STATES
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
-
-  // FORM STATES
   const [consoleMode, setConsoleMode] = useState<'MISSION' | 'VOUCHER'>('MISSION');
   
   const [newMission, setNewMission] = useState<MissionData>({
@@ -163,8 +160,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setNewMission({ ...newMission, checkpoints: next });
   };
 
-  // --- RENDER HELPERS TO RESOLVE TS1382 ---
-  
   const renderIncomingSignals = () => (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
       <h2 className="text-5xl font-black italic uppercase font-display tracking-tighter">Verification Queue</h2>
@@ -264,7 +259,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-black/40">Encrypted Redempton Code</label>
+              <label className="text-[9px] font-black uppercase text-black/40">Encrypted Redemption Code</label>
               <input type="text" placeholder="CABIN-50-RW" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5 uppercase" value={newVoucher.code} onChange={e => setNewVoucher({...newVoucher, code: e.target.value})} />
             </div>
             <button onClick={handleDeployVoucher} disabled={loading} className="w-full bg-black text-white py-6 font-black uppercase tracking-[0.4em] text-sm border-4 border-black shadow-[8px_8px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4">
