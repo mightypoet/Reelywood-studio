@@ -28,6 +28,13 @@ interface UserProfile {
   status: 'active' | 'inactive';
 }
 
+interface AllianceNode {
+  id: string;
+  name: string;
+  category: string;
+  status: 'live' | 'offline';
+}
+
 interface LogItem {
   id: string;
   title: string;
@@ -37,13 +44,12 @@ interface LogItem {
 
 const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
 
-// --- Mock Alliance Data ---
-const PARTNER_ALLIANCE = [
-  { id: 'b1', name: 'Nike', category: 'Sportswear' },
-  { id: 'b2', name: 'Starbucks', category: 'F&B' },
-  { id: 'b3', name: 'Spotify', category: 'Tech' },
-  { id: 'b4', name: 'Zara', category: 'Fashion' },
-  { id: 'b5', name: 'Apple', category: 'Electronics' },
+const MOCK_ALLIANCES: AllianceNode[] = [
+  { id: 'b1', name: 'Nike', category: 'Sportswear', status: 'live' },
+  { id: 'b2', name: 'Starbucks', category: 'F&B', status: 'live' },
+  { id: 'b3', name: 'Spotify', category: 'Tech', status: 'live' },
+  { id: 'b4', name: 'Zara', category: 'Fashion', status: 'offline' },
+  { id: 'b5', name: 'Apple', category: 'Electronics', status: 'live' },
 ];
 
 const MOCK_USERS: UserProfile[] = [
@@ -60,6 +66,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [consoleMode, setConsoleMode] = useState<DeployType>('mission');
   const [targetMode, setTargetMode] = useState<TargetMode>('all');
   const [loading, setLoading] = useState(false);
+  const [alliances, setAlliances] = useState<AllianceNode[]>(MOCK_ALLIANCES);
   
   // Data States
   const [submissions, setSubmissions] = useState([] as any[]);
@@ -73,7 +80,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [selectedSubmission, setSelectedSubmission] = useState(null as any);
 
   // Form State
-  const [formData, setFormData] = useState({ brand: '', title: '', value: '', desc: '' });
+  const [formData, setFormData] = useState({ brandId: '', title: '', value: '', desc: '' });
   const [deployStep, setDeployStep] = useState<'editing' | 'confirming' | 'success'>('editing');
 
   const channelRef = useRef<any>(null);
@@ -139,15 +146,17 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   };
 
   const handleDeploy = () => {
-    if (!formData.brand || !formData.title || !formData.value) return;
+    if (!formData.brandId || !formData.title || !formData.value) return;
     setDeployStep('confirming');
     
+    const selectedBrand = alliances.find(a => a.id === formData.brandId);
+
     setTimeout(() => {
       setDeployStep('success');
       const countLabel = targetMode === 'all' ? 'Global Grid' : `${selectedUsers.length} Selected Agents`;
       const newLog: LogItem = {
         id: Date.now().toString(),
-        title: `Deployed "${formData.title}" for ${formData.brand} to ${countLabel}`,
+        title: `Deployed "${formData.title}" for ${selectedBrand?.name} to ${countLabel}`,
         time: new Date().toLocaleTimeString(),
         type: 'system'
       };
@@ -155,7 +164,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
       setTimeout(() => {
         setDeployStep('editing');
-        setFormData({ brand: '', title: '', value: '', desc: '' });
+        setFormData({ brandId: '', title: '', value: '', desc: '' });
         if (targetMode === 'specific') setSelectedUsers([]);
         setTargetMode('all');
       }, 2500);
@@ -267,12 +276,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                           <div className="relative">
                             <select 
                               className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none appearance-none focus:bg-[#ffde59] transition-all"
-                              value={formData.brand}
-                              onChange={e => setFormData({...formData, brand: e.target.value})}
+                              value={formData.brandId}
+                              onChange={e => setFormData({...formData, brandId: e.target.value})}
                             >
                               <option value="">Select Brand Node...</option>
-                              {PARTNER_ALLIANCE.map(brand => (
-                                <option key={brand.id} value={brand.name}>{brand.name} ({brand.category})</option>
+                              {alliances.map(brand => (
+                                <option key={brand.id} value={brand.id}>{brand.name} ({brand.category})</option>
                               ))}
                             </select>
                             <Briefcase className="absolute right-4 top-4 text-black/30 pointer-events-none" size={18}/>
