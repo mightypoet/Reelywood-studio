@@ -24,7 +24,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [logs, setLogs] = useState([] as any[]);
   const [brands, setBrands] = useState([] as any[]);
   const [missions, setMissions] = useState([] as any[]);
-  const [vouchers, setVouchers] = useState([] as any[]);
   const [selectedSubmission, setSelectedSubmission] = useState(null as any);
 
   // Console / Form States
@@ -41,18 +40,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     checkpoints: ['', '', '']
   });
 
-  const [newVoucher, setNewVoucher] = useState({
-    title: '', 
-    cost: 500, 
-    code: '', 
-    brand_id: ''
-  });
-
   const fetchData = async () => {
     if (!supabase) return;
     setLoading(true);
     try {
-      // 1. Submissions (Join via manual fetch to avoid complex SQL errors)
+      // 1. Submissions
       const { data: subData } = await supabase
         .from('submissions')
         .select(`*, missions:mission_id (*)`)
@@ -78,7 +70,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       const { data: missionData } = await supabase.from('missions').select('*, partner_brands(name)').order('created_at', { ascending: false });
       setMissions((missionData || []) as any[]);
 
-      // 3. Ledger Logs (Notifications table used for global audit)
+      // 3. Ledger Logs
       const { data: logData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50);
       setLogs((logData || []) as any[]);
 
@@ -100,7 +92,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
     fetchData();
 
-    // Setup Real-time Network Listener
     const channel = supabase?.channel('admin-grid-sync')
       .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchData())
       .subscribe();
@@ -143,7 +134,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const handleDelete = async (table: string, id: string) => {
-    if (!supabase || !window.confirm("⚠️ SYSTEM OVERRIDE: Purge this node from the database?")) return;
+    if (!supabase || !window.confirm("⚠️ SYSTEM OVERRIDE: Purge this node?")) return;
     try {
       const { error } = await supabase.from(table).delete().eq('id', id);
       if (error) throw error;
@@ -180,12 +171,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         location: brand.location_text, 
         image_url: brand.cover_image_url, 
         title: `Protocol: ${brand.name}` 
-      });
-    } else {
-      setNewVoucher({ 
-        ...newVoucher, 
-        brand_id: id, 
-        title: `Exclusive @ ${brand.name}` 
       });
     }
   };
@@ -231,37 +216,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const renderConsole = () => (
     <div className="grid lg:grid-cols-12 gap-12 animate-in fade-in zoom-in-95">
-      {/* FORM CONSOLE */}
       <div className="lg:col-span-5 space-y-10">
         <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#000] sticky top-32">
           <div className="flex gap-4 mb-8">
             <button onClick={() => setConsoleMode('MISSION')} className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${consoleMode === 'MISSION' ? 'bg-[#ffde59] shadow-[6px_6px_0px_0px_#000]' : 'bg-gray-100 opacity-50'}`}>🚀 Mission</button>
             <button onClick={() => setConsoleMode('VOUCHER')} className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${consoleMode === 'VOUCHER' ? 'bg-[#ffde59] shadow-[6px_6px_0px_0px_#000]' : 'bg-gray-100 opacity-50'}`}>🎟️ Voucher</button>
           </div>
-
           <div className="space-y-6">
             <select className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-xs outline-none focus:bg-[#ffde59] transition-all" onChange={handleBrandSelect} value={newMission.brand_id}>
               <option value="">-- SELECT ALLIANCE PARTNER --</option>
               {brands.map((b) => <option key={b.id} value={b.id}>{b.name.toUpperCase()}</option>)}
             </select>
-
             {consoleMode === 'MISSION' ? (
               <div className="space-y-4">
                 <input type="text" placeholder="Protocol Identification" className="w-full border-[3px] border-black p-4 font-black text-sm bg-slate-50" value={newMission.title} onChange={e => setNewMission({...newMission, title: e.target.value})} />
-                <textarea placeholder="Mission Briefing & Intelligence" className="w-full border-[3px] border-black p-4 font-black text-sm bg-slate-50 h-32" value={newMission.description} onChange={e => setNewMission({...newMission, description: e.target.value})} />
+                <textarea placeholder="Mission Briefing" className="w-full border-[3px] border-black p-4 font-black text-sm bg-slate-50 h-32" value={newMission.description} onChange={e => setNewMission({...newMission, description: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4">
                   <input type="number" placeholder="RC Bounty" className="w-full border-[3px] border-black p-4 font-black text-sm bg-slate-50" value={newMission.reward} onChange={e => setNewMission({...newMission, reward: parseInt(e.target.value)})} />
-                  <input type="text" placeholder="Visual Key (Image URL)" className="w-full border-[3px] border-black p-4 font-black text-sm bg-slate-50" value={newMission.image_url} onChange={e => setNewMission({...newMission, image_url: e.target.value})} />
-                </div>
-                <div className="p-4 bg-slate-100 border-2 border-black border-dashed space-y-3">
-                  <p className="text-[9px] font-black uppercase text-black/40">Manual Checkpoints</p>
-                  {[0,1,2].map(i => (
-                    <input key={i} type="text" placeholder={`Checkpoint ${i+1}`} className="w-full bg-transparent border-b-2 border-black/10 py-1 text-xs font-bold focus:border-black outline-none" value={newMission.checkpoints[i]} onChange={e => {
-                      const next = [...newMission.checkpoints];
-                      next[i] = e.target.value;
-                      setNewMission({...newMission, checkpoints: next});
-                    }} />
-                  ))}
+                  <input type="text" placeholder="Image URL" className="w-full border-[3px] border-black p-4 font-black text-sm bg-slate-50" value={newMission.image_url} onChange={e => setNewMission({...newMission, image_url: e.target.value})} />
                 </div>
                 <div className="flex gap-2 pt-4">
                    {editingMission && <button onClick={() => {setEditingMission(null); setNewMission({title:'', description:'', reward:100, location:'', brand_id:'', image_url:'', checkpoints:['','','']})}} className="flex-1 bg-white border-[3px] border-black p-4 font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0px_0px_#000]">Abort</button>}
@@ -273,32 +245,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             ) : (
               <div className="p-12 text-center border-4 border-dashed border-black/10">
                 <Ticket className="mx-auto mb-4 opacity-20" size={40}/>
-                <p className="text-[10px] font-black uppercase text-black/40 tracking-widest">Voucher node coming in next transmission.</p>
+                <p className="text-[10px] font-black uppercase text-black/40 tracking-widest">Voucher node coming soon.</p>
               </div>
             )}
           </div>
         </div>
       </div>
-
-      {/* ACTIVE MISSION GRID */}
       <div className="lg:col-span-7 space-y-8">
-        <h3 className="text-3xl font-black italic uppercase font-display border-b-4 border-black pb-4">Live Operational Modules</h3>
+        <h3 className="text-3xl font-black italic uppercase font-display border-b-4 border-black pb-4">Live Modules</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {missions.map((m: any) => (
             <div key={m.id} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000] flex flex-col group hover:shadow-[12px_12px_0px_0px_#ffde59] transition-all">
-              <div className="relative h-40 bg-slate-100 border-[3px] border-black mb-6 overflow-hidden">
-                <img src={m.image_url || "https://images.unsplash.com/photo-1492684223066-81342ee5ff30"} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all"/>
-                <div className="absolute top-3 right-3 bg-black text-white px-3 py-1 text-[10px] font-black shadow-[3px_3px_0px_0px_#ffde59]">
-                  {m.reward_amount} RC
-                </div>
-              </div>
               <h4 className="font-black text-lg uppercase italic mb-2 leading-none">{m.title}</h4>
               <p className="text-[9px] font-bold text-[#834bf1] uppercase tracking-widest mb-4">Partner: {m.partner_brands?.name || "Original"}</p>
               <div className="flex gap-2 mt-auto">
-                <button onClick={() => startEditMission(m)} className="flex-1 bg-white border-2 border-black py-2 font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-50">
+                <button onClick={() => startEditMission(m)} className="flex-1 bg-white border-2 border-black py-2 font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2">
                   <Edit3 size={12}/> Edit
                 </button>
-                <button onClick={() => handleDelete('missions', m.id)} className="px-4 bg-rose-600 text-white border-2 border-black py-2 hover:bg-rose-700 transition-colors">
+                <button onClick={() => handleDelete('missions', m.id)} className="px-4 bg-rose-600 text-white border-2 border-black py-2">
                   <Trash2 size={14}/>
                 </button>
               </div>
@@ -312,13 +276,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const renderLedger = () => (
     <div className="bg-black text-[#4ade80] p-10 border-[6px] border-[#4ade80] font-mono shadow-[12px_12px_0px_0px_#000] animate-in fade-in slide-in-from-bottom-4">
       <div className="flex items-center justify-between mb-10 pb-6 border-b border-[#4ade80]/20">
-        <h2 className="text-3xl font-black flex items-center gap-4 italic"><Activity className="animate-pulse" size={32} /> SYSTEM_LOG_v4.0</h2>
+        <h2 className="text-3xl font-black flex items-center gap-4 italic"><Activity size={32} /> SYSTEM_LOG</h2>
         <span className="text-[10px] bg-[#4ade80] text-black px-3 py-1 font-black">ACTIVE_SYNC</span>
       </div>
       <div className="space-y-4 h-[600px] overflow-y-auto no-scrollbar pr-4">
         {logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full opacity-20 italic uppercase tracking-[0.3em]">
-            <p>> Standby for network transmissions...</p>
+            <p>&gt; Standby for transmissions...</p>
           </div>
         ) : (
           logs.map((log: any) => (
@@ -344,7 +308,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <h1 className="text-3xl font-black italic uppercase tracking-tighter">TERMINAL <span className="text-[#834bf1]">ADMIN</span></h1>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={fetchData} className="p-2 bg-white/10 hover:bg-white/20 border-2 border-white/20 transition-all">
+            <button onClick={fetchData} className="p-2 bg-white/10 border-2 border-white/20 transition-all">
               <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
             <button onClick={() => { auth.signOut(); onLogout(); }} className="flex items-center gap-3 bg-rose-600 text-white px-5 py-2 font-black uppercase text-xs tracking-[0.2em] border-2 border-black shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition-all">
