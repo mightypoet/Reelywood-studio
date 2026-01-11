@@ -63,7 +63,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     title: '', 
     reward: '', 
     brand_id: '', 
-    // Checkpoints for the 3 Key Factors
     checkpoint1: '',
     checkpoint2: '',
     checkpoint3: ''
@@ -86,39 +85,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     fetchAllData();
 
     // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
-    if (supabase) {
-      const channel = supabase
-        .channel('admin-dashboard-live')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-          console.log('⚡ User Data Changed - Auto Refreshing...');
-          fetchAllData();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
-          console.log('⚡ Mission Data Changed - Auto Refreshing...');
-          fetchAllData();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
-          console.log('⚡ Submission Received - Auto Refreshing...');
-          fetchAllData();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
-          console.log('⚡ Voucher Data Changed - Auto Refreshing...');
-          fetchAllData();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_brands' }, () => {
-          console.log('⚡ Brand Data Changed - Auto Refreshing...');
-          fetchAllData();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
-          console.log('⚡ Ledger Updated - Auto Refreshing...');
-          fetchAllData();
-        })
-        .subscribe();
+    if (!supabase) return;
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
+    const channel = supabase
+      .channel('admin-dashboard-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        console.log('⚡ User Data Changed - Auto Refreshing...');
+        fetchAllData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
+        console.log('⚡ Mission Data Changed - Auto Refreshing...');
+        fetchAllData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
+        console.log('⚡ Submission Received - Auto Refreshing...');
+        fetchAllData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
+        console.log('⚡ Voucher Data Changed - Auto Refreshing...');
+        fetchAllData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_brands' }, () => {
+        console.log('⚡ Brand Data Changed - Auto Refreshing...');
+        fetchAllData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+        console.log('⚡ Ledger Updated - Auto Refreshing...');
+        fetchAllData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchAllData = async () => {
@@ -296,7 +295,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </header>
 
       <main className="max-w-[1600px] mx-auto p-6 space-y-8">
-        {/* METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
             { label: 'AGENTS', val: users.length, icon: Users },

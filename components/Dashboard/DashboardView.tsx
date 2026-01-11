@@ -302,24 +302,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         fetchMySubmissions(user);
 
         // --- AUTO-REFRESH LISTENER ---
-        if (supabase) {
-          const channel = supabase
-            .channel('user-dashboard-live')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
-              fetchDashboardData(user);
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
-              fetchDashboardData(user);
-            })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${user?.uid}` }, () => {
-              fetchDashboardData(user);
-            })
-            .subscribe();
+        if (!supabase) return;
 
-          return () => {
-            supabase.removeChannel(channel);
-          };
-        }
+        const channel = supabase
+          .channel('user-dashboard-live')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
+            fetchDashboardData(user);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
+            fetchDashboardData(user);
+          })
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${user?.uid}` }, () => {
+            fetchDashboardData(user);
+          })
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
       } else {
         setLoading(false);
       }
