@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { 
-  Users, Layout, ShieldCheck, Check, X, 
-  ExternalLink, Bell, CreditCard, Ticket, 
-  Activity, LogOut, Terminal, RefreshCw, 
-  Loader2, Building2, Target
+  Users, Layout, Activity, Bell, ExternalLink, 
+  Terminal, RefreshCw, Loader2, Target, Ticket, 
+  LogOut, Building2, ShieldCheck 
 } from 'lucide-react';
 import { VerificationModal } from './VerificationModal';
 import { BrandManager } from './BrandManager';
@@ -28,19 +27,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   // FORM STATES (For Console)
   const [consoleMode, setConsoleMode] = useState<'MISSION' | 'VOUCHER'>('MISSION');
+  
   const [newMission, setNewMission] = useState({
-    title: '', description: '', reward_amount: 100, location: '', brand_id: '', image_url: '', checkpoints: ['', '', '']
-  });
-  const [newVoucher, setNewVoucher] = useState({
-    title: '', cost: 500, code: '', brand_id: ''
+    title: '', 
+    description: '', 
+    reward_amount: 100, 
+    location: '', 
+    brand_id: '', 
+    image_url: '', 
+    checkpoints: ['', '', '']
   });
 
-  // --- 1. FETCH LOGIC ---
+  const [newVoucher, setNewVoucher] = useState({
+    title: '', 
+    cost: 500, 
+    code: '', 
+    brand_id: ''
+  });
+
+  // --- 1. FETCH LOGIC (Optimized Manual Join) ---
   const fetchData = async () => {
     if (!supabase) return;
     setLoading(true);
     try {
-      // A. Fetch Submissions (Manual Join Fix for Profile Relation issues)
+      // A. Fetch Submissions with Missions
       const { data: subData, error: subError } = await supabase
         .from('submissions')
         .select(`*, missions:mission_id (*)`)
@@ -50,6 +60,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       if (subError) throw subError;
 
       if (subData && subData.length > 0) {
+        // B. Fetch Profiles manually to resolve relationship lookup errors
         const userIds = [...new Set(subData.map(s => s.user_id))];
         const { data: users, error: profError } = await supabase
           .from('profiles')
@@ -67,7 +78,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         setSubmissions([]);
       }
 
-      // B. Fetch System Logs (Assuming a notifications or activity table exists)
+      // C. Fetch Logs (Using notifications table as system activity log)
       const { data: logData } = await supabase
         .from('notifications')
         .select('*')
@@ -75,12 +86,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         .limit(50);
       setLogs(logData || []);
 
-      // C. Fetch Brands (For Dropdown)
+      // D. Fetch Brands for selection
       const { data: brandData } = await supabase.from('partner_brands').select('*');
       setBrands(brandData || []);
 
     } catch (err: any) { 
-      console.error("Sync Error:", err.message); 
+      console.error("Terminal Sync Error:", err.message); 
     } finally { 
       setLoading(false); 
     }
@@ -112,14 +123,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       }]);
 
       if (error) throw error;
-      
       alert("🚀 MISSION DEPLOYED TO THE GRID");
       setNewMission({
         title: '', description: '', reward_amount: 100, location: '', brand_id: '', image_url: '', checkpoints: ['', '', '']
       });
       fetchData();
     } catch (err: any) {
-      alert("Deployment Error: " + err.message);
+      alert("Deployment Failed: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -138,12 +148,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       }]);
 
       if (error) throw error;
-      
       alert("🎟️ VOUCHER MINTED SUCCESSFULLY");
       setNewVoucher({ title: '', cost: 500, code: '', brand_id: '' });
       fetchData();
     } catch (err: any) {
-      alert("Minting Error: " + err.message);
+      alert("Minting Failed: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -153,6 +162,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const handleBrandSelect = (id: string) => {
     const brand = brands.find(b => b.id === id);
     if (!brand) return;
+    
     if (consoleMode === 'MISSION') {
       setNewMission({ 
         ...newMission, 
@@ -183,7 +193,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               </h1>
            </div>
            <div className="flex items-center gap-4">
-              <button onClick={fetchData} className="p-2 bg-white/10 hover:bg-white/20 border-2 border-white/20 transition-all rounded-none">
+              <button onClick={fetchData} className="p-2 bg-white/10 hover:bg-white/20 border-2 border-white/20 transition-all">
                  <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
               </button>
               <button onClick={() => { auth.signOut(); onLogout(); }} className="flex items-center gap-2 bg-rose-600 text-white px-5 py-2 font-black uppercase text-xs tracking-widest border-2 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
@@ -234,7 +244,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             ) : (
                <div className="grid gap-8">
                  {submissions.map(sub => (
-                   <div key={sub.id} className="bg-white dark:bg-[#1a1a1a] border-4 border-black p-0 shadow-[10px_10px_0px_0px_#000] dark:shadow-[10px_10px_0px_0px_#834bf1] flex flex-col md:flex-row relative group overflow-hidden">
+                   <div key={sub.id} className="bg-white dark:bg-[#1a1a1a] border-4 border-black p-0 shadow-[10px_10px_0px_0px_#000] flex flex-col md:flex-row relative group overflow-hidden">
                       <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#ffde59]"></div>
                       <div className="p-8 flex-1 flex flex-col lg:flex-row gap-8 items-start lg:items-center">
                          <div className="flex items-center gap-6 min-w-[250px]">
@@ -251,7 +261,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <h4 className="font-black text-lg uppercase italic mb-3">{sub.missions?.title || "Project Alpha"}</h4>
                             <div className="flex items-center gap-2 bg-slate-50 dark:bg-black/20 p-2 border-2 border-black/10 w-fit">
                                <ExternalLink size={14} className="text-[#834bf1]"/>
-                               <a href={sub.link} target="_blank" className="text-xs font-black text-blue-600 underline truncate max-w-[300px]">{sub.link}</a>
+                               <a href={sub.link} target="_blank" rel="noreferrer" className="text-xs font-black text-blue-600 underline truncate max-w-[300px]">{sub.link}</a>
                             </div>
                          </div>
                          <button onClick={() => setSelectedSubmission(sub)} 
