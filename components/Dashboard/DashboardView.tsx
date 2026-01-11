@@ -301,7 +301,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         fetchNotifications(user);
         fetchMySubmissions(user);
 
-        // --- FIX: Add this null check ---
+        // --- FIX: Add Null Check for Supabase ---
         if (!supabase) return; 
 
         // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
@@ -320,6 +320,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `user_uid=eq.${user.uid}` }, () => {
             console.log('⚡ Balance Updated!');
             fetchDashboardData(user);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions', filter: `user_id=eq.${user.uid}` }, () => {
+            fetchMySubmissions(user);
           })
           .subscribe();
 
