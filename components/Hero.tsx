@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Zap, Calendar, Sparkles } from 'lucide-react';
+import { ArrowRight, Zap, Calendar, Sparkles, Bot } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { PartnerBrands } from './PartnerBrands';
@@ -26,13 +26,11 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shapesRef = useRef<PhysicalShape[]>([]);
   const requestRef = useRef<number>(0);
-  const lastMousePos = useRef({ x: 0, y: 0 });
   const isMobileRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        console.log("⚡ Auto-Redirect: Authenticated User Detected. Routing to Hub...");
         onDashboardClick();
       }
     });
@@ -133,14 +131,26 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             </div>
 
             <div className="space-y-4">
-              <h1 className="flex flex-col text-6xl md:text-9xl lg:text-[130px] font-black text-black dark:text-white leading-[0.8] tracking-tighter font-display uppercase italic">
+              <h1 className="flex flex-col text-7xl md:text-9xl lg:text-[140px] font-black text-black dark:text-white leading-[0.8] tracking-tighter font-display uppercase italic">
                 <span>Scale</span>
-                <span className="text-[#834bf1] drop-shadow-[4px_4px_0px_#000] dark:drop-shadow-[4px_4px_0px_#fff]">Automate</span>
-                <span className="flex items-center">Dominate <Sparkles className="ml-4 text-[#ffde59] hidden md:block animate-bounce" size={48} /></span>
+                <span className="text-[#834bf1]">Automate</span>
+                <div className="flex items-center">
+                  <span>Dominate</span>
+                  <Sparkles className="ml-4 text-[#ffde59] hidden md:block" size={48} />
+                </div>
               </h1>
-              <p className="text-lg md:text-2xl text-black/70 dark:text-white/70 font-black uppercase italic tracking-tight border-l-[10px] border-[#ffde59] pl-8 max-w-2xl leading-tight pt-6">
-                Architecting digital dominance through Human-AI synergy. Surgical execution for the modern SME.
-              </p>
+              
+              <div className="flex items-start pt-8 max-w-2xl relative">
+                <div className="absolute left-0 top-0 bottom-0 w-[10px] bg-[#ffde59] border-l-[3px] border-black"></div>
+                <div className="ml-8 flex gap-6">
+                  <div className="shrink-0 w-16 h-16 bg-[#834bf1] border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center text-white">
+                    <Bot size={32} strokeWidth={2.5} />
+                  </div>
+                  <p className="text-lg md:text-xl text-black/70 dark:text-white/70 font-black uppercase italic tracking-tight leading-tight">
+                    Architecting digital dominance through human-AI synergy. Surgical execution for the modern SME.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-8">

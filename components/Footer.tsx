@@ -88,7 +88,6 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
              <p>© 2024 Reelywood Studio.</p>
              <p className="opacity-40">Privacy Protocol</p>
           </div>
-          <p className="bg-black dark:bg-white text-white dark:text-black px-4 py-2">Mission Critical Execution</p>
         </div>
       </div>
     </footer>
