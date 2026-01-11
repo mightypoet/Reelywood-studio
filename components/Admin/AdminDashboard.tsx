@@ -47,10 +47,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
-  // Custom Notification State (Replaces Alerts)
   const [notify, setNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
-  // Data Stores
   const [users, setUsers] = useState<Profile[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -61,13 +59,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
 
-  // Forms
   const [missionForm, setMissionForm] = useState({ 
     title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' 
   });
   const [voucherForm, setVoucherForm] = useState({ brandId: '', title: '', cost: '', code: '' });
 
-  // Targeting
   const [targetMode, setTargetMode] = useState<'ALL' | 'SELECT'>('ALL');
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
 
@@ -83,7 +79,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
     const channel = supabase
       .channel('admin-dashboard-live')
-      // Listen for EVERYTHING relevant
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => triggerRefresh('Missions Updated'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => triggerRefresh('New Submission'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => triggerRefresh('Ledger Activity'))
@@ -92,23 +87,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase) supabase.removeChannel(channel);
     };
   }, []);
 
   const triggerRefresh = (reason: string) => {
     console.log(`⚡ Live Update: ${reason}`);
-    fetchAllData(); // Silent refresh
+    fetchAllData();
   };
 
   const fetchAllData = async () => {
     try {
       if (!supabase) return;
+
       const [profilesRes, missionsRes, rewardsRes, transRes, brandsRes, submissionsRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        // Fetch Ledger
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name, email), missions(title, reward_amount, checkpoints)').eq('status', 'pending').order('created_at', { ascending: false })
@@ -125,13 +120,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  // --- HELPER: Notification System ---
   const showToast = (type: 'success' | 'error', msg: string) => {
     setNotify({ type, msg });
     setTimeout(() => setNotify(null), 4000);
   };
-
-  // --- ACTIONS ---
 
   const handleDeployMission = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,7 +226,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setSelectedAgentIds(prev => prev.includes(id) ? prev.filter(aid => aid !== id) : [...prev, id]);
   };
 
-  // --- UI CONSTANTS ---
   const isDark = darkMode;
   const bgColor = isDark ? 'bg-[#0a0a0a]' : 'bg-gray-100';
   const textColor = isDark ? 'text-white' : 'text-black';
@@ -245,8 +236,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   return (
     <div className={`min-h-screen ${bgColor} ${textColor} font-mono transition-colors duration-500 pb-20`}>
-      
-      {/* --- STATUS TOAST NOTIFICATION (Replaces Alerts) --- */}
       {notify && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4 fade-in duration-300 w-full max-w-md px-4">
           <div className={`flex items-center gap-4 px-6 py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_#000] ${notify.type === 'success' ? 'bg-[#39ff14] text-black' : 'bg-rose-500 text-white'}`}>
@@ -474,26 +463,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
                       </label>
                       <div className="flex gap-2 mb-4">
-                         <button type="button" onClick={() => setTargetMode('ALL')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>GLOBAL</button>
-                         <button type="button" onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE</button>
-                      </div>
-                      {targetMode === 'SELECT' && (
-                        <div className="bg-white border-2 border-black max-h-[150px] overflow-y-auto p-1">
-                           {users.map(u => (
-                             <div key={u.firebase_uid} onClick={() => toggleAgentSelection(u.firebase_uid)} className={`flex items-center gap-2 p-1 cursor-pointer hover:bg-gray-50 ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-blue-50' : ''}`}>
-                                <div className={`w-3 h-3 border border-black ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-black' : 'bg-white'}`}></div>
-                                <span className="text-[9px] font-bold text-black truncate">{u.display_name}</span>
-                             </div>
-                           ))}
-                        </div>
-                      )}
+                         <button type="button" onClick={() => setTargetMode('ALL')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>GLOBAL BROADCAST</button>
+                         <button type="button" onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE UPLINK</button>
                     </div>
+                    {targetMode === 'SELECT' && (
+                      <div className="bg-white border-2 border-black max-h-[150px] overflow-y-auto p-1">
+                         {users.map(u => (
+                           <div key={u.firebase_uid} onClick={() => toggleAgentSelection(u.firebase_uid)} className={`flex items-center gap-2 p-1 cursor-pointer hover:bg-gray-50 ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-blue-50' : ''}`}>
+                              <div className={`w-3 h-3 border border-black ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-black' : 'bg-white'}`}></div>
+                              <span className="text-[9px] font-bold text-black truncate">{u.display_name}</span>
+                           </div>
+                         ))}
+                      </div>
+                    )}
+                  </div>
 
-                    <button type="submit" disabled={submitting} className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0px_0px_#000] transition-all`}>
-                      {submitting ? 'PROCESSING...' : 'AUTHORIZE INVENTORY'}
-                    </button>
-                  </form>
-                </div>
+                  <button type="submit" disabled={submitting} className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0px_0px_#000] transition-all`}>
+                    {submitting ? 'PROCESSING...' : 'AUTHORIZE INVENTORY'}
+                  </button>
+                </form>
+              </div>
               </div>
               <div className="lg:col-span-7 grid md:grid-cols-2 gap-4">
                 {vouchers.map(v => (
