@@ -5,7 +5,7 @@ import {
   Users, ArrowUpRight, ArrowDownLeft, Search, X, 
   CheckCircle, Send, AlertCircle, Sparkles, Box, 
   ArrowLeft, Plus, Terminal, RefreshCw, LogOut, Layout, Bell, Building2, ShieldCheck, Ticket,
-  Activity, Briefcase, Instagram, Star, MapPin, ImageIcon
+  Activity, Briefcase, Instagram, Star, MapPin, ImageIcon, ThumbsUp, ThumbsDown, ExternalLink
 } from 'lucide-react';
 import { VerificationModal } from './VerificationModal';
 import { BrandManager } from './BrandManager';
@@ -78,6 +78,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   const channelRef = useRef<any>(null);
 
+  /**
+   * Derived state for selected brand data based on form input.
+   * Fixes errors on line 305, 308, 309, 315, 318 where selectedBrandData was used but not defined.
+   */
+  const selectedBrandData = brands.find(b => b.id === formData.brandId);
+
   const fetchData = async () => {
     if (!supabase) return;
     setLoading(true);
@@ -90,7 +96,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
       if (brandData.data) {
         setBrands(brandData.data);
-        setLogs(prev => [{ id: Date.now().toString(), title: `Synced ${brandData.data.length} Partner Nodes from DB`, time: new Date().toLocaleTimeString(), type: 'system' }, ...prev]);
       }
 
       const rawSubs = (subData.data || []) as any[];
@@ -170,12 +175,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }, 1500);
   };
 
-  const selectedBrandData = brands.find(b => b.id === formData.brandId);
-
   const renderDashboard = () => (
     <div className="space-y-12 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="bg-emerald-50/30 p-8 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all cursor-default group">
+        <div className="bg-emerald-50/30 p-8 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] group">
           <div className="flex justify-between items-start mb-6">
             <div className="p-3 bg-white border-2 border-black group-hover:rotate-12 transition-transform">
               <ArrowUpRight className="text-emerald-500" />
@@ -186,7 +189,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           <p className="text-4xl font-black italic font-display tracking-tight leading-none">+{stats.credited.toLocaleString()}</p>
         </div>
 
-        <div className="bg-rose-50/30 p-8 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all cursor-default group">
+        <div className="bg-rose-50/30 p-8 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] group">
           <div className="flex justify-between items-start mb-6">
             <div className="p-3 bg-white border-2 border-black group-hover:rotate-12 transition-transform">
               <ArrowDownLeft className="text-rose-500" />
@@ -199,7 +202,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
         <div 
           onClick={() => setViewMode('directory')}
-          className="bg-white p-8 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_#834bf1] transition-all cursor-pointer group"
+          className="bg-white p-8 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_#834bf1] transition-all cursor-pointer group"
         >
           <div className="flex justify-between items-start mb-6">
             <div className="p-3 bg-white border-2 border-black group-hover:rotate-12 transition-transform">
@@ -214,53 +217,62 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       </div>
 
       <div className="grid lg:grid-cols-12 gap-12 items-start">
-        <div className="lg:col-span-8">
-          {activeTab === 'incoming' && (
-            <div className="space-y-8">
-              <h2 className="text-5xl font-black italic uppercase font-display tracking-tighter">Verification Queue</h2>
-              {submissions.length === 0 ? (
-                <div className="p-32 text-center border-4 border-dashed border-black/10 bg-white">
-                  <ShieldCheck size={64} className="mx-auto mb-6 opacity-10" />
-                  <p className="text-xl font-black opacity-20 uppercase italic tracking-widest">No signals in grid &gt; Realtime</p>
-                </div>
-              ) : (
-                <div className="grid gap-8">
-                  {submissions.map((sub: any) => (
-                    <div key={sub.id} className="bg-white border-4 border-black p-8 shadow-[10px_10px_0px_0px_#000] flex flex-col md:flex-row relative group overflow-hidden hover:translate-x-1 hover:translate-y-1 transition-all">
-                      <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#ffde59]"></div>
-                      <div className="flex-1 flex flex-col lg:flex-row gap-8 items-center">
-                        <div className="flex items-center gap-6 min-w-[250px] w-full">
-                          <div className="w-14 h-14 bg-[#834bf1] border-[3px] border-black shrink-0 overflow-hidden shadow-[4px_4px_0px_0px_#000]">
-                            <img src={sub.profiles?.photo_url || `https://api.dicebear.com/7.x/initials/svg?seed=${sub.user_id}`} alt="Agent" className="w-full h-full object-cover"/>
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="font-black text-xl uppercase truncate leading-none mb-1">{sub.profiles?.display_name || "Agent"}</h3>
-                            <p className="text-[10px] font-bold text-[#834bf1] uppercase tracking-widest italic">@{sub.profiles?.handle || "unlinked"}</p>
-                          </div>
-                        </div>
-                        <div className="flex-1 w-full">
-                          <p className="text-[9px] font-black uppercase text-black/40 mb-1 tracking-widest">Active Protocol</p>
-                          <h4 className="font-black text-lg uppercase italic mb-3 truncate">{sub.missions?.title || "Alpha Mission"}</h4>
-                          <a href={sub.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-slate-50 border-2 border-black/10 p-2 text-[10px] font-black text-blue-600 underline truncate max-w-[300px]">
-                            LINK DETECTED {'>>'} {sub.link}
-                          </a>
-                        </div>
-                        <button onClick={() => setSelectedSubmission(sub)} className="bg-black text-white px-10 py-5 font-black uppercase text-xs tracking-widest hover:bg-[#4ade80] hover:text-black hover:shadow-[6px_6px_0px_0px_#000] transition-all border-2 border-transparent hover:border-black shrink-0 w-full lg:w-auto">VERIFY SIGNAL</button>
+        <div className="lg:col-span-8 space-y-12">
+          {/* --- VERIFICATION QUEUE --- */}
+          {submissions.length > 0 && (
+            <div className="space-y-6">
+              <h2 className="text-3xl font-black italic uppercase font-display tracking-tighter flex items-center gap-3">
+                Verification Queue <span className="bg-black text-white text-[10px] px-3 py-1 rounded-full italic">{submissions.length} Signals</span>
+              </h2>
+              <div className="grid gap-6">
+                {submissions.map((sub: any) => (
+                  <div key={sub.id} className="bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000] p-0 flex flex-col md:flex-row overflow-hidden group">
+                    <div className="p-6 flex-1 border-b-4 md:border-b-0 md:border-r-4 border-black flex items-center gap-5 border-l-[12px] border-l-[#ffde59]">
+                      <div className="w-14 h-14 bg-indigo-100 border-[3px] border-black flex items-center justify-center font-black text-xl italic shadow-[3px_3px_0px_0px_#000]">
+                        {sub.profiles?.display_name?.charAt(0) || 'A'}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-black uppercase text-base truncate leading-none">{sub.profiles?.display_name}</h3>
+                        <p className="text-[9px] font-bold text-[#834bf1] uppercase tracking-widest mt-1 italic">@{sub.profiles?.handle || 'unlinked'}</p>
+                        <span className="text-[8px] font-black bg-slate-100 border border-black/10 px-1 mt-2 inline-block">MISSION_PROOF</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    <div className="p-6 flex-1 bg-slate-50 flex flex-col justify-center">
+                      <span className="text-[9px] font-black uppercase text-black/30 tracking-widest">Protocol Signal</span>
+                      <div className="font-black text-lg italic uppercase mt-1 truncate">{sub.missions?.title}</div>
+                      <a href={sub.link} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[10px] font-black text-blue-600 mt-2 hover:underline italic truncate max-w-[200px]">
+                        LINK DETECTED <ExternalLink size={12} strokeWidth={3} />
+                      </a>
+                    </div>
+
+                    <div className="p-4 w-full md:w-48 bg-black flex flex-col gap-3 justify-center">
+                      <button 
+                        onClick={() => setSelectedSubmission(sub)}
+                        className="bg-white text-black font-black uppercase text-[10px] py-3 tracking-widest hover:bg-[#4ade80] transition-all flex items-center justify-center gap-2 border-2 border-transparent hover:border-black active:scale-95"
+                      >
+                        Verify <ThumbsUp size={14} strokeWidth={3} />
+                      </button>
+                      <button 
+                        className="bg-zinc-800 text-white font-black uppercase text-[9px] py-2 tracking-widest hover:bg-rose-600 transition-all flex items-center justify-center gap-2 active:scale-95"
+                      >
+                        Reject <ThumbsDown size={12} strokeWidth={3} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {activeTab === 'console' && (
-            <div className="space-y-8">
-              <div className="flex gap-4">
-                <button onClick={() => setConsoleMode('mission')} className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${consoleMode === 'mission' ? 'bg-black text-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-100 opacity-50'}`}><Sparkles size={18} className="inline mr-2"/> Mission</button>
-                <button onClick={() => setConsoleMode('voucher')} className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${consoleMode === 'voucher' ? 'bg-[#ffde59] text-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-100 opacity-50'}`}><Box size={18} className="inline mr-2"/> Voucher</button>
-              </div>
+          {/* --- MISSION CREATOR --- */}
+          <div className="space-y-8">
+            <div className="flex gap-4">
+              <button onClick={() => setActiveTab('incoming')} className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${activeTab === 'incoming' ? 'bg-[#ffde59] text-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-100 opacity-50'}`}><Bell size={18} className="inline mr-2"/> Signals</button>
+              <button onClick={() => setActiveTab('console')} className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${activeTab === 'console' ? 'bg-black text-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-100 opacity-50'}`}><Sparkles size={18} className="inline mr-2"/> Deploy</button>
+            </div>
 
+            {activeTab === 'console' && (
               <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000] relative min-h-[450px]">
                 {deployStep === 'success' ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-20 animate-in zoom-in duration-300">
@@ -273,7 +285,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     <div className="space-y-6">
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Partner Alliance</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Partner Node</label>
                           <div className="relative">
                             <select 
                               className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none appearance-none focus:bg-[#ffde59] transition-all"
@@ -298,7 +310,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                       {/* --- LIVE BRAND PREVIEW --- */}
                       {selectedBrandData && (
                         <div className="border-[3px] border-black bg-yellow-50 p-4 animate-in fade-in slide-in-from-top-2 flex gap-4 items-start shadow-[4px_4px_0px_0px_#000]">
-                          <div className="w-20 h-20 bg-white border-2 border-black flex items-center justify-center overflow-hidden shrink-0">
+                          <div className="w-16 h-16 bg-white border-2 border-black flex items-center justify-center overflow-hidden shrink-0">
                             {selectedBrandData.logo_url ? (
                               <img src={selectedBrandData.logo_url} alt="brand" className="w-full h-full object-cover" />
                             ) : (
@@ -306,12 +318,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-black uppercase text-base italic leading-none mb-1 truncate">{selectedBrandData.name}</h3>
-                            <div className="flex items-center gap-1 text-[10px] font-black text-black/40 uppercase tracking-widest mt-2">
+                            <h3 className="font-black uppercase text-sm italic leading-none mb-1 truncate">{selectedBrandData.name}</h3>
+                            <div className="flex items-center gap-1 text-[9px] font-black text-black/40 uppercase tracking-widest mt-2">
                                 <MapPin size={10} strokeWidth={3} />
                                 <span className="truncate">{selectedBrandData.location_text || "Global Reach"}</span>
                             </div>
-                            <div className="mt-2 text-[8px] font-black bg-black text-white px-2 py-0.5 w-fit uppercase tracking-widest">Verified Node</div>
                           </div>
                         </div>
                       )}
@@ -324,8 +335,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
                     <div className="p-6 bg-slate-50 border-[3px] border-black shadow-[6px_6px_0px_0px_#000]">
                       <div className="flex justify-between items-center mb-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Target Deployment Hub:</span>
-                        <button onClick={() => setViewMode('directory')} className="text-[9px] font-black text-[#834bf1] uppercase tracking-widest hover:underline">Edit Hub Selection {'>>'}</button>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Target Scope:</span>
+                        <button onClick={() => setViewMode('directory')} className="text-[9px] font-black text-[#834bf1] uppercase tracking-widest hover:underline">Edit Scope {'>>'}</button>
                       </div>
                       <div className="font-black text-lg text-black italic">
                         {targetMode === 'all' ? 'BROADCAST TO GLOBAL GRID' : `${selectedUsers.length} TARGETED AGENT NODES`}
@@ -336,32 +347,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {activeTab === 'ledger' && (
-            <div className="bg-black text-[#4ade80] p-10 border-[6px] border-[#4ade80] font-mono shadow-[12px_12px_0px_0px_#000] animate-in slide-in-from-bottom-4">
-              <div className="flex items-center justify-between mb-10 pb-6 border-b border-[#4ade80]/20">
-                <h2 className="text-3xl font-black flex items-center gap-4 italic"><Activity className="animate-pulse" size={32} /> SYSTEM_LOG_v4.0</h2>
-                <span className="text-[10px] bg-[#4ade80] text-black px-3 py-1 font-black uppercase">Active Grid Sync</span>
-              </div>
-              <div className="space-y-4 h-[600px] overflow-y-auto no-scrollbar pr-4">
-                {logs.map((log) => (
-                  <div key={log.id} className="border-b border-[#4ade80]/10 pb-4 flex gap-6 hover:bg-white/5 transition-colors p-3">
-                    <span className="text-gray-500 text-[10px] shrink-0 pt-1">[{log.time}]</span>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[#ffde59] font-black mr-3 uppercase">[{log.type}]</span>
-                      <span className="leading-relaxed text-sm break-words italic">{log.title}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'alliance' && <BrandManager />}
+            )}
+          </div>
         </div>
 
+        {/* RIGHT COLUMN: LEDGER */}
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] h-full max-h-[700px] flex flex-col">
             <h3 className="font-black text-xl uppercase mb-8 italic flex items-center gap-3 border-b-4 border-black pb-4"><AlertCircle className="text-[#834bf1]" size={24}/> System Ledger</h3>
@@ -397,14 +387,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             </button>
             <div>
               <h1 className="text-5xl font-black italic uppercase font-display tracking-tighter">Agent Network</h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 italic">Alliance Hub • {MOCK_USERS.length} Node Directives Synchronized</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 italic">Alliance Hub • Authorized Access Only</p>
             </div>
           </div>
           <div className="relative w-full md:w-96">
             <Search className="absolute left-4 top-4 text-black/30" size={18} />
             <input 
               className="w-full pl-12 pr-4 py-4 border-[4px] border-black font-black text-xs outline-none shadow-[8px_8px_0px_0px_#ffde59] focus:shadow-none transition-all"
-              placeholder="Search by Identity or Niche..."
+              placeholder="Search Identity or Niche..."
               value={directorySearch}
               onChange={(e) => setDirectorySearch(e.target.value)}
             />
@@ -418,7 +408,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 <th className="p-6 w-12"></th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest italic">Agent Node</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest">Niche</th>
-                <th className="p-6 font-black uppercase text-[10px] tracking-widest text-center">Protocol Sync</th>
+                <th className="p-6 font-black uppercase text-[10px] tracking-widest text-center">Sync Rate</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-right">RC Inflow</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-right">RC Outflow</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-center">Status</th>
@@ -434,7 +424,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     className={`border-b-2 border-black/5 cursor-pointer transition-colors group ${isSelected ? 'bg-[#ffde59]/20' : 'hover:bg-slate-50'}`}
                   >
                     <td className="p-6 text-center">
-                      <div className={`w-8 h-8 border-[3px] border-black mx-auto flex items-center justify-center transition-all ${isSelected ? 'bg-black text-white' : 'bg-white group-hover:border-indigo-600'}`}>
+                      <div className={`w-8 h-8 border-[3px] border-black mx-auto flex items-center justify-center transition-all ${isSelected ? 'bg-black text-white' : 'bg-white group-hover:border-[#834bf1]'}`}>
                         {isSelected && <CheckCircle size={18} strokeWidth={4} />}
                       </div>
                     </td>
@@ -445,8 +435,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                         </div>
                         <div>
                           <div className="font-black text-sm uppercase italic leading-none mb-1">{user.name}</div>
-                          <div className="text-[9px] font-bold text-black/40 uppercase tracking-widest leading-none">{user.email}</div>
-                          <div className="mt-1 flex items-center gap-2">
+                          <div className="text-[9px] font-bold text-black/40 uppercase tracking-widest leading-none mb-1">{user.email}</div>
+                          <div className="flex items-center gap-2">
                              <Instagram size={10} className="text-pink-500"/>
                              <span className="text-[9px] font-black text-black/80">{user.followers}</span>
                           </div>
@@ -454,7 +444,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                       </div>
                     </td>
                     <td className="p-6">
-                       <span className="bg-gray-100 px-3 py-1 border-2 border-black text-[9px] font-black uppercase italic tracking-widest">{user.niche}</span>
+                       <span className="bg-slate-100 px-3 py-1 border-2 border-black text-[9px] font-black uppercase italic tracking-widest">{user.niche}</span>
                     </td>
                     <td className="p-6 text-center font-black italic">{user.missionsCompleted}</td>
                     <td className="p-6 text-right font-black italic text-emerald-500">+{user.rcIncome.toLocaleString()}</td>
