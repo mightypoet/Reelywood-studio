@@ -2,40 +2,45 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { 
-  Users, DollarSign, Activity, ShoppingBag, ArrowUpRight, 
-  Terminal, RefreshCw, LogOut, Layout, Bell, Ticket,
-  Zap, Building2, ShieldCheck, X, Trash2, Edit3, Plus, Send, CheckCircle
+  Users, Activity, ShoppingBag, ArrowUpRight, Plus, Send, 
+  CheckCircle, Coins, ArrowDownLeft, Terminal, RefreshCw, 
+  LogOut, Layout, Bell, Building2, ShieldCheck, X, Ticket
 } from 'lucide-react';
 import { VerificationModal } from './VerificationModal';
 import { BrandManager } from './BrandManager';
 
 // --- Types ---
+type DeployType = 'mission' | 'voucher';
+type TargetType = 'all' | 'group' | 'individual';
+
 interface Transaction {
   id: string;
   user: string;
   amount: number;
+  type: 'credit' | 'debit';
   status: 'completed' | 'pending';
   date: string;
 }
 
 interface DashboardStats {
   totalUsers: number;
-  revenue: number;
+  rcCredited: number; 
+  rcDebited: number;  
   activeMissions: number;
-  growth: number;
 }
 
 const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
 
 const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: 'TXN-001', user: 'agent_alex', amount: 120.50, status: 'completed', date: '2 mins ago' },
-  { id: 'TXN-002', user: 'sarah_creator', amount: 75.00, status: 'completed', date: '15 mins ago' },
-  { id: 'TXN-003', user: 'mike_vibe', amount: 250.00, status: 'pending', date: '1 hour ago' },
+  { id: 'TXN-001', user: 'agent_alex', amount: 500, type: 'debit', status: 'completed', date: '2 mins ago' },
+  { id: 'TXN-002', user: 'sarah_creator', amount: 1200, type: 'credit', status: 'completed', date: '15 mins ago' },
+  { id: 'TXN-003', user: 'mike_vibe', amount: 300, type: 'debit', status: 'pending', date: '1 hour ago' },
+  { id: 'TXN-004', user: 'emily_pro', amount: 100, type: 'credit', status: 'completed', date: '3 hours ago' },
 ];
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'incoming' | 'console' | 'ledger' | 'alliance'>('incoming');
-  const [consoleMode, setConsoleMode] = useState<'MISSION' | 'VOUCHER'>('MISSION');
+  const [consoleMode, setConsoleMode] = useState<DeployType>('mission');
   const [loading, setLoading] = useState(false);
   
   // Data States
@@ -44,18 +49,23 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [brands, setBrands] = useState([] as any[]);
   const [missions, setMissions] = useState([] as any[]);
   const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0, revenue: 0, activeMissions: 0, growth: 0
+    totalUsers: 0, rcCredited: 0, rcDebited: 0, activeMissions: 0
   });
   const [selectedSubmission, setSelectedSubmission] = useState(null as any);
 
-  // Ref for Realtime cleanup
+  // Form States
+  const [targetAudience, setTargetAudience] = useState<TargetType>('all');
+  const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'success'>('idle');
+  const [formData, setFormData] = useState({
+    title: '', brand: '', targetId: '', value: ''
+  });
+
   const channelRef = useRef<any>(null);
 
   const fetchData = async () => {
     if (!supabase) return;
     setLoading(true);
     try {
-      // 1. Submissions
       const { data: subData } = await supabase
         .from('submissions')
         .select(`*, missions:mission_id (*)`)
@@ -77,23 +87,20 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       }));
       setSubmissions(combined);
 
-      // 2. Missions & Brands
       const { data: missionData } = await supabase.from('missions').select('*, partner_brands(name)').order('created_at', { ascending: false });
       setMissions((missionData || []) as any[]);
 
       const { data: brandData } = await supabase.from('partner_brands').select('*');
       setBrands((brandData || []) as any[]);
 
-      // 3. System Logs
       const { data: logData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50);
       setLogs((logData || []) as any[]);
 
-      // 4. Update Stats
       setStats({
-        totalUsers: userList.length + 420,
-        revenue: 45231.89,
-        activeMissions: (missionData || []).length,
-        growth: 12.5
+        totalUsers: 12450,
+        rcCredited: 854000,
+        rcDebited: 320150,
+        activeMissions: (missionData || []).length
       });
 
     } catch (err) { 
@@ -104,10 +111,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   };
 
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
-      onLogout();
-    }
     fetchData();
 
     if (supabase) {
@@ -123,13 +126,27 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     };
   }, []);
 
-  const renderStatCard = (label: string, value: string, icon: React.ReactNode, trend: string) => (
-    <div className="bg-white p-8 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_#834bf1] transition-all cursor-default group">
+  const handleDeploy = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title || !formData.brand || !formData.value) return;
+
+    setDeployStatus('deploying');
+    setTimeout(() => {
+      setDeployStatus('success');
+      setTimeout(() => {
+        setDeployStatus('idle');
+        setFormData({ title: '', brand: '', targetId: '', value: '' });
+      }, 2500);
+    }, 1500);
+  };
+
+  const renderStatCard = (label: string, value: string, icon: React.ReactNode, color: string = "bg-white") => (
+    <div className={`${color} p-8 border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_#834bf1] transition-all cursor-default group`}>
       <div className="flex justify-between items-start mb-6">
-        <div className="p-3 bg-[#ffde59] border-2 border-black group-hover:rotate-12 transition-transform">
+        <div className="p-3 bg-white border-2 border-black group-hover:rotate-12 transition-transform">
           {icon}
         </div>
-        <span className="text-[10px] font-black bg-slate-100 px-3 py-1.5 border-2 border-black uppercase tracking-widest">{trend}</span>
+        <span className="text-[10px] font-black bg-slate-100 px-3 py-1.5 border-2 border-black uppercase tracking-widest">Active Sync</span>
       </div>
       <h3 className="text-black/40 text-[10px] font-black uppercase tracking-[0.4em] mb-2">{label}</h3>
       <p className="text-4xl font-black italic font-display tracking-tight leading-none">{value}</p>
@@ -142,7 +159,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       {submissions.length === 0 ? (
         <div className="p-32 text-center border-4 border-dashed border-black/10 bg-white">
           <ShieldCheck size={64} className="mx-auto mb-6 opacity-10" />
-          <p className="text-xl font-black opacity-20 uppercase italic tracking-widest">No signals in grid {'>>'} Realtime</p>
+          <p className="text-xl font-black opacity-20 uppercase italic tracking-widest">No signals in grid &gt; Realtime</p>
         </div>
       ) : (
         <div className="grid gap-8">
@@ -163,7 +180,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   <p className="text-[9px] font-black uppercase text-black/40 mb-1 tracking-widest">Active Protocol</p>
                   <h4 className="font-black text-lg uppercase italic mb-3 truncate">{sub.missions?.title || "Alpha Mission"}</h4>
                   <a href={sub.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-slate-50 border-2 border-black/10 p-2 text-[10px] font-black text-blue-600 underline truncate max-w-[300px]">
-                    LINK DETECTED {'>>'} {sub.link}
+                    LINK DETECTED &gt; {sub.link}
                   </a>
                 </div>
                 <button onClick={() => setSelectedSubmission(sub)} className="bg-black text-white px-10 py-5 font-black uppercase text-xs tracking-widest hover:bg-[#4ade80] hover:text-black hover:shadow-[6px_6px_0px_0px_#000] transition-all border-2 border-transparent hover:border-black shrink-0 w-full lg:w-auto">VERIFY SIGNAL</button>
@@ -176,31 +193,134 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   );
 
   const renderConsole = () => (
-    <div className="space-y-12 animate-in zoom-in-95">
-      <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000]">
-        <div className="flex gap-4 mb-10">
-          <button onClick={() => setConsoleMode('MISSION')} className={`flex-1 py-5 font-black uppercase text-xs tracking-widest border-4 border-black transition-all ${consoleMode === 'MISSION' ? 'bg-[#ffde59] shadow-[6px_6px_0px_0px_#000]' : 'bg-gray-100 opacity-50'}`}>🚀 MISSION CONTROL</button>
-          <button onClick={() => setConsoleMode('VOUCHER')} className={`flex-1 py-5 font-black uppercase text-xs tracking-widest border-4 border-black transition-all ${consoleMode === 'VOUCHER' ? 'bg-[#ffde59] shadow-[6px_6px_0px_0px_#000]' : 'bg-gray-100 opacity-50'}`}>🎟️ VOUCHER MINT</button>
+    <div className="grid lg:grid-cols-12 gap-12 animate-in zoom-in-95 items-start">
+      <div className="lg:col-span-8 space-y-8">
+        <div className="flex gap-4">
+          <button 
+            onClick={() => setConsoleMode('mission')} 
+            className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${consoleMode === 'mission' ? 'bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-100 opacity-50'}`}
+          >
+            🚀 Mission
+          </button>
+          <button 
+            onClick={() => setConsoleMode('voucher')} 
+            className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${consoleMode === 'voucher' ? 'bg-[#ffde59] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-100 opacity-50'}`}
+          >
+            🎟️ Voucher
+          </button>
         </div>
-        
-        <div className="text-center py-20 border-4 border-dashed border-black/10 space-y-4">
-          <div className="text-6xl">🛠️</div>
-          <p className="font-black uppercase tracking-[0.4em] text-black/30">Node Configurator: Standby</p>
-          <button className="text-xs underline font-bold hover:text-[#834bf1]">Download Protocol Documentation {'>>'}</button>
+
+        <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000] relative min-h-[450px]">
+          {deployStatus === 'success' ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-10 animate-in fade-in zoom-in duration-300">
+              <CheckCircle className="w-24 h-24 text-green-500 mb-4" />
+              <h2 className="text-3xl font-black uppercase">RC Asset Deployed!</h2>
+              <p className="text-gray-500 mt-2 text-center">
+                Your {consoleMode} has been sent to <br/>
+                <span className="font-bold text-black">{targetAudience === 'all' ? 'All Users' : formData.targetId}</span>.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleDeploy} className="space-y-8">
+              <div className="flex justify-between items-center border-b-4 border-dashed border-black/5 pb-4">
+                <h3 className="font-black text-2xl uppercase italic tracking-tighter flex items-center gap-3">
+                  <Plus className="bg-[#834bf1] text-white p-1" size={24} /> New {consoleMode}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Alliance Partner</label>
+                  <input 
+                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm outline-none focus:bg-[#ffde59] transition-all"
+                    placeholder="e.g. Nike, Starbucks"
+                    value={formData.brand}
+                    onChange={e => setFormData({...formData, brand: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-black/40">{consoleMode === 'mission' ? "Mission Identity" : "Voucher Code"}</label>
+                  <input 
+                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm outline-none focus:bg-[#ffde59] transition-all"
+                    placeholder={consoleMode === 'mission' ? "Viral Protocol" : "REELY20"}
+                    value={formData.title}
+                    onChange={e => setFormData({...formData, title: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Bounty Magnitude (RC)</label>
+                <input 
+                  type="number"
+                  className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm outline-none focus:bg-[#ffde59] transition-all"
+                  placeholder="e.g. 500"
+                  value={formData.value}
+                  onChange={e => setFormData({...formData, value: e.target.value})}
+                />
+              </div>
+
+              <div className="p-6 bg-slate-50 border-[3px] border-black shadow-[6px_6px_0px_0px_#000]">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-black/40 mb-4">Target Deployment Hub:</label>
+                <div className="flex gap-4 flex-wrap mb-4">
+                  {[
+                    { id: 'all', label: 'Global' },
+                    { id: 'group', label: 'Group' },
+                    { id: 'individual', label: 'Node' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setTargetAudience(opt.id as any)}
+                      className={`px-6 py-2 border-[3px] font-black text-[10px] uppercase tracking-widest transition-all ${targetAudience === opt.id ? 'bg-black text-white border-black' : 'bg-white border-black/10 text-black/30'}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {targetAudience !== 'all' && (
+                  <input 
+                    className="w-full bg-white border-[3px] border-black p-4 font-black text-xs outline-none"
+                    placeholder={targetAudience === 'group' ? "Enter Group Identifier" : "Enter User UID"}
+                    value={formData.targetId}
+                    onChange={e => setFormData({...formData, targetId: e.target.value})}
+                  />
+                )}
+              </div>
+
+              <button className="w-full py-6 bg-black text-white font-black uppercase text-xs tracking-[0.4em] border-[4px] border-black hover:bg-[#834bf1] transition-all shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                INITIALIZE DEPLOYMENT <Send className="inline ml-2" size={16} />
+              </button>
+            </form>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {missions.map((m: any) => (
-          <div key={m.id} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000] flex flex-col group hover:shadow-[12px_12px_0px_0px_#ffde59] transition-all">
-            <h4 className="font-black text-lg uppercase italic mb-2 leading-none truncate">{m.title}</h4>
-            <p className="text-[9px] font-bold text-[#834bf1] uppercase tracking-widest mb-4">Node: {m.partner_brands?.name || "System"}</p>
-            <div className="flex gap-2 mt-auto">
-              <button className="flex-1 bg-white border-2 border-black py-2 font-black text-[9px] uppercase tracking-widest hover:bg-slate-50">Config</button>
-              <button className="px-4 bg-black text-white border-2 border-black py-2 hover:bg-rose-600 transition-colors"><X size={14}/></button>
-            </div>
+      <div className="lg:col-span-4 space-y-8">
+        <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] h-fit">
+          <div className="flex items-center gap-3 mb-6 border-b-4 border-black pb-4">
+            <Coins className="text-[#834bf1]" size={24} />
+            <h2 className="font-black text-xl uppercase italic tracking-tighter">RC Activity</h2>
           </div>
-        ))}
+          <div className="space-y-6">
+            {MOCK_TRANSACTIONS.map((txn) => (
+              <div key={txn.id} className="flex justify-between items-start border-b-2 border-dashed border-black/5 pb-4 last:border-0 last:pb-0">
+                <div className="space-y-1">
+                  <div className="font-black text-xs uppercase tracking-widest">{txn.user}</div>
+                  <div className="text-[9px] font-bold text-black/30 uppercase">{txn.date}</div>
+                </div>
+                <div className="text-right">
+                  <div className={`font-black italic ${txn.type === 'credit' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {txn.type === 'credit' ? '+' : '-'}{txn.amount} RC
+                  </div>
+                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 border-2 border-black ${txn.status === 'completed' ? 'bg-slate-100' : 'bg-[#ffde59]'}`}>
+                    {txn.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -231,7 +351,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 font-lexend text-black">
-      {/* HEADER */}
       <header className="bg-black text-white p-6 border-b-4 border-[#834bf1] sticky top-0 z-[100] shadow-xl">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -239,7 +358,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <h1 className="text-3xl font-black italic uppercase tracking-tighter">TERMINAL <span className="text-[#834bf1]">ADMIN</span></h1>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={fetchData} className="p-3 bg-white/10 hover:bg-white/20 border-2 border-white/20 transition-all active:scale-95">
+            <button onClick={fetchData} className="p-3 bg-white/10 hover:bg-white/20 border-2 border-white/20 transition-all">
               <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
             <button onClick={() => { auth.signOut(); onLogout(); }} className="flex items-center gap-3 bg-rose-600 text-white px-6 py-2.5 font-black uppercase text-xs tracking-widest border-2 border-black shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition-all">
@@ -249,7 +368,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         </div>
       </header>
 
-      {/* TABS */}
       <nav className="bg-white border-b-4 border-black sticky top-[88px] z-50 shadow-md">
         <div className="max-w-7xl mx-auto flex overflow-x-auto no-scrollbar">
           {[
@@ -272,74 +390,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       </nav>
 
       <main className="max-w-7xl mx-auto p-6 md:p-12 space-y-12">
-        {/* STATS STRIP */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {renderStatCard("Total Revenue", `$${stats.revenue.toLocaleString()}`, <DollarSign />, "+12% Growth")}
-          {renderStatCard("Agent Network", stats.totalUsers.toLocaleString(), <Users />, "+54 New Nodes")}
-          {renderStatCard("Operational Modules", stats.activeMissions.toString(), <Activity />, "Live Grid")}
+          {renderStatCard("RC Inflow", `+${stats.rcCredited.toLocaleString()}`, <ArrowUpRight className="text-emerald-500" />, "bg-emerald-50/30")}
+          {renderStatCard("RC Outflow", `-${stats.rcDebited.toLocaleString()}`, <ArrowDownLeft className="text-rose-500" />, "bg-rose-50/30")}
+          {renderStatCard("Node Density", stats.totalUsers.toLocaleString(), <Users />, "bg-white")}
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-12 items-start">
-          {/* MAIN COLUMN */}
-          <div className="lg:col-span-8 space-y-12">
-            {activeTab === 'incoming' && renderIncomingSignals()}
-            {activeTab === 'console' && renderConsole()}
-            {activeTab === 'ledger' && renderLedger()}
-            {activeTab === 'alliance' && <BrandManager />}
-          </div>
-
-          {/* SIDE COLUMN: RECENT ACTIVITY */}
-          <div className="lg:col-span-4 space-y-8 h-fit lg:sticky lg:top-[260px]">
-            <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_#000] space-y-8">
-              <div className="flex items-center justify-between border-b-4 border-black pb-4">
-                <h3 className="font-black text-xl italic uppercase tracking-tighter flex items-center gap-3">
-                  <ShoppingBag size={24} /> Feed
-                </h3>
-                <div className="w-2 h-2 bg-emerald-500 animate-ping"></div>
-              </div>
-
-              <div className="space-y-6">
-                {MOCK_TRANSACTIONS.map((txn) => (
-                  <div key={txn.id} className="flex justify-between items-start border-b-2 border-dashed border-black/5 pb-4 last:border-0 last:pb-0 group">
-                    <div className="space-y-1">
-                      <div className="font-black text-xs uppercase tracking-widest">{txn.user}</div>
-                      <div className="text-[9px] font-bold text-black/30 uppercase">{txn.date}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-black italic text-[#834bf1]">+{txn.amount.toFixed(2)} RC</div>
-                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 border-2 border-black ${
-                        txn.status === 'completed' ? 'bg-[#4ade80]' : 'bg-[#ffde59]'
-                      }`}>
-                        {txn.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button className="w-full py-4 bg-black text-white font-black uppercase text-[10px] tracking-[0.4em] border-[3px] border-black hover:bg-[#834bf1] transition-all flex items-center justify-center gap-3 shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
-                ACCESS LEDGER <ArrowUpRight size={16} strokeWidth={3} />
-              </button>
-            </div>
-
-            <div className="bg-[#ffde59] border-4 border-black p-8 shadow-[8px_8px_0px_0px_#000]">
-               <div className="flex items-center gap-3 mb-4">
-                  <Zap className="fill-black" size={24} />
-                  <h4 className="font-black uppercase italic tracking-tighter">System Health</h4>
-               </div>
-               <div className="space-y-4">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                     <span>CPU Load</span>
-                     <span>12%</span>
-                  </div>
-                  <div className="h-4 bg-white border-[3px] border-black p-0.5">
-                     <div className="h-full bg-black w-[12%]"></div>
-                  </div>
-                  <p className="text-[9px] font-bold uppercase leading-relaxed opacity-60">All mission nodes are operational and synchronized with the primary grid.</p>
-               </div>
-            </div>
-          </div>
-        </div>
+        {activeTab === 'incoming' && renderIncomingSignals()}
+        {activeTab === 'console' && renderConsole()}
+        {activeTab === 'ledger' && renderLedger()}
+        {activeTab === 'alliance' && <BrandManager />}
       </main>
 
       {selectedSubmission && (
