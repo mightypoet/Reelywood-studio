@@ -3,11 +3,11 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { 
-  Layout, Users, Zap, Gift, LogOut, Search, 
+  Users, Zap, Gift, LogOut, Search, 
   Check, X, Shield, Plus, Moon, Sun, Trash2,
-  Loader2, ArrowRight, Activity, Terminal,
-  Target, FileText, ArrowDownLeft, ArrowUpRight,
-  Clock, Bell, Megaphone, Info, CheckCircle2,
+  Loader2, Activity, Terminal,
+  Target, FileText,
+  Clock, Bell, Megaphone, Info,
   Building2, Image as ImageIcon, MapPin, ListChecks
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
@@ -24,6 +24,8 @@ export interface Profile {
   card_status: string;
   role: string;
   reelcoins: number;
+  handle?: string;
+  photo_url?: string;
 }
 
 const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
@@ -85,7 +87,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(10),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
-        supabase.from('submissions').select('*, profiles(display_name, email), missions(title, reward_amount, checkpoints)').eq('status', 'pending').order('created_at', { ascending: false })
+        supabase.from('submissions').select(`
+          *,
+          profiles!user_id ( display_name, handle, photo_url, email ),
+          missions!mission_id ( title, reward_amount, checkpoints )
+        `).eq('status', 'pending').order('created_at', { ascending: false })
       ]);
 
       setUsers(profilesRes.data || []);
@@ -99,21 +105,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       console.error("❌ [ADMIN] Fetch Error:", error.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleBrandSelect = (brandId: string) => {
-    const brand = brands.find(b => b.id === brandId);
-    if (brand) {
-      setMissionForm({
-        ...missionForm,
-        brand_id: brandId,
-        title: `Protocol: ${brand.name}`,
-        location: brand.location_text || '',
-        image_url: brand.cover_image_url || ''
-      });
-    } else {
-      setMissionForm({ ...missionForm, brand_id: '', location: '', image_url: '' });
     }
   };
 
@@ -169,9 +160,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  /**
-   * FIX: Added handleCreateVoucher to process the voucher creation form.
-   */
   const handleCreateVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!voucherForm.title || !voucherForm.cost || !voucherForm.code) {
@@ -353,40 +341,71 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           )}
 
           {activeTab === 'submissions' && (
-            <div className="space-y-8">
-              <h3 className="text-3xl font-black italic uppercase font-display">Mission Queue</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {submissions.map(sub => (
-                  <div key={sub.id} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col space-y-6 group hover:-translate-y-1 transition-all`}>
-                    <div className="flex justify-between items-start">
-                      <div className="w-12 h-12 bg-[#834bf1] border-2 border-black flex items-center justify-center text-white shadow-[3px_3px_0px_0px_#000]">
-                        <Clock size={24} />
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Submitted At</p>
-                        <p className="text-xs font-bold">{new Date(sub.created_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-black text-xl uppercase italic mb-1">{sub.profiles?.display_name || 'Agent'}</h4>
-                      <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">{sub.missions?.title}</p>
-                    </div>
-                    <div className="bg-white border-2 border-black p-4 text-xs font-bold text-blue-600 underline truncate shadow-[2px_2px_0px_0px_#000]">
-                      {sub.link}
-                    </div>
-                    <button 
-                      onClick={() => setSelectedSubmission(sub)}
-                      className="w-full bg-[#ffde59] py-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all active:scale-95 flex items-center justify-center space-x-3"
-                    >
-                      <ListChecks size={18} />
-                      <span>Execute Verification</span>
-                    </button>
+            <div className="space-y-12">
+              <h2 className="text-4xl font-black italic uppercase flex items-center gap-3 font-display">
+                <div className="w-5 h-5 bg-red-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
+                Incoming Transmissions ({submissions.length})
+              </h2>
+
+              <div className="grid grid-cols-1 gap-6">
+                {submissions.length === 0 ? (
+                  <div className="bg-slate-50 border-4 border-black border-dashed p-16 text-center">
+                    <p className="font-black uppercase tracking-[0.4em] text-black/20 text-sm">No Active Signals. Terminal Idle.</p>
                   </div>
-                ))}
-                {submissions.length === 0 && (
-                  <div className="col-span-full py-24 text-center opacity-30 font-black uppercase tracking-[0.4em] text-xs">
-                    Clear Terminal. No Submissions Queued.
-                  </div>
+                ) : (
+                  submissions.map((sub) => (
+                    <div key={sub.id} className="bg-white border-4 border-black p-8 shadow-[10px_10px_0px_0px_#000] flex flex-col md:flex-row items-start md:items-center justify-between gap-8 hover:-translate-y-1 hover:translate-x-1 hover:shadow-[14px_14px_0px_0px_#834bf1] transition-all">
+                      
+                      {/* 1. AGENT IDENTITY */}
+                      <div className="flex items-center gap-6 min-w-[280px]">
+                        <div className="w-16 h-16 border-[3px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#000]">
+                           <img 
+                             src={sub.profiles?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sub.user_id}`} 
+                             className="w-full h-full object-cover"
+                             alt="Agent"
+                           />
+                        </div>
+                        <div>
+                           <h4 className="font-black text-xl uppercase italic leading-none mb-2">
+                             {sub.profiles?.display_name || "Unknown Agent"}
+                           </h4>
+                           <div className="flex items-center gap-2">
+                             <span className="text-[10px] font-black uppercase tracking-widest text-[#834bf1] bg-[#834bf1]/10 px-2 py-1 border border-[#834bf1]/20">
+                               @{sub.profiles?.handle || "unlinked"}
+                             </span>
+                           </div>
+                        </div>
+                      </div>
+
+                      {/* 2. MISSION INTEL */}
+                      <div className="flex-1 border-l-0 md:border-l-4 border-slate-100 md:pl-8 space-y-3">
+                         <div className="flex items-center gap-3">
+                           <div className="bg-[#ffde59] text-[10px] font-black px-3 py-1 border-2 border-black shadow-[3px_3px_0px_0px_#000] uppercase italic">
+                              Reward: {sub.missions?.reward_amount} RC
+                           </div>
+                           <span className="text-[9px] font-bold text-black/30 uppercase tracking-widest">
+                             {new Date(sub.created_at).toLocaleDateString()} • {new Date(sub.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </span>
+                         </div>
+                         <h3 className="font-black italic text-2xl uppercase tracking-tighter font-display text-black">
+                           {sub.missions?.title}
+                         </h3>
+                         <a href={sub.link} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-600 hover:underline truncate max-w-[300px] block italic">
+                            {sub.link}
+                         </a>
+                      </div>
+
+                      {/* 3. EXECUTE BUTTON */}
+                      <button 
+                        onClick={() => setSelectedSubmission(sub)}
+                        className="bg-black text-white px-10 py-5 font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_#834bf1] hover:bg-[#39ff14] hover:text-black hover:shadow-[4px_4px_0px_0px_#000] transition-all border-2 border-transparent hover:border-black active:scale-95 flex items-center gap-3"
+                      >
+                        <ListChecks size={18} strokeWidth={3} />
+                        <span>Verify Signal</span>
+                      </button>
+
+                    </div>
+                  ))
                 )}
               </div>
             </div>
@@ -405,7 +424,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <div className="space-y-4">
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Link Ecosystem Partner</label>
-                      <select className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none appearance-none cursor-pointer shadow-[4px_4px_0px_0px_#000] text-black`} value={missionForm.brand_id} onChange={(e) => handleBrandSelect(e.target.value)}>
+                      <select className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none appearance-none cursor-pointer shadow-[4px_4px_0px_0px_#000] text-black`} value={missionForm.brand_id} onChange={(e) => {
+                        const brand = brands.find(b => b.id === e.target.value);
+                        if (brand) {
+                          setMissionForm({
+                            ...missionForm,
+                            brand_id: brand.id,
+                            title: `Protocol: ${brand.name}`,
+                            location: brand.location_text || '',
+                            image_url: brand.cover_image_url || ''
+                          });
+                        } else {
+                          setMissionForm({ ...missionForm, brand_id: '', location: '', image_url: '' });
+                        }
+                      }}>
                         <option value="">-- Manual Config (No Link) --</option>
                         {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
