@@ -84,9 +84,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
     fetchAllData();
 
-    // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
-    if (!supabase) return;
+    // --- FIX: Add Null Check for Supabase ---
+    if (!supabase) return; 
 
+    // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
     const channel = supabase
       .channel('admin-dashboard-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
@@ -115,8 +116,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       })
       .subscribe();
 
+    // Cleanup listener on unmount
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase) supabase.removeChannel(channel);
     };
   }, []);
 

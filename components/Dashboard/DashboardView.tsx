@@ -302,7 +302,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         fetchMySubmissions(user);
 
         // --- AUTO-REFRESH LISTENER ---
-        if (!supabase) return;
+        // --- FIX: Add this line to satisfy TypeScript ---
+        if (!supabase) return; 
 
         const channel = supabase
           .channel('user-dashboard-live')
@@ -318,7 +319,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           .subscribe();
 
         return () => {
-          supabase.removeChannel(channel);
+          if (supabase) supabase.removeChannel(channel);
         };
       } else {
         setLoading(false);
@@ -373,7 +374,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       .subscribe();
 
     return () => {
-      supabase?.removeChannel(channel);
+      if (supabase) supabase.removeChannel(channel);
     };
   }, [currentUser]);
 
