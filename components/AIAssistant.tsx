@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
@@ -5,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 export const AIAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
-    { role: 'assistant', content: "Hi! I'm ReelyAI. How can I help your business grow using AI marketing today?" }
+    { role: 'assistant', content: "SYSTEM ONLINE. I am ReelyAI. How shall we scale your brand dominance today?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,75 +22,69 @@ export const AIAssistant: React.FC = () => {
     if (!input.trim() || isLoading) return;
 
     const userMsg = input.trim();
-
-    // As per guidelines, process.env.API_KEY is assumed to be valid and accessible.
-    // We proceed to send the message using the direct environment variable.
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setIsLoading(true);
 
     try {
-      // Use process.env.API_KEY directly when initializing the client as per guidelines.
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userMsg,
         config: {
-          systemInstruction: "You are ReelyAI, the helpful AI assistant for Reelywood Studio. Reelywood is an AI-driven marketing agency for SMEs. Keep responses professional, helpful, and focused on growth strategies like AI automation, branding, web dev, and content creation. Keep answers concise.",
-          temperature: 0.7,
+          systemInstruction: "You are ReelyAI, the neobrutalist-styled AI strategist for Reelywood Studio. Reelywood is an elite AI-driven marketing agency for SMEs. Your tone is high-performance, direct, and slightly industrial. Focus on ROAS, scalability, and technical authority. Keep responses under 50 words.",
+          temperature: 0.8,
         }
       });
 
-      // Directly access .text property from GenerateContentResponse
-      const aiResponse = response.text || "I'm sorry, I couldn't process that. How about we book a call with our experts?";
+      const aiResponse = response.text || "CONNECTION INTERRUPTED. RETRY PROTOCOL.";
       setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
     } catch (error) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having a bit of a technical hiccup. Would you like to speak with our human team directly?" }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "CORE SYNC ERROR. Please reach out to our human nodes at reelywood@gmail.com." }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="relative">
+    <div className="relative font-lexend">
       {!isOpen && (
         <button 
           onClick={() => setIsOpen(true)}
-          className="bg-indigo-600 text-white p-4 rounded-full shadow-2xl hover:bg-indigo-700 transition-all hover:scale-110 active:scale-95 group relative"
+          className="bg-[#834bf1] text-white p-5 border-[4px] border-black shadow-[6px_6px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all active:scale-95 group"
         >
-          <Sparkles className="group-hover:animate-pulse" size={28} />
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-white"></div>
+          <Bot className="group-hover:rotate-12 transition-transform" size={28} strokeWidth={2.5} />
         </button>
       )}
 
       {isOpen && (
-        <div className="bg-white w-80 sm:w-96 h-[500px] rounded-[2rem] shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <div className="bg-indigo-600 p-6 flex justify-between items-center">
+        <div className="bg-white w-80 sm:w-[400px] h-[550px] border-[6px] border-black shadow-[16px_16px_0px_0px_#ffde59] flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <div className="bg-black p-5 flex justify-between items-center border-b-[4px] border-black">
             <div className="flex items-center space-x-3 text-white">
-              <div className="bg-white/20 p-2 rounded-xl">
-                <Bot size={24} />
+              <div className="bg-[#834bf1] p-2 border-[2px] border-white">
+                <Sparkles size={20} className="text-[#ffde59]" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">ReelyAI Assistant</h3>
+                <h3 className="font-black text-xs uppercase tracking-[0.2em]">REELY_AI v4.1</h3>
                 <div className="flex items-center space-x-1">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                  <span className="text-[10px] opacity-70">Always online</span>
+                  <div className="w-1.5 h-1.5 bg-[#ffde59] rounded-full animate-pulse"></div>
+                  <span className="text-[8px] font-black uppercase tracking-widest opacity-60">UPLINK ACTIVE</span>
                 </div>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/70 hover:text-white">
-              <X size={20} />
+            <button onClick={() => setIsOpen(false)} className="text-white hover:text-[#ffde59] transition-colors p-1">
+              <X size={20} strokeWidth={3} />
             </button>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#f0f0f0]">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
+                <div className={`max-w-[90%] p-4 border-[3px] border-black font-bold text-xs uppercase tracking-tight ${
                   m.role === 'user' 
-                  ? 'bg-indigo-600 text-white rounded-tr-none' 
-                  : 'bg-white text-slate-700 shadow-sm border border-slate-100 rounded-tl-none'
+                  ? 'bg-[#ffde59] text-black shadow-[4px_4px_0px_0px_#000]' 
+                  : 'bg-white text-black shadow-[4px_4px_0px_0px_#834bf1]'
                 }`}>
                   {m.content}
                 </div>
@@ -97,32 +92,32 @@ export const AIAssistant: React.FC = () => {
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 rounded-tl-none">
-                  <Loader2 className="animate-spin text-indigo-600" size={18} />
+                <div className="bg-white p-4 border-[3px] border-black shadow-[4px_4px_0px_0px_#834bf1]">
+                  <Loader2 className="animate-spin text-[#834bf1]" size={18} strokeWidth={3} />
                 </div>
               </div>
             )}
           </div>
 
-          <div className="p-4 border-t bg-white">
-            <div className="relative">
+          <div className="p-5 border-t-[4px] border-black bg-white">
+            <div className="relative flex gap-3">
               <input 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 type="text" 
-                placeholder="Ask about your brand growth..." 
-                className="w-full bg-slate-100 border-none rounded-2xl py-3 pl-4 pr-12 focus:ring-2 focus:ring-indigo-500 text-sm"
+                placeholder="INPUT DATA..." 
+                className="flex-1 bg-[#f0f0f0] border-[3px] border-black p-4 text-xs font-black uppercase tracking-widest focus:bg-white outline-none"
               />
               <button 
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
-                className="absolute right-2 top-1.5 p-1.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#834bf1] text-white p-4 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none disabled:opacity-50 transition-all"
               >
-                <Send size={16} />
+                <Send size={18} strokeWidth={3} />
               </button>
             </div>
-            <p className="text-[10px] text-center text-slate-400 mt-2">Powered by Reelywood Studio AI</p>
+            <p className="text-[8px] font-black text-center text-black/30 mt-4 uppercase tracking-[0.4em]">MISSION CRITICAL AGENT SYNC</p>
           </div>
         </div>
       )}
