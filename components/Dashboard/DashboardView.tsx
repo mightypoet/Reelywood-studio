@@ -320,9 +320,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             console.log('⚡ Balance Updated!');
             fetchDashboardData(user);
           })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions', filter: `user_id=eq.${user.uid}` }, () => {
-            fetchMySubmissions(user);
-          })
           .subscribe();
 
         return () => {
