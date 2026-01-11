@@ -19,14 +19,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'incoming' | 'console' | 'ledger' | 'alliance'>('incoming');
   const [loading, setLoading] = useState(false);
   
-  // Data States using type casting to avoid generic parser issues
   const [submissions, setSubmissions] = useState([] as any[]);
   const [logs, setLogs] = useState([] as any[]);
   const [brands, setBrands] = useState([] as any[]);
   const [missions, setMissions] = useState([] as any[]);
   const [selectedSubmission, setSelectedSubmission] = useState(null as any);
 
-  // Console / Form States
   const [consoleMode, setConsoleMode] = useState<'MISSION' | 'VOUCHER'>('MISSION');
   const [editingMission, setEditingMission] = useState(null as any);
 
@@ -44,7 +42,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (!supabase) return;
     setLoading(true);
     try {
-      // 1. Submissions
       const { data: subData } = await supabase
         .from('submissions')
         .select(`*, missions:mission_id (*)`)
@@ -66,18 +63,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       }));
       setSubmissions(combined);
 
-      // 2. Missions
       const { data: missionData } = await supabase.from('missions').select('*, partner_brands(name)').order('created_at', { ascending: false });
       setMissions((missionData || []) as any[]);
 
-      // 3. Ledger Logs
       const { data: logData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50);
       setLogs((logData || []) as any[]);
 
-      // 4. Alliance Partners
       const { data: brandData } = await supabase.from('partner_brands').select('*');
       setBrands((brandData || []) as any[]);
-
     } catch (err) { 
       console.error("Admin Terminal Error:", err); 
     } finally { 
@@ -96,7 +89,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchData())
       .subscribe();
 
-    return () => { supabase?.removeChannel(channel); };
+    return () => { 
+      if (channel) {
+        supabase?.removeChannel(channel); 
+      }
+    };
   }, []);
 
   const handleDeployMission = async () => {
