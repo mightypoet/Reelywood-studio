@@ -12,7 +12,6 @@ import {
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
 
-// Fix: Exporting Profile interface for use in other components like EmailComposer
 export interface Profile {
   id: string;
   firebase_uid: string;
@@ -51,7 +50,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
 
   const [missionForm, setMissionForm] = useState({ 
-    title: '', desc: '', reward: '', assignTo: 'all', brand_id: '', location: '', image_url: '', checkpoints: ['', '', '']
+    title: '', desc: '', reward: '', brand_id: '', location: '', image_url: '', checkpoints: ['', '', '']
   });
   const [voucherForm, setVoucherForm] = useState({ brandId: '', title: '', cost: '', code: '' });
 
@@ -60,12 +59,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
       onLogout();
     }
-  }, []);
-
-  useEffect(() => {
     fetchAllData();
-    localStorage.setItem('admin-theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
+  }, []);
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -74,7 +69,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       const [profilesRes, missionsRes, rewardsRes, transRes, brandsRes, submissionsRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('missions').select('*').order('created_at', { ascending: false }),
+        supabase.from('missions').select('*, partner_brands(name)').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
@@ -112,25 +107,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const handleCreateMission = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) {
+      alert("Please fill in required fields.");
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase!.from('missions').insert([{
         title: missionForm.title,
         description: missionForm.desc,
         reward_amount: parseInt(missionForm.reward),
-        assigned_to: missionForm.assignTo === 'all' ? null : missionForm.assignTo,
-        brand_id: missionForm.brand_id || null,
+        brand_id: missionForm.brand_id,
         location: missionForm.location,
         image_url: missionForm.image_url,
         checkpoints: missionForm.checkpoints.filter(c => c.trim() !== '')
       }]);
       if (error) throw error;
-      setMissionForm({ title: '', desc: '', reward: '', assignTo: 'all', brand_id: '', location: '', image_url: '', checkpoints: ['', '', ''] });
+      setMissionForm({ title: '', desc: '', reward: '', brand_id: '', location: '', image_url: '', checkpoints: ['', '', ''] });
       await fetchAllData();
+      alert("🚀 Mission Deployed to Protocol!");
     } catch (error: any) {
       alert(error.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteMission = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this mission?")) return;
+    try {
+      const { error } = await supabase!.from('missions').delete().eq('id', id);
+      if (error) throw error;
+      await fetchAllData();
+    } catch (error: any) {
+      alert(error.message);
     }
   };
 
@@ -148,6 +158,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       if (error) throw error;
       setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
       await fetchAllData();
+      alert("🚀 Voucher Minted!");
     } catch (error: any) {
       alert(error.message);
     } finally {
@@ -164,7 +175,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const filteredUsers = users.filter(u => filter === 'all' ? true : u.card_status === filter);
 
-  // Helper to calculate inflow/outflow per user
   const getUserMetrics = (uid: string) => {
     const userTx = transactions.filter(tx => tx.user_uid === uid);
     const inflow = userTx.filter(tx => tx.amount > 0).reduce((acc, tx) => acc + tx.amount, 0);
@@ -201,7 +211,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </header>
 
       <main className="max-w-[1600px] mx-auto p-6 space-y-8">
-        {/* METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
             { label: 'AGENTS', val: users.length, icon: Users },
@@ -221,7 +230,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
-        {/* NAV */}
         <div className={`flex border-4 ${borderColor} p-1 ${cardColor} shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-x-auto`}>
           {[
             { id: 'users', label: 'COMMAND', icon: <Users size={16}/> },
@@ -241,7 +249,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
-        {/* CONTENT */}
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-400">
           {activeTab === 'users' && (
             <div className="space-y-6">
@@ -309,6 +316,95 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           )}
 
+          {activeTab === 'missions' && (
+            <div className="grid lg:grid-cols-2 gap-8">
+              <div>
+                <h3 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
+                  <Zap className="text-purple-600" /> MISSION CONSOLE
+                </h3>
+                <form onSubmit={handleCreateMission} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
+                  <div>
+                    <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">LINK ECOSYSTEM PARTNER</label>
+                    <select 
+                      required
+                      className="w-full border-4 border-black p-4 font-bold text-sm uppercase outline-none focus:bg-yellow-50 transition-colors text-black"
+                      value={missionForm.brand_id}
+                      onChange={(e) => setMissionForm({...missionForm, brand_id: e.target.value})}
+                    >
+                      <option value="">-- SELECT ACTIVE NODE --</option>
+                      {brands.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">MISSION TITLE</label>
+                    <input 
+                      required
+                      className="w-full border-4 border-black p-4 font-bold text-sm outline-none focus:bg-yellow-50 transition-colors text-black"
+                      placeholder="e.g. POST A REEL FOR CABIN 17A"
+                      value={missionForm.title}
+                      onChange={(e) => setMissionForm({...missionForm, title: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">REWARD (RC)</label>
+                      <input 
+                        required
+                        type="number"
+                        className="w-full border-4 border-black p-4 font-bold text-sm outline-none text-black"
+                        placeholder="000"
+                        value={missionForm.reward}
+                        onChange={(e) => setMissionForm({...missionForm, reward: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">LOCATION</label>
+                      <input 
+                        className="w-full border-4 border-black p-4 font-bold text-sm outline-none text-black"
+                        placeholder="Kolkata, IN"
+                        value={missionForm.location}
+                        onChange={(e) => setMissionForm({...missionForm, location: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">DESCRIPTION</label>
+                    <textarea 
+                      className="w-full border-4 border-black p-4 font-bold text-sm outline-none text-black h-24"
+                      placeholder="Mission deliverables..."
+                      value={missionForm.desc}
+                      onChange={(e) => setMissionForm({...missionForm, desc: e.target.value})}
+                    />
+                  </div>
+                  <button type="submit" disabled={submitting} className={`w-full py-5 font-black text-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] uppercase transition-all ${submitting ? 'opacity-50 bg-gray-400' : `${accent} hover:translate-y-1 hover:shadow-none`}`}>
+                    {submitting ? 'DEPLOYING...' : 'DEPLOY MISSION PROTOCOL'}
+                  </button>
+                </form>
+              </div>
+              <div>
+                <h3 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
+                  <Activity className="text-emerald-500" /> ACTIVE SYNC GRID
+                </h3>
+                <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
+                  {missions.map((m) => (
+                    <div key={m.id} className={`${cardColor} border-4 ${borderColor} p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative group`}>
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="bg-emerald-400 text-black border-2 border-black px-2 py-0.5 text-[8px] font-black uppercase">LIVE NODE</span>
+                        <div className="flex gap-2">
+                           <span className="bg-[#834bf1] text-white border-2 border-black px-2 py-0.5 text-[10px] font-black">+{m.reward_amount} RC</span>
+                           <button onClick={() => handleDeleteMission(m.id)} className="text-rose-500 hover:scale-110 transition-transform"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                      <h4 className="font-black italic text-xl uppercase mb-1">{m.title}</h4>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Partner: {m.partner_brands?.name || 'Reelywood'}</p>
+                      <p className="text-[10px] leading-relaxed text-black/60 dark:text-white/60 uppercase">{m.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'vouchers' && (
             <div className="grid lg:grid-cols-12 gap-8">
               <div className="lg:col-span-5">
@@ -317,18 +413,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <div className="space-y-4">
                     <div>
                       <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Link Partner Node</label>
-                      <select required className="w-full bg-white border-2 ${borderColor} p-3 font-black text-xs text-black" value={voucherForm.brandId} onChange={e => setVoucherForm({...voucherForm, brandId: e.target.value})}>
+                      <select required className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" value={voucherForm.brandId} onChange={e => setVoucherForm({...voucherForm, brandId: e.target.value})}>
                         <option value="">-- SELECT BRAND --</option>
-                        {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        {brands.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Voucher Label</label>
-                      <input required type="text" value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} className="w-full bg-white border-2 ${borderColor} p-3 font-black text-xs text-black" placeholder="e.g. Free Coffee"/>
+                      <input required type="text" value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" placeholder="e.g. Free Coffee"/>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Cost (RC)</label><input required type="number" value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} className="w-full bg-white border-2 ${borderColor} p-3 font-black text-xs text-black"/></div>
-                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Hash Code</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className="w-full bg-white border-2 ${borderColor} p-3 font-black text-xs text-black uppercase" placeholder="RW-XXX"/></div>
+                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Cost (RC)</label><input required type="number" value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black"/></div>
+                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Hash Code</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black uppercase" placeholder="RW-XXX"/></div>
                     </div>
                     <button type="submit" disabled={submitting} className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest`}>
                       {submitting ? 'SYNCING...' : 'AUTHORIZE INVENTORY'}
@@ -373,7 +469,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           {activeTab === 'brands' && <BrandManager />}
 
           {activeTab === 'ledger' && (
-            <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]`}>
+            <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden`}>
               <table className="w-full text-left">
                 <thead className="bg-black text-white text-[9px] uppercase font-black">
                   <tr>
