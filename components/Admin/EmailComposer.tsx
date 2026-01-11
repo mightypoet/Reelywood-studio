@@ -1,23 +1,23 @@
 
 import React, { useState } from 'react';
 import { X, Send, Loader2, CheckCircle, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
-// Fix: Import Agent instead of non-existent Profile
-import { Agent } from './AdminDashboard';
+// Corrected import from Profile
+import { Profile } from './AdminDashboard';
 import { db } from '../../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
 interface EmailComposerProps {
-  // Fix: Use Agent type instead of missing Profile type
-  application: Agent;
+  // Use Profile type instead of missing Application type
+  application: Profile;
   onClose: () => void;
 }
 
 export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClose }) => {
-  // Fix: Updated property names to match Agent interface: status, name, id
-  const [subject, setSubject] = useState(`Reelywood Studio - Identity Verification [${application.status.toUpperCase()}]`);
+  // Updated property names to match Profile interface: card_status, display_name, firebase_uid
+  const [subject, setSubject] = useState(`Reelywood Studio - Identity Verification [${application.card_status.toUpperCase()}]`);
   const [message, setMessage] = useState(
-    `Hello ${application.name},\n\n` +
-    (application.status === 'ACTIVE' 
+    `Hello ${application.display_name},\n\n` +
+    (application.card_status === 'approved' 
       ? `We are excited to inform you that your Creator ID application for REELYWOOD has been approved. Your digital presence matches our narrative high-fidelity standards.\n\nNext Transmission: We will sync your profile with our creator network within 24 hours.`
       : `Thank you for your interest in Reelywood Studio. At this time, we are unable to approve your Identity sync for our Elite Tier. We recommend building more platform-specific authority before re-applying.`) +
     ` \n\nBest,\nReelywood Studio Admin`
@@ -31,8 +31,8 @@ export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClo
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     try {
-      // Fix: Use id as the identifier for Firestore document based on Agent interface
-      const appRef = doc(db, 'creator_applications', application.id);
+      // Use firebase_uid as the identifier for Firestore document
+      const appRef = doc(db, 'creator_applications', application.firebase_uid);
       await updateDoc(appRef, {
         emailSent: true,
         lastEmailSubject: subject,
@@ -62,7 +62,7 @@ export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClo
               <h2 className="text-3xl font-black uppercase tracking-tight text-white">Transmission Successful</h2>
               <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.4em]">Email Dispatched via Reelywood@gmail.com</p>
             </div>
-            <p className="text-emerald-500/80 font-bold text-xs">Notification protocol engaged for {application.username}</p>
+            <p className="text-emerald-500/80 font-bold text-xs">A notification has been sent to {application.email}</p>
           </div>
         ) : (
           <>
@@ -85,10 +85,10 @@ export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClo
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Recipient Node</label>
-                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">{application.name}</span>
+                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">{application.display_name}</span>
                 </div>
                 <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-sm text-white/60">
-                  {application.username}
+                  {application.email}
                 </div>
               </div>
 
