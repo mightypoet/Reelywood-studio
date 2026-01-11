@@ -13,6 +13,24 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
+// Define strict interfaces to prevent type errors and TS1382 ambiguity
+interface MissionData {
+  title: string;
+  description: string;
+  reward_amount: number;
+  location: string;
+  brand_id: string;
+  image_url: string;
+  checkpoints: string[];
+}
+
+interface VoucherData {
+  title: string;
+  cost: number;
+  code: string;
+  brand_id: string;
+}
+
 const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
@@ -28,7 +46,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   // FORM STATES (For Console)
   const [consoleMode, setConsoleMode] = useState<'MISSION' | 'VOUCHER'>('MISSION');
   
-  const [newMission, setNewMission] = useState({
+  const [newMission, setNewMission] = useState<MissionData>({
     title: '', 
     description: '', 
     reward_amount: 100, 
@@ -38,19 +56,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     checkpoints: ['', '', '']
   });
 
-  const [newVoucher, setNewVoucher] = useState({
+  const [newVoucher, setNewVoucher] = useState<VoucherData>({
     title: '', 
     cost: 500, 
     code: '', 
     brand_id: ''
   });
 
-  // --- 1. FETCH LOGIC (Optimized Manual Join) ---
+  // --- 1. FETCH LOGIC ---
   const fetchData = async () => {
     if (!supabase) return;
     setLoading(true);
     try {
-      // A. Fetch Submissions with Missions
       const { data: subData, error: subError } = await supabase
         .from('submissions')
         .select(`*, missions:mission_id (*)`)
@@ -60,8 +77,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       if (subError) throw subError;
 
       if (subData && subData.length > 0) {
-        // B. Fetch Profiles manually to resolve relationship lookup errors
-        const userIds = [...new Set(subData.map(s => s.user_id))];
+        const userIds = [...new Set(subData.map((s: any) => s.user_id))];
         const { data: users, error: profError } = await supabase
           .from('profiles')
           .select('firebase_uid, display_name, photo_url, handle')
@@ -69,16 +85,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         
         if (profError) throw profError;
 
-        const combined = subData.map(sub => ({
+        const combined = subData.map((sub: any) => ({
           ...sub, 
-          profiles: users?.find(u => u.firebase_uid === sub.user_id) || { display_name: 'Unknown Agent', handle: 'unlinked' }
+          profiles: users?.find((u: any) => u.firebase_uid === sub.user_id) || { display_name: 'Unknown Agent', handle: 'unlinked' }
         }));
         setSubmissions(combined);
       } else {
         setSubmissions([]);
       }
 
-      // C. Fetch Logs (Using notifications table as system activity log)
       const { data: logData } = await supabase
         .from('notifications')
         .select('*')
@@ -86,7 +101,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         .limit(50);
       setLogs(logData || []);
 
-      // D. Fetch Brands for selection
       const { data: brandData } = await supabase.from('partner_brands').select('*');
       setBrands(brandData || []);
 
@@ -119,7 +133,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         brand_id: newMission.brand_id,
         location: newMission.location,
         image_url: newMission.image_url,
-        checkpoints: newMission.checkpoints.filter(c => c.trim() !== '')
+        checkpoints: newMission.checkpoints.filter((c: string) => c.trim() !== '')
       }]);
 
       if (error) throw error;
@@ -160,7 +174,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   // --- 3. AUTO-FILL HELPER ---
   const handleBrandSelect = (id: string) => {
-    const brand = brands.find(b => b.id === id);
+    const brand = brands.find((b: any) => b.id === id);
     if (!brand) return;
     
     if (consoleMode === 'MISSION') {
@@ -211,7 +225,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
              { id: 'console', label: 'Console', icon: Layout },
              { id: 'ledger', label: 'Ledger', icon: Activity },
              { id: 'alliance', label: 'Alliance', icon: Building2 },
-           ].map(tab => (
+           ].map((tab) => (
              <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
                className={`flex-1 py-6 min-w-[150px] font-black uppercase text-[11px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all ${
                  activeTab === tab.id 
@@ -243,8 +257,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                </div>
             ) : (
                <div className="grid gap-8">
-                 {submissions.map(sub => (
-                   <div key={sub.id} className="bg-white dark:bg-[#1a1a1a] border-4 border-black p-0 shadow-[10px_10px_0px_0px_#000] flex flex-col md:flex-row relative group overflow-hidden">
+                 {submissions.map((sub: any) => (
+                   <div key={sub.id} className="bg-white dark:bg-[#1a1a1a] border-4 border-black p-0 shadow-[10px_10px_0px_0px_#000] dark:shadow-[10px_10px_0px_0px_#834bf1] flex flex-col md:flex-row relative group overflow-hidden">
                       <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#ffde59]"></div>
                       <div className="p-8 flex-1 flex flex-col lg:flex-row gap-8 items-start lg:items-center">
                          <div className="flex items-center gap-6 min-w-[250px]">
@@ -261,7 +275,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <h4 className="font-black text-lg uppercase italic mb-3">{sub.missions?.title || "Project Alpha"}</h4>
                             <div className="flex items-center gap-2 bg-slate-50 dark:bg-black/20 p-2 border-2 border-black/10 w-fit">
                                <ExternalLink size={14} className="text-[#834bf1]"/>
-                               <a href={sub.link} target="_blank" rel="noreferrer" className="text-xs font-black text-blue-600 underline truncate max-w-[300px]">{sub.link}</a>
+                               <a href={sub.link} target="_blank" className="text-xs font-black text-blue-600 underline truncate max-w-[300px]">{sub.link}</a>
                             </div>
                          </div>
                          <button onClick={() => setSelectedSubmission(sub)} 
@@ -289,7 +303,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Link Alliance Node (Auto-fill)</label>
                     <select className="w-full bg-slate-50 dark:bg-white/5 border-[3px] border-black p-5 font-black text-sm outline-none appearance-none cursor-pointer focus:bg-[#ffde59] focus:text-black transition-all" onChange={(e) => handleBrandSelect(e.target.value)}>
                        <option value="">-- SELECT ALLIANCE PARTNER --</option>
-                       {brands.map(b => <option key={b.id} value={b.id}>{b.name.toUpperCase()}</option>)}
+                       {brands.map((b: any) => <option key={b.id} value={b.id}>{b.name.toUpperCase()}</option>)}
                     </select>
                  </div>
 
@@ -298,24 +312,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                        <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                              <label className="text-[9px] font-black uppercase text-black/40">Mission Identification</label>
-                             <input type="text" placeholder="Protocol Title" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5" value={newMission.title} onChange={e => setNewMission({...newMission, title: e.target.value})} />
+                             <input type="text" placeholder="Protocol Title" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5" value={newMission.title} onChange={(e) => setNewMission({...newMission, title: e.target.value})} />
                           </div>
                           <div className="space-y-2">
                              <label className="text-[9px] font-black uppercase text-black/40">Bounty Allocation (RC)</label>
-                             <input type="number" placeholder="RC Units" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5" value={newMission.reward_amount} onChange={e => setNewMission({...newMission, reward_amount: parseInt(e.target.value)})} />
+                             <input type="number" placeholder="RC Units" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5" value={newMission.reward_amount} onChange={(e) => setNewMission({...newMission, reward_amount: parseInt(e.target.value)})} />
                           </div>
                        </div>
                        <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase text-black/40">Operation Intelligence</label>
-                          <textarea placeholder="Mission Brief / Objectives" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5 h-32" value={newMission.description} onChange={e => setNewMission({...newMission, description: e.target.value})}></textarea>
+                          <textarea placeholder="Mission Brief / Objectives" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5 h-32" value={newMission.description} onChange={(e) => setNewMission({...newMission, description: e.target.value})}></textarea>
                        </div>
                        <div className="grid md:grid-cols-3 gap-4">
-                          {[0,1,2].map(i => (
+                          {[0,1,2].map((i) => (
                              <div key={i} className="space-y-2">
                                 <label className="text-[8px] font-black uppercase text-black/40">Checkpoint {i+1}</label>
                                 <input type="text" placeholder={`Required Step ${i+1}`} className="w-full border-2 border-black p-3 text-xs font-black bg-slate-50 dark:bg-white/5" 
                                   value={newMission.checkpoints[i]} 
-                                  onChange={e => {
+                                  onChange={(e) => {
                                      const newCP = [...newMission.checkpoints]; newCP[i] = e.target.value;
                                      setNewMission({...newMission, checkpoints: newCP});
                                   }}
@@ -333,16 +347,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                        <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                              <label className="text-[9px] font-black uppercase text-black/40">Reward Designation</label>
-                             <input type="text" placeholder="e.g., 50% OFF CABIN" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5" value={newVoucher.title} onChange={e => setNewVoucher({...newVoucher, title: e.target.value})} />
+                             <input type="text" placeholder="e.g., 50% OFF CABIN" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5" value={newVoucher.title} onChange={(e) => setNewVoucher({...newVoucher, title: e.target.value})} />
                           </div>
                           <div className="space-y-2">
                              <label className="text-[9px] font-black uppercase text-black/40">RC Price</label>
-                             <input type="number" placeholder="500 RC" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5" value={newVoucher.cost} onChange={e => setNewVoucher({...newVoucher, cost: parseInt(e.target.value)})} />
+                             <input type="number" placeholder="500 RC" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5" value={newVoucher.cost} onChange={(e) => setNewVoucher({...newVoucher, cost: parseInt(e.target.value)})} />
                           </div>
                        </div>
                        <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase text-black/40">Encrypted Redempton Code</label>
-                          <input type="text" placeholder="CABIN-50-RW" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5 uppercase" value={newVoucher.code} onChange={e => setNewVoucher({...newVoucher, code: e.target.value})} />
+                          <input type="text" placeholder="CABIN-50-RW" className="w-full border-[3px] border-black p-5 font-black bg-slate-50 dark:bg-white/5 uppercase" value={newVoucher.code} onChange={(e) => setNewVoucher({...newVoucher, code: e.target.value})} />
                        </div>
                        <button onClick={handleDeployVoucher} disabled={loading} className="w-full bg-black text-white py-6 font-black uppercase tracking-[0.4em] text-sm border-4 border-black shadow-[8px_8px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4">
                          {loading ? <Loader2 className="animate-spin" /> : <Ticket size={20} />}
@@ -371,7 +385,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                        <p>> INITIATING SYSTEM TRACKING...</p>
                     </div>
                  ) : (
-                    logs.map(log => (
+                    logs.map((log: any) => (
                        <div key={log.id} className="border-b border-[#4ade80]/10 pb-4 flex gap-6 group hover:bg-white/5 transition-colors p-2">
                           <span className="text-gray-500 text-xs shrink-0 pt-1">[{new Date(log.created_at).toLocaleTimeString()}]</span>
                           <div className="flex-1">
