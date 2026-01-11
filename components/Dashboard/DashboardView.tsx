@@ -301,19 +301,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         fetchNotifications(user);
         fetchMySubmissions(user);
 
-        // --- AUTO-REFRESH LISTENER ---
-        // --- FIX: Add this line to satisfy TypeScript ---
+        // --- FIX: Add this null check ---
         if (!supabase) return; 
 
+        // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
         const channel = supabase
-          .channel('user-dashboard-live')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
+          .channel('user-dashboard-realtime')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'missions' }, () => {
+            console.log('⚡ New Mission Detected!');
             fetchDashboardData(user);
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
             fetchDashboardData(user);
           })
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${user?.uid}` }, () => {
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${user.uid}` }, () => {
+            fetchDashboardData(user);
+          })
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `user_uid=eq.${user.uid}` }, () => {
+            console.log('⚡ Balance Updated!');
             fetchDashboardData(user);
           })
           .subscribe();

@@ -8,7 +8,7 @@ import {
   Building2, ListChecks, Clock, X,
   Crosshair, CheckSquare, Box,
   Instagram, Youtube, Twitter, MapPin,
-  FileText, ShieldCheck
+  FileText, ShieldCheck, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -47,6 +47,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
+  // Notification State
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
   // Data Stores
   const [users, setUsers] = useState<Profile[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
@@ -58,22 +61,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
 
-  // Mission Form State
+  // Forms
   const [missionForm, setMissionForm] = useState({ 
-    title: '', 
-    reward: '', 
-    brand_id: '', 
-    checkpoint1: '',
-    checkpoint2: '',
-    checkpoint3: ''
+    title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' 
   });
-  
-  // Voucher Form State
-  const [voucherForm, setVoucherForm] = useState({ 
-    brandId: '', title: '', cost: '', code: '' 
-  });
+  const [voucherForm, setVoucherForm] = useState({ brandId: '', title: '', cost: '', code: '' });
 
-  // Targeting Logic
+  // Targeting
   const [targetMode, setTargetMode] = useState<'ALL' | 'SELECT'>('ALL');
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
 
@@ -89,31 +83,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
     // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
     const channel = supabase
-      .channel('admin-dashboard-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        console.log('⚡ User Data Changed - Auto Refreshing...');
-        fetchAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
-        console.log('⚡ Mission Data Changed - Auto Refreshing...');
-        fetchAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
-        console.log('⚡ Submission Received - Auto Refreshing...');
-        fetchAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
-        console.log('⚡ Voucher Data Changed - Auto Refreshing...');
-        fetchAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_brands' }, () => {
-        console.log('⚡ Brand Data Changed - Auto Refreshing...');
-        fetchAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
-        console.log('⚡ Ledger Updated - Auto Refreshing...');
-        fetchAllData();
-      })
+      .channel('admin-dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => refreshData('Agent Status Changed'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => refreshData('Missions Updated'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => refreshData('New Submission Received'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => refreshData('Inventory Updated'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_brands' }, () => refreshData('Brand Data Changed'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => refreshData('Ledger Updated'))
       .subscribe();
 
     // Cleanup listener on unmount
@@ -122,10 +98,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     };
   }, []);
 
+  const refreshData = async (reason?: string) => {
+    console.log(`⚡ Auto-Refresh Triggered: ${reason}`);
+    await fetchAllData();
+  };
+
   const fetchAllData = async () => {
     try {
-      if (!supabase) throw new Error("Supabase client not initialized");
-
+      if (!supabase) return;
       const [profilesRes, missionsRes, rewardsRes, transRes, brandsRes, submissionsRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
@@ -135,66 +115,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         supabase.from('submissions').select('*, profiles(display_name, email), missions(title, reward_amount, checkpoints)').eq('status', 'pending').order('created_at', { ascending: false })
       ]);
 
-      setUsers(profilesRes.data || []);
-      setMissions(missionsRes.data || []);
-      setVouchers(rewardsRes.data || []);
-      setTransactions(transRes.data || []);
-      setBrands(brandsRes.data || []);
-      setSubmissions(submissionsRes.data || []);
+      if (profilesRes.data) setUsers(profilesRes.data);
+      if (missionsRes.data) setMissions(missionsRes.data);
+      if (rewardsRes.data) setVouchers(rewardsRes.data);
+      if (transRes.data) setTransactions(transRes.data);
+      if (brandsRes.data) setBrands(brandsRes.data);
+      if (submissionsRes.data) setSubmissions(submissionsRes.data);
     } catch (error: any) {
-      console.error("❌ [ADMIN] Fetch Error:", error.message);
+      console.error("Fetch Error:", error.message);
     }
   };
 
-  const toggleAgentSelection = (id: string) => {
-    setSelectedAgentIds(prev => 
-      prev.includes(id) ? prev.filter(aid => aid !== id) : [...prev, id]
-    );
+  const showNotify = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
   };
 
   const handleDeployMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) {
-      alert("⚠️ SYSTEM ERROR: ALL FIELDS REQUIRED FOR PROTOCOL DEPLOYMENT");
+      showNotify('error', "MISSING DATA: FILL ALL FIELDS");
       return;
     }
-
     if (targetMode === 'SELECT' && selectedAgentIds.length === 0) {
-      alert("⚠️ TARGET ERROR: NO AGENTS SELECTED FOR SELECTIVE UPLINK");
+      showNotify('error', "TARGET ERROR: SELECT AGENTS OR SWITCH TO GLOBAL");
       return;
     }
 
     setSubmitting(true);
     try {
       const brand = brands.find(b => b.id === missionForm.brand_id);
-      if (!brand) throw new Error("Critical Error: Brand Node Not Found");
-
       const missionPayload = {
         title: missionForm.title,
-        description: brand.description || "Mission Brief Loading...",
+        description: brand?.description || "Brief Loading...",
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
-        location: brand.location_text || 'Global', 
-        image_url: brand.cover_image_url || '',
-        checkpoints: [
-          missionForm.checkpoint1 || "Verify Link Authority",
-          missionForm.checkpoint2 || "Quality Control Check",
-          missionForm.checkpoint3 || "Tag/Caption Audit"
-        ].filter(c => c.trim() !== ''),
+        location: brand?.location_text || 'Global',
+        image_url: brand?.cover_image_url || '',
+        checkpoints: [missionForm.checkpoint1, missionForm.checkpoint2, missionForm.checkpoint3].filter(c => c && c.trim() !== ''),
         assigned_to: targetMode === 'ALL' ? null : selectedAgentIds
       };
 
       const { error } = await supabase!.from('missions').insert([missionPayload]);
       if (error) throw error;
 
-      setMissionForm({ 
-        title: '', reward: '', brand_id: '', 
-        checkpoint1: '', checkpoint2: '', checkpoint3: '' 
-      });
+      setMissionForm({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
       setSelectedAgentIds([]);
-      alert("🚀 MISSION PROTOCOL DEPLOYED SUCCESSFULLY");
+      showNotify('success', "🚀 MISSION PROTOCOL DEPLOYED");
     } catch (error: any) {
-      alert(error.message);
+      showNotify('error', error.message);
     } finally {
       setSubmitting(false);
     }
@@ -202,12 +171,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const handleDeployVoucher = async () => {
     if (!voucherForm.brandId || !voucherForm.title || !voucherForm.cost || !voucherForm.code) {
-      alert("⚠️ DATA MISSING: Fill all voucher fields.");
+      showNotify('error', "DATA MISSING: Fill all voucher fields.");
       return;
     }
-    
     if (targetMode === 'SELECT' && selectedAgentIds.length === 0) {
-      alert("⚠️ TARGET ERROR: Select agents or switch to Global Broadcast.");
+      showNotify('error', "TARGET ERROR: Select agents or switch to Global.");
       return;
     }
 
@@ -224,39 +192,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       const { error } = await supabase!.from('rewards').insert([payload]);
       if (error) throw error;
       
-      alert("🎟️ VOUCHER MINTED & DEPLOYED");
+      showNotify('success', "🎟️ VOUCHER MINTED & DEPLOYED");
       setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
       setSelectedAgentIds([]);
     } catch (e: any) {
-      alert(e.message);
+      showNotify('error', e.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteMission = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this mission?")) return;
+    if (!confirm("Delete this mission?")) return;
     try {
       const { error } = await supabase!.from('missions').delete().eq('id', id);
       if (error) throw error;
+      showNotify('success', "MISSION DELETED");
     } catch (error: any) {
-      alert(error.message);
+      showNotify('error', error.message);
     }
   };
 
   const handleUpdateStatus = async (uid: string, status: string) => {
     setSubmitting(true);
     try {
-      const { error } = await supabase!
-        .from('profiles')
-        .update({ card_status: status })
-        .eq('firebase_uid', uid);
+      const { error } = await supabase!.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
       if (error) throw error;
+      showNotify('success', `AGENT STATUS: ${status.toUpperCase()}`);
     } catch (error: any) {
-      alert("Error: " + error.message);
+      showNotify('error', error.message);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const toggleAgentSelection = (id: string) => {
+    setSelectedAgentIds(prev => prev.includes(id) ? prev.filter(aid => aid !== id) : [...prev, id]);
   };
 
   const isDark = darkMode;
@@ -265,11 +236,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const borderColor = isDark ? 'border-white' : 'border-black';
   const cardColor = isDark ? 'bg-[#1a1a1a]' : 'bg-white';
   const accent = isDark ? 'bg-[#39ff14] text-black' : 'bg-[#834bf1] text-white';
-
   const filteredUsers = users.filter(u => filter === 'all' ? true : u.card_status === filter);
 
   return (
     <div className={`min-h-screen ${bgColor} ${textColor} font-mono transition-colors duration-500 pb-20`}>
+      {notification && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className={`flex items-center gap-3 px-6 py-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] ${notification.type === 'success' ? 'bg-[#39ff14] text-black' : 'bg-rose-500 text-white'}`}>
+            {notification.type === 'success' ? <CheckCircle size={24} strokeWidth={3}/> : <AlertCircle size={24} strokeWidth={3}/>}
+            <div>
+              <h4 className="font-black uppercase text-sm tracking-widest">{notification.type === 'success' ? 'SYSTEM SUCCESS' : 'SYSTEM ERROR'}</h4>
+              <p className="font-bold text-xs uppercase">{notification.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedSubmission && (
         <VerificationModal 
           submission={selectedSubmission} 
@@ -285,7 +267,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </div>
           <h1 className="text-xl font-black uppercase italic tracking-tighter">Terminal <span className="opacity-40">Admin</span></h1>
         </div>
-
         <div className="flex items-center space-x-3">
           <button onClick={() => setDarkMode(!darkMode)} className={`p-2 border-2 ${borderColor} ${isDark ? 'bg-yellow-400 text-black' : 'bg-black text-white'}`}>
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
@@ -397,77 +378,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <label className="block text-[9px] font-black uppercase text-black dark:text-white mb-3 flex items-center gap-2">
                       <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
                     </label>
-                    
                     <div className="flex gap-2 mb-4">
-                       <button 
-                         type="button"
-                         onClick={() => setTargetMode('ALL')}
-                         className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}
-                       >
-                         GLOBAL BROADCAST
-                       </button>
-                       <button 
-                         type="button"
-                         onClick={() => setTargetMode('SELECT')}
-                         className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}
-                       >
-                         SELECTIVE UPLINK
-                       </button>
+                       <button type="button" onClick={() => setTargetMode('ALL')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>GLOBAL BROADCAST</button>
+                       <button type="button" onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE UPLINK</button>
                     </div>
-
                     {targetMode === 'SELECT' && (
                       <div className="bg-white border-2 border-black max-h-[300px] overflow-y-auto">
                         <table className="w-full text-left border-collapse">
-                          <thead className="bg-gray-100 text-black sticky top-0 z-10">
-                            <tr>
-                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase w-8"></th>
-                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase">Agent</th>
-                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase">Followers</th>
-                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase">Plat</th>
-                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase">Niche</th>
-                            </tr>
-                          </thead>
                           <tbody className="text-[10px] font-bold text-black">
-                            {users.map(agent => {
-                              const isSelected = selectedAgentIds.includes(agent.firebase_uid);
-                              return (
-                                <tr 
-                                  key={agent.firebase_uid}
-                                  onClick={() => toggleAgentSelection(agent.firebase_uid)}
-                                  className={`cursor-pointer border-b border-gray-100 hover:bg-purple-50 ${isSelected ? 'bg-yellow-50' : ''}`}
-                                >
-                                  <td className="p-2 text-center">
-                                    <div className={`w-4 h-4 border-2 border-black flex items-center justify-center ${isSelected ? 'bg-black' : 'bg-white'}`}>
-                                      {isSelected && <CheckSquare className="w-3 h-3 text-white" />}
-                                    </div>
-                                  </td>
-                                  <td className="p-2 uppercase truncate max-w-[100px]">{agent.display_name}</td>
-                                  <td className="p-2">{agent.followers?.toLocaleString() || '0'}</td>
-                                  <td className="p-2">
-                                     {agent.platform === 'Instagram' && <Instagram size={12} className="text-pink-600"/>}
-                                     {agent.platform === 'YouTube' && <Youtube size={12} className="text-red-600"/>}
-                                     {agent.platform === 'X' && <Twitter size={12} className="text-blue-400"/>}
-                                  </td>
-                                  <td className="p-2">
-                                    <span className="bg-gray-200 px-1 border border-black text-[8px]">{agent.niche}</span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                            {users.map(agent => (
+                              <tr key={agent.firebase_uid} onClick={() => toggleAgentSelection(agent.firebase_uid)} className={`cursor-pointer border-b border-gray-100 hover:bg-purple-50 ${selectedAgentIds.includes(agent.firebase_uid) ? 'bg-yellow-50' : ''}`}>
+                                <td className="p-2 text-center">
+                                  <div className={`w-4 h-4 border-2 border-black flex items-center justify-center ${selectedAgentIds.includes(agent.firebase_uid) ? 'bg-black' : 'bg-white'}`}>
+                                    {selectedAgentIds.includes(agent.firebase_uid) && <CheckSquare className="w-3 h-3 text-white" />}
+                                  </div>
+                                </td>
+                                <td className="p-2 uppercase truncate max-w-[100px]">{agent.display_name}</td>
+                                <td className="p-2">{agent.followers?.toLocaleString() || '0'}</td>
+                              </tr>
+                            ))}
                           </tbody>
                         </table>
                       </div>
                     )}
                   </div>
 
-                  <button 
-                    type="submit" 
-                    disabled={submitting} 
-                    className={`w-full py-5 font-black text-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] uppercase transition-all ${submitting ? 'opacity-50 bg-gray-400' : `${accent} hover:translate-y-1 hover:shadow-none`}`}
-                  >
-                    {submitting ? (
-                      <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" /> PROCESSING...</span>
-                    ) : 'DEPLOY MISSION PROTOCOL'}
+                  <button type="submit" disabled={submitting} className={`w-full py-5 font-black text-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] uppercase transition-all ${submitting ? 'opacity-50 bg-gray-400' : `${accent} hover:translate-y-1 hover:shadow-none`}`}>
+                    {submitting ? <Loader2 className="animate-spin" /> : 'DEPLOY MISSION PROTOCOL'}
                   </button>
                 </form>
               </div>
@@ -488,30 +425,85 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                            <button onClick={() => handleDeleteMission(m.id)} className="text-rose-500 hover:scale-110 transition-transform"><Trash2 size={16} /></button>
                         </div>
                       </div>
-                      
                       <div className="flex gap-4 items-center mb-4">
-                         <img src={m.partner_brands?.logo_url} alt="Brand" className="w-12 h-12 border-2 border-black object-cover bg-gray-200" 
-                              onError={(e) => {e.currentTarget.src = 'https://via.placeholder.com/48'}}/>
+                         <img src={m.partner_brands?.logo_url} alt="Brand" className="w-12 h-12 border-2 border-black object-cover bg-gray-200" onError={(e) => {e.currentTarget.src = 'https://via.placeholder.com/48'}}/>
                          <div>
                             <h4 className="font-black italic text-xl uppercase mb-0 leading-none">{m.title}</h4>
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                               <MapPin size={10} /> {m.location}
-                            </p>
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1"><MapPin size={10} /> {m.location}</p>
                          </div>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-                      {m.checkpoints && m.checkpoints.length > 0 && (
-                        <div className="bg-gray-50 border-t-2 border-black pt-2 mt-2 space-y-1">
-                           {m.checkpoints.map((pt: string, i: number) => (
-                             <div key={i} className="flex items-center gap-2 text-[9px] font-bold text-black/60 uppercase">
-                                <div className="w-2 h-2 border border-black bg-white"></div> {pt}
+          {activeTab === 'vouchers' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-5">
+                <div className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
+                  <h3 className="text-xl font-black uppercase italic flex items-center space-x-2"><Gift className="text-blue-500" /><span>Mint Voucher</span></h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Link Partner Node</label>
+                      <select required className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" value={voucherForm.brandId} onChange={e => setVoucherForm({...voucherForm, brandId: e.target.value})}>
+                        <option value="">-- SELECT BRAND --</option>
+                        {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Voucher Label</label>
+                      <input required type="text" value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" placeholder="e.g. Free Coffee"/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Cost (RC)</label><input required type="number" value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black"/></div>
+                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Hash Code</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black uppercase" placeholder="RW-XXX"/></div>
+                    </div>
+
+                    <div className="bg-gray-100 dark:bg-black/20 border-2 border-dashed border-black dark:border-white/20 p-4">
+                      <label className="block text-[9px] font-black uppercase text-black dark:text-white mb-3 flex items-center gap-2">
+                        <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
+                      </label>
+                      <div className="flex gap-2 mb-4">
+                         <button onClick={() => setTargetMode('ALL')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>GLOBAL</button>
+                         <button onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE</button>
+                      </div>
+                      {targetMode === 'SELECT' && (
+                        <div className="bg-white border-2 border-black max-h-[150px] overflow-y-auto p-1">
+                           {users.map(u => (
+                             <div key={u.firebase_uid} onClick={() => toggleAgentSelection(u.firebase_uid)} className={`flex items-center gap-2 p-1 cursor-pointer hover:bg-gray-50 ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-blue-50' : ''}`}>
+                                <div className={`w-3 h-3 border border-black ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-black' : 'bg-white'}`}></div>
+                                <span className="text-[9px] font-bold text-black truncate">{u.display_name}</span>
                              </div>
                            ))}
                         </div>
                       )}
                     </div>
-                  ))}
+
+                    <button onClick={handleDeployVoucher} disabled={submitting} className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0px_0px_#000] transition-all`}>
+                      {submitting ? 'PROCESSING...' : 'AUTHORIZE INVENTORY'}
+                    </button>
+                  </div>
                 </div>
+              </div>
+              <div className="lg:col-span-7 grid md:grid-cols-2 gap-4">
+                {vouchers.map(v => (
+                  <div key={v.id} className={`${cardColor} border-2 ${borderColor} p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative group`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="bg-black text-white p-2 border border-white">
+                         {v.partner_brands?.logo_url ? <img src={v.partner_brands.logo_url} className="w-4 h-4 object-cover"/> : <Box size={16}/>}
+                      </div>
+                      <span className={`text-[8px] font-black uppercase px-1 border border-black ${v.assigned_to ? 'bg-blue-300 text-black' : 'bg-yellow-400 text-black'}`}>
+                        {v.assigned_to ? 'RESTRICTED' : 'PUBLIC'}
+                      </span>
+                    </div>
+                    <h4 className="font-black uppercase text-sm">{v.title}</h4>
+                    <p className="text-lg font-black text-purple-600">{v.cost} RC</p>
+                    <code className="text-[8px] opacity-30 mt-2 block">HASH: {v.code}</code>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -588,81 +580,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           )}
 
           {activeTab === 'brands' && <BrandManager />}
-
-          {activeTab === 'vouchers' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-5">
-                <div className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
-                  <h3 className="text-xl font-black uppercase italic flex items-center space-x-2"><Gift className="text-blue-500" /><span>Mint Voucher</span></h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Link Partner Node</label>
-                      <select required className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" value={voucherForm.brandId} onChange={e => setVoucherForm({...voucherForm, brandId: e.target.value})}>
-                        <option value="">-- SELECT BRAND --</option>
-                        {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Voucher Label</label>
-                      <input required type="text" value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" placeholder="e.g. Free Coffee"/>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Cost (RC)</label><input required type="number" value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black"/></div>
-                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Hash Code</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black uppercase" placeholder="RW-XXX"/></div>
-                    </div>
-
-                    <div className="bg-gray-100 dark:bg-black/20 border-2 border-dashed border-black dark:border-white/20 p-4">
-                      <label className="block text-[9px] font-black uppercase text-black dark:text-white mb-3 flex items-center gap-2">
-                        <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
-                      </label>
-                      
-                      <div className="flex gap-2 mb-4">
-                         <button onClick={() => setTargetMode('ALL')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>GLOBAL</button>
-                         <button onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE</button>
-                      </div>
-
-                      {targetMode === 'SELECT' && (
-                        <div className="bg-white border-2 border-black max-h-[150px] overflow-y-auto p-1">
-                           {users.map(u => (
-                             <div key={u.firebase_uid} onClick={() => toggleAgentSelection(u.firebase_uid)} className={`flex items-center gap-2 p-1 cursor-pointer hover:bg-gray-50 ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-blue-50' : ''}`}>
-                                <div className={`w-3 h-3 border border-black ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-black' : 'bg-white'}`}></div>
-                                <span className="text-[9px] font-bold text-black truncate">{u.display_name}</span>
-                             </div>
-                           ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <button 
-                      onClick={handleDeployVoucher}
-                      disabled={submitting}
-                      className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0px_0px_#000] transition-all`}
-                    >
-                      {submitting ? 'PROCESSING...' : 'AUTHORIZE INVENTORY'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="lg:col-span-7 grid md:grid-cols-2 gap-4">
-                {vouchers.map(v => (
-                  <div key={v.id} className={`${cardColor} border-2 ${borderColor} p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative group`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="bg-black text-white p-2 border border-white">
-                         {v.partner_brands?.logo_url ? <img src={v.partner_brands.logo_url} className="w-4 h-4 object-cover"/> : <Box size={16}/>}
-                      </div>
-                      <span className={`text-[8px] font-black uppercase px-1 border border-black ${v.assigned_to ? 'bg-blue-300 text-black' : 'bg-yellow-400 text-black'}`}>
-                        {v.assigned_to ? 'RESTRICTED' : 'PUBLIC'}
-                      </span>
-                    </div>
-                    <h4 className="font-black uppercase text-sm">{v.title}</h4>
-                    <p className="text-lg font-black text-purple-600">{v.cost} RC</p>
-                    <code className="text-[8px] opacity-30 mt-2 block">HASH: {v.code}</code>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {activeTab === 'ledger' && (
             <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden`}>
