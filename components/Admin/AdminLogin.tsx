@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, Sparkles, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 
-const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
+const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
 
 interface AdminLoginProps {
   onBack: () => void;

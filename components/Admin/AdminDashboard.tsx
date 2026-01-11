@@ -36,7 +36,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
-const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
+const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'missions' | 'vouchers' | 'ledger' | 'brands' | 'submissions'>('missions');
