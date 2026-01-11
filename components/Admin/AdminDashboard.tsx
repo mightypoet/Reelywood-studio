@@ -36,7 +36,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
-const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
+const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'missions' | 'vouchers' | 'ledger' | 'brands' | 'submissions'>('missions');
@@ -531,17 +531,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <tr>
                     <th className="p-4">Timestamp</th>
                     <th className="p-4">Identity</th>
+                    <th className="p-4">Activity Detail</th>
                     <th className="p-4 text-right">Delta</th>
                   </tr>
                 </thead>
                 <tbody className="text-[11px] font-bold">
-                  {transactions.map((tx, i) => (
-                    <tr key={i} className={`border-b border-black/10`}>
-                      <td className="p-4 font-mono opacity-40">{new Date(tx.created_at).toLocaleString()}</td>
-                      <td className="p-4 uppercase italic">{users.find(u => u.firebase_uid === tx.user_uid)?.display_name || 'Agent'}</td>
-                      <td className={`p-4 text-right italic ${tx.amount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} RC</td>
-                    </tr>
-                  ))}
+                  {transactions.map((tx, i) => {
+                    const agent = users.find(u => u.firebase_uid === tx.user_uid);
+                    const isCredit = tx.amount > 0;
+                    return (
+                      <tr key={i} className={`border-b border-black/10 hover:bg-black/5`}>
+                        <td className="p-4 font-mono opacity-40">{new Date(tx.created_at).toLocaleString()}</td>
+                        <td className="p-4 uppercase italic">
+                           <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 border border-black flex items-center justify-center text-[10px] ${isCredit ? 'bg-emerald-200 text-emerald-800' : 'bg-rose-200 text-rose-800'}`}>
+                                 {agent?.display_name?.charAt(0) || '?'}
+                              </div>
+                              {agent?.display_name || 'Unknown Agent'}
+                           </div>
+                        </td>
+                        <td className="p-4 uppercase text-xs tracking-wide">
+                           {tx.description || (isCredit ? "Mission Reward Granted" : "Voucher Redeemed")}
+                        </td>
+                        <td className={`p-4 text-right italic font-black text-sm ${isCredit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                           {isCredit ? '+' : ''}{tx.amount} RC
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
