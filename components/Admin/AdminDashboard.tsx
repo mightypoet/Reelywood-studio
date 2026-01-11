@@ -4,11 +4,13 @@ import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { 
   Users, Zap, Gift, LogOut, Search, 
-  Check, Shield, Plus, Moon, Sun, Trash2,
+  Check, Plus, Moon, Sun, Trash2,
   Loader2, Activity, Terminal,
-  Target, FileText, Bell, Megaphone,
   Building2, ListChecks, Clock, X,
-  Crosshair, CheckSquare, Box
+  Crosshair, CheckSquare, Box,
+  Instagram, Youtube, Twitter,
+  // Added FileText to fix "Cannot find name 'FileText'" error
+  FileText
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -18,11 +20,14 @@ export interface Profile {
   firebase_uid: string;
   email: string;
   display_name: string;
+  handle: string;
   role: string;
   card_status: 'none' | 'pending' | 'approved' | 'rejected';
   reelcoins: number;
-  handle?: string;
   photo_url?: string;
+  platform?: string;
+  followers?: number;
+  niche?: string;
   created_at: string;
 }
 
@@ -233,6 +238,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             { id: 'brands', label: 'ALLIANCE', icon: <Building2 size={16}/> },
             { id: 'missions', label: 'CONSOLE', icon: <Zap size={16}/> },
             { id: 'vouchers', label: 'VAULT', icon: <Gift size={16}/> },
+            // Corrected icon use from FileText
             { id: 'ledger', label: 'LEDGER', icon: <FileText size={16}/> }
           ].map(tab => (
             <button 
@@ -327,21 +333,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </div>
 
                     {targetMode === 'SELECT' && (
-                      <div className="bg-white border-2 border-black max-h-[150px] overflow-y-auto p-2 space-y-1">
-                        {users.map(agent => (
-                          <div 
-                            key={agent.firebase_uid}
-                            onClick={() => toggleAgentSelection(agent.firebase_uid)}
-                            className={`flex items-center gap-3 p-2 cursor-pointer border border-transparent hover:bg-gray-100 ${selectedAgentIds.includes(agent.firebase_uid) ? 'bg-purple-50 border-purple-200' : ''}`}
-                          >
-                            <div className={`w-4 h-4 border-2 border-black flex items-center justify-center ${selectedAgentIds.includes(agent.firebase_uid) ? 'bg-purple-600' : 'bg-white'}`}>
-                              {selectedAgentIds.includes(agent.firebase_uid) && <CheckSquare className="w-3 h-3 text-white" />}
-                            </div>
-                            <span className="text-[10px] font-bold uppercase text-black">
-                              {agent.display_name} <span className="opacity-30">@{agent.handle}</span>
-                            </span>
-                          </div>
-                        ))}
+                      <div className="bg-white border-2 border-black max-h-[300px] overflow-y-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="bg-gray-100 text-black sticky top-0 z-10">
+                            <tr>
+                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase w-8"></th>
+                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase">Agent</th>
+                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase">Followers</th>
+                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase">Plat</th>
+                              <th className="p-2 border-b-2 border-black text-[8px] font-black uppercase">Niche</th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-[10px] font-bold text-black">
+                            {users.map(agent => {
+                              const isSelected = selectedAgentIds.includes(agent.firebase_uid);
+                              return (
+                                <tr 
+                                  key={agent.firebase_uid}
+                                  onClick={() => toggleAgentSelection(agent.firebase_uid)}
+                                  className={`cursor-pointer border-b border-gray-100 hover:bg-purple-50 ${isSelected ? 'bg-yellow-50' : ''}`}
+                                >
+                                  <td className="p-2 text-center">
+                                    <div className={`w-4 h-4 border-2 border-black flex items-center justify-center ${isSelected ? 'bg-black' : 'bg-white'}`}>
+                                      {isSelected && <CheckSquare className="w-3 h-3 text-white" />}
+                                    </div>
+                                  </td>
+                                  <td className="p-2 uppercase truncate max-w-[100px]">{agent.display_name}</td>
+                                  <td className="p-2">{agent.followers?.toLocaleString() || '0'}</td>
+                                  <td className="p-2">
+                                     {agent.platform === 'Instagram' && <Instagram size={12} className="text-pink-600"/>}
+                                     {agent.platform === 'YouTube' && <Youtube size={12} className="text-red-600"/>}
+                                     {agent.platform === 'X' && <Twitter size={12} className="text-blue-400"/>}
+                                  </td>
+                                  <td className="p-2">
+                                    <span className="bg-gray-200 px-1 border border-black text-[8px]">{agent.niche}</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {targetMode === 'SELECT' && (
+                      <div className="mt-2 text-[9px] font-black uppercase text-right text-purple-600 italic">
+                        {selectedAgentIds.length} AGENTS TARGETED
                       </div>
                     )}
                   </div>
@@ -368,7 +404,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <div key={m.id} className={`${cardColor} border-4 ${borderColor} p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative group`}>
                       <div className="flex justify-between items-start mb-4">
                         <span className="bg-emerald-400 text-black border-2 border-black px-2 py-0.5 text-[8px] font-black uppercase">
-                          {m.assigned_to ? 'TARGETED' : 'GLOBAL NODE'}
+                          {m.assigned_to ? `TARGETED [${m.assigned_to.length}]` : 'GLOBAL NODE'}
                         </span>
                         <div className="flex gap-2">
                            <span className="bg-[#834bf1] text-white border-2 border-black px-2 py-0.5 text-[10px] font-black">+{m.reward_amount} RC</span>
