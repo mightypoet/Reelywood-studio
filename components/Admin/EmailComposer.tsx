@@ -1,13 +1,23 @@
 
 import React, { useState } from 'react';
 import { X, Send, Loader2, CheckCircle, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
-// Corrected import from Profile
-import { Profile } from './AdminDashboard';
 import { db } from '../../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
+/**
+ * Local interface for Profile to resolve the missing export from AdminDashboard
+ */
+export interface Profile {
+  firebase_uid: string;
+  email: string;
+  display_name: string;
+  card_status: 'none' | 'pending' | 'approved' | 'rejected';
+  reelcoins: number;
+  handle?: string;
+}
+
 interface EmailComposerProps {
-  // Use Profile type instead of missing Application type
+  // Use locally defined Profile type
   application: Profile;
   onClose: () => void;
 }
