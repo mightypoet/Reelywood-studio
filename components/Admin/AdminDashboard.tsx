@@ -5,7 +5,7 @@ import {
   Users, ArrowUpRight, ArrowDownLeft, Search, X, 
   CheckCircle, Send, AlertCircle, Sparkles, Box, 
   ArrowLeft, Plus, Terminal, RefreshCw, LogOut, Layout, Bell, Building2, ShieldCheck, Ticket,
-  Activity, Briefcase, Instagram, Star
+  Activity, Briefcase, Instagram, Star, MapPin, ImageIcon
 } from 'lucide-react';
 import { VerificationModal } from './VerificationModal';
 import { BrandManager } from './BrandManager';
@@ -28,11 +28,12 @@ interface UserProfile {
   status: 'active' | 'inactive';
 }
 
-interface AllianceNode {
+interface BrandProfile {
   id: string;
   name: string;
-  category: string;
-  status: 'live' | 'offline';
+  logo_url: string | null;
+  location_text: string;
+  description: string;
 }
 
 interface LogItem {
@@ -43,14 +44,6 @@ interface LogItem {
 }
 
 const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
-
-const MOCK_ALLIANCES: AllianceNode[] = [
-  { id: 'b1', name: 'Nike', category: 'Sportswear', status: 'live' },
-  { id: 'b2', name: 'Starbucks', category: 'F&B', status: 'live' },
-  { id: 'b3', name: 'Spotify', category: 'Tech', status: 'live' },
-  { id: 'b4', name: 'Zara', category: 'Fashion', status: 'offline' },
-  { id: 'b5', name: 'Apple', category: 'Electronics', status: 'live' },
-];
 
 const MOCK_USERS: UserProfile[] = [
   { id: 'u1', name: 'Rohan Sen', email: 'rohan@reely.com', avatar: 'RS', niche: 'Tech & AI', followers: '1.2M', missionsCompleted: 42, rcIncome: 15000, rcExpense: 4200, status: 'active' },
@@ -66,13 +59,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [consoleMode, setConsoleMode] = useState<DeployType>('mission');
   const [targetMode, setTargetMode] = useState<TargetMode>('all');
   const [loading, setLoading] = useState(false);
-  const [alliances, setAlliances] = useState<AllianceNode[]>(MOCK_ALLIANCES);
+  const [isSyncing, setIsSyncing] = useState(true);
+  const [brands, setBrands] = useState<BrandProfile[]>([]);
   
   // Data States
   const [submissions, setSubmissions] = useState([] as any[]);
   const [logs, setLogs] = useState<LogItem[]>([
     { id: 'l1', title: 'System initialized', time: '10:00 AM', type: 'system' },
-    { id: 'l2', title: 'Alliance Data Synced', time: '10:01 AM', type: 'system' },
   ]);
   const [selectedUsers, setSelectedUsers] = useState<UserProfile[]>([]);
   const [directorySearch, setDirectorySearch] = useState('');
@@ -88,14 +81,19 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const fetchData = async () => {
     if (!supabase) return;
     setLoading(true);
+    setIsSyncing(true);
     try {
-      const { data: subData } = await supabase
-        .from('submissions')
-        .select(`*, missions:mission_id (*)`)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+      const [subData, brandData] = await Promise.all([
+        supabase.from('submissions').select(`*, missions:mission_id (*)`).eq('status', 'pending').order('created_at', { ascending: false }),
+        supabase.from('partner_brands').select('*')
+      ]);
 
-      const rawSubs = (subData || []) as any[];
+      if (brandData.data) {
+        setBrands(brandData.data);
+        setLogs(prev => [{ id: Date.now().toString(), title: `Synced ${brandData.data.length} Partner Nodes from DB`, time: new Date().toLocaleTimeString(), type: 'system' }, ...prev]);
+      }
+
+      const rawSubs = (subData.data || []) as any[];
       const userIds = [...new Set(rawSubs.map(s => s.user_id))];
       
       const { data: users } = await supabase
@@ -113,6 +111,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       console.error("Terminal Error:", err); 
     } finally { 
       setLoading(false); 
+      setIsSyncing(false);
     }
   };
 
@@ -149,7 +148,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     if (!formData.brandId || !formData.title || !formData.value) return;
     setDeployStep('confirming');
     
-    const selectedBrand = alliances.find(a => a.id === formData.brandId);
+    const selectedBrand = brands.find(b => b.id === formData.brandId);
 
     setTimeout(() => {
       setDeployStep('success');
@@ -170,6 +169,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       }, 2500);
     }, 1500);
   };
+
+  const selectedBrandData = brands.find(b => b.id === formData.brandId);
 
   const renderDashboard = () => (
     <div className="space-y-12 animate-in fade-in duration-500">
@@ -278,10 +279,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                               className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none appearance-none focus:bg-[#ffde59] transition-all"
                               value={formData.brandId}
                               onChange={e => setFormData({...formData, brandId: e.target.value})}
+                              disabled={isSyncing}
                             >
-                              <option value="">Select Brand Node...</option>
-                              {alliances.map(brand => (
-                                <option key={brand.id} value={brand.id}>{brand.name} ({brand.category})</option>
+                              <option value="">{isSyncing ? 'Loading Nodes...' : 'Select Brand Node...'}</option>
+                              {brands.map(brand => (
+                                <option key={brand.id} value={brand.id}>{brand.name}</option>
                               ))}
                             </select>
                             <Briefcase className="absolute right-4 top-4 text-black/30 pointer-events-none" size={18}/>
@@ -292,6 +294,28 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                           <input type="number" className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none focus:bg-[#ffde59] transition-all" placeholder="500" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})}/>
                         </div>
                       </div>
+
+                      {/* --- LIVE BRAND PREVIEW --- */}
+                      {selectedBrandData && (
+                        <div className="border-[3px] border-black bg-yellow-50 p-4 animate-in fade-in slide-in-from-top-2 flex gap-4 items-start shadow-[4px_4px_0px_0px_#000]">
+                          <div className="w-20 h-20 bg-white border-2 border-black flex items-center justify-center overflow-hidden shrink-0">
+                            {selectedBrandData.logo_url ? (
+                              <img src={selectedBrandData.logo_url} alt="brand" className="w-full h-full object-cover" />
+                            ) : (
+                              <ImageIcon className="text-black/10 w-8 h-8" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black uppercase text-base italic leading-none mb-1 truncate">{selectedBrandData.name}</h3>
+                            <div className="flex items-center gap-1 text-[10px] font-black text-black/40 uppercase tracking-widest mt-2">
+                                <MapPin size={10} strokeWidth={3} />
+                                <span className="truncate">{selectedBrandData.location_text || "Global Reach"}</span>
+                            </div>
+                            <div className="mt-2 text-[8px] font-black bg-black text-white px-2 py-0.5 w-fit uppercase tracking-widest">Verified Node</div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Protocol Title</label>
                         <input className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none focus:bg-[#ffde59] transition-all" placeholder={consoleMode === 'mission' ? "Mission Identity" : "Voucher Code"} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}/>
