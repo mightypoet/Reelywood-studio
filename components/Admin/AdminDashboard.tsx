@@ -78,10 +78,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   const channelRef = useRef<any>(null);
 
-  /**
-   * Derived state for selected brand data based on form input.
-   * Fixes errors on line 305, 308, 309, 315, 318 where selectedBrandData was used but not defined.
-   */
+  // Derived state for the selected brand from the Alliance list
   const selectedBrandData = brands.find(b => b.id === formData.brandId);
 
   const fetchData = async () => {
@@ -160,7 +157,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const countLabel = targetMode === 'all' ? 'Global Grid' : `${selectedUsers.length} Selected Agents`;
       const newLog: LogItem = {
         id: Date.now().toString(),
-        title: `Deployed "${formData.title}" for ${selectedBrand?.name} to ${countLabel}`,
+        title: `Deployed "${formData.title}" for ${selectedBrand?.name || 'Unknown'} to ${countLabel}`,
         time: new Date().toLocaleTimeString(),
         type: 'system'
       };
@@ -218,7 +215,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
       <div className="grid lg:grid-cols-12 gap-12 items-start">
         <div className="lg:col-span-8 space-y-12">
-          {/* --- VERIFICATION QUEUE --- */}
+          {/* --- VERIFICATION QUEUE (Highest Priority) --- */}
           {submissions.length > 0 && (
             <div className="space-y-6">
               <h2 className="text-3xl font-black italic uppercase font-display tracking-tighter flex items-center gap-3">
@@ -265,7 +262,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             </div>
           )}
 
-          {/* --- MISSION CREATOR --- */}
+          {/* --- WORKSPACE NAVIGATION --- */}
           <div className="space-y-8">
             <div className="flex gap-4">
               <button onClick={() => setActiveTab('incoming')} className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest border-4 border-black transition-all ${activeTab === 'incoming' ? 'bg-[#ffde59] text-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-100 opacity-50'}`}><Bell size={18} className="inline mr-2"/> Signals</button>
@@ -285,7 +282,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     <div className="space-y-6">
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Partner Node</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-black/40 italic">Alliance Node</label>
                           <div className="relative">
                             <select 
                               className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none appearance-none focus:bg-[#ffde59] transition-all"
@@ -293,7 +290,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                               onChange={e => setFormData({...formData, brandId: e.target.value})}
                               disabled={isSyncing}
                             >
-                              <option value="">{isSyncing ? 'Loading Nodes...' : 'Select Brand Node...'}</option>
+                              <option value="">{isSyncing ? 'Loading Alliance...' : 'Select Brand Node...'}</option>
                               {brands.map(brand => (
                                 <option key={brand.id} value={brand.id}>{brand.name}</option>
                               ))}
@@ -307,7 +304,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                         </div>
                       </div>
 
-                      {/* --- LIVE BRAND PREVIEW --- */}
+                      {/* --- BRAND PREVIEW CARD --- */}
                       {selectedBrandData && (
                         <div className="border-[3px] border-black bg-yellow-50 p-4 animate-in fade-in slide-in-from-top-2 flex gap-4 items-start shadow-[4px_4px_0px_0px_#000]">
                           <div className="w-16 h-16 bg-white border-2 border-black flex items-center justify-center overflow-hidden shrink-0">
@@ -321,29 +318,29 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                             <h3 className="font-black uppercase text-sm italic leading-none mb-1 truncate">{selectedBrandData.name}</h3>
                             <div className="flex items-center gap-1 text-[9px] font-black text-black/40 uppercase tracking-widest mt-2">
                                 <MapPin size={10} strokeWidth={3} />
-                                <span className="truncate">{selectedBrandData.location_text || "Global Reach"}</span>
+                                <span className="truncate">{selectedBrandData.location_text || "Global Node"}</span>
                             </div>
                           </div>
                         </div>
                       )}
 
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Protocol Title</label>
-                        <input className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none focus:bg-[#ffde59] transition-all" placeholder={consoleMode === 'mission' ? "Mission Identity" : "Voucher Code"} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}/>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Protocol Identity</label>
+                        <input className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none focus:bg-[#ffde59] transition-all" placeholder={consoleMode === 'mission' ? "Operation Name" : "Voucher Token"} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}/>
                       </div>
                     </div>
 
                     <div className="p-6 bg-slate-50 border-[3px] border-black shadow-[6px_6px_0px_0px_#000]">
                       <div className="flex justify-between items-center mb-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Target Scope:</span>
-                        <button onClick={() => setViewMode('directory')} className="text-[9px] font-black text-[#834bf1] uppercase tracking-widest hover:underline">Edit Scope {'>>'}</button>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-black/40 italic">Target Scope:</span>
+                        <button onClick={() => setViewMode('directory')} className="text-[9px] font-black text-[#834bf1] uppercase tracking-widest hover:underline">Customize Hub {'>>'}</button>
                       </div>
                       <div className="font-black text-lg text-black italic">
-                        {targetMode === 'all' ? 'BROADCAST TO GLOBAL GRID' : `${selectedUsers.length} TARGETED AGENT NODES`}
+                        {targetMode === 'all' ? 'BROADCAST TO GLOBAL HUB' : `${selectedUsers.length} SELECTED AGENT NODES`}
                       </div>
                     </div>
 
-                    <button onClick={handleDeploy} className="w-full py-6 bg-black text-white font-black uppercase text-xs tracking-[0.4em] border-[4px] border-black hover:bg-[#834bf1] transition-all shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">INITIALIZE DEPLOYMENT</button>
+                    <button onClick={handleDeploy} className="w-full py-6 bg-black text-white font-black uppercase text-xs tracking-[0.4em] border-[4px] border-black hover:bg-[#834bf1] transition-all shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">INITIALIZE BROADCAST</button>
                   </div>
                 )}
               </div>
@@ -355,16 +352,17 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] h-full max-h-[700px] flex flex-col">
             <h3 className="font-black text-xl uppercase mb-8 italic flex items-center gap-3 border-b-4 border-black pb-4"><AlertCircle className="text-[#834bf1]" size={24}/> System Ledger</h3>
-            <div className="flex-1 overflow-y-auto space-y-6 pr-2 no-scrollbar">
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2 no-scrollbar font-mono text-[10px]">
               {logs.map((log) => (
                 <div key={log.id} className="border-l-[4px] border-black pl-5 py-1 group">
                   <p className="font-black text-xs leading-tight uppercase group-hover:text-[#834bf1] transition-colors">{log.title}</p>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-[9px] text-black/30 font-black uppercase">{log.time}</span>
-                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 border border-black ${log.type === 'system' ? 'bg-blue-50' : 'bg-green-50'}`}>{log.type}</span>
+                  <div className="flex justify-between items-center mt-2 opacity-50">
+                    <span className="uppercase">{log.time}</span>
+                    <span className="border border-black px-1 uppercase">{log.type}</span>
                   </div>
                 </div>
               ))}
+              <div className="animate-pulse">&gt; WAITING FOR SIGNAL_</div>
             </div>
           </div>
         </div>
@@ -405,10 +403,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           <table className="w-full text-left border-collapse">
             <thead className="bg-black text-white border-b-4 border-black">
               <tr>
-                <th className="p-6 w-12"></th>
+                <th className="p-6 w-12 text-center"></th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest italic">Agent Node</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest">Niche</th>
-                <th className="p-6 font-black uppercase text-[10px] tracking-widest text-center">Sync Rate</th>
+                <th className="p-6 font-black uppercase text-[10px] tracking-widest text-center">Protocol Sync</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-right">RC Inflow</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-right">RC Outflow</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-center">Status</th>
@@ -488,7 +486,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Terminal className="text-[#834bf1]" size={32} />
-            <h1 className="text-3xl font-black italic uppercase tracking-tighter">TERMINAL <span className="text-[#834bf1]">ADMIN</span></h1>
+            <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">TERMINAL <span className="text-[#834bf1]">ADMIN</span></h1>
           </div>
           <div className="flex items-center gap-4">
             <button onClick={fetchData} className="p-3 bg-white/10 hover:bg-white/20 border-2 border-white/20 transition-all active:scale-95">
