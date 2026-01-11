@@ -1,14 +1,13 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { 
-  Layout, Users, Zap, Gift, LogOut, Search, 
+  Users, Zap, Gift, LogOut, Search, 
   Check, X, Shield, Plus, Moon, Sun, Trash2,
-  Loader2, ArrowRight, Activity, Terminal,
-  Target, FileText, ArrowDownLeft, ArrowUpRight,
-  Clock, Bell, Megaphone, Info, CheckCircle2,
-  Building2, Image as ImageIcon, MapPin, ListChecks
+  Loader2, Activity, Terminal,
+  Target, FileText,
+  Clock, Bell, Megaphone, Info,
+  Building2, Image as ImageIcon, MapPin, ListChecks, ExternalLink
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -24,6 +23,8 @@ export interface Profile {
   card_status: string;
   role: string;
   reelcoins: number;
+  handle?: string;
+  photo_url?: string;
 }
 
 const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
@@ -36,7 +37,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   });
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showNotifMenu, setShowNotifMenu] = useState(false);
   
   const [users, setUsers] = useState<any[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
@@ -85,7 +85,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(10),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
-        supabase.from('submissions').select('*, profiles(display_name, email), missions(title, reward_amount, checkpoints)').eq('status', 'pending').order('created_at', { ascending: false })
+        supabase.from('submissions').select(`
+          *,
+          profiles!user_id ( display_name, handle, photo_url, email ),
+          missions!mission_id ( title, reward_amount, checkpoints )
+        `).eq('status', 'pending').order('created_at', { ascending: false })
       ]);
 
       setUsers(profilesRes.data || []);
@@ -102,18 +106,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleBrandSelect = (brandId: string) => {
-    const brand = brands.find(b => b.id === brandId);
-    if (brand) {
-      setMissionForm({
-        ...missionForm,
-        brand_id: brandId,
-        title: `Protocol: ${brand.name}`,
-        location: brand.location_text || '',
-        image_url: brand.cover_image_url || ''
+  const handleApprove = async (sub: any) => {
+    if(!window.confirm(`Authorize reward of ${sub.missions.reward_amount} RC for this agent?`)) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase!.rpc('grant_mission_reward', {
+        submission_id_param: sub.id,
+        user_id_param: sub.user_id,
+        amount_param: sub.missions.reward_amount
       });
-    } else {
-      setMissionForm({ ...missionForm, brand_id: '', location: '', image_url: '' });
+      if (error) throw error;
+      alert("✅ APPROVED: Bounty transferred.");
+      fetchAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReject = async (sub: any) => {
+    const reason = prompt("Enter Rejection Reason (Required):");
+    if (!reason) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase!.rpc('reject_submission', {
+        submission_id_param: sub.id,
+        user_id_param: sub.user_id,
+        reason_param: reason
+      });
+      if (error) throw error;
+      alert("❌ REJECTED: Agent informed.");
+      fetchAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -169,9 +197,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  /**
-   * FIX: Added handleCreateVoucher to process the voucher creation form.
-   */
   const handleCreateVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!voucherForm.title || !voucherForm.cost || !voucherForm.code) {
@@ -232,14 +257,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   return (
     <div className={`min-h-screen ${bgColor} ${textColor} font-lexend transition-colors duration-500 overflow-x-hidden pb-32`}>
-      {selectedSubmission && (
-        <VerificationModal 
-          submission={selectedSubmission} 
-          onClose={() => setSelectedSubmission(null)} 
-          onRefresh={fetchAllData} 
-        />
-      )}
-      
       <header className={`border-b-4 ${borderColor} ${cardColor} px-8 py-6 flex items-center justify-between sticky top-0 z-[100] backdrop-blur-md bg-opacity-80`}>
         <div className="flex items-center space-x-6">
           <div className={`${primaryAccent} w-12 h-12 flex items-center justify-center border-4 ${borderColor} shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`}>
@@ -249,10 +266,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         <div className="flex items-center space-x-4">
-          <button onClick={() => setShowNotifMenu(!showNotifMenu)} className={`p-3 border-4 ${borderColor} bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all relative`}>
-            <Bell size={20} strokeWidth={3} />
-            {adminLogs.length > 0 && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 border-2 border-black animate-pulse"></div>}
-          </button>
           <button onClick={() => setDarkMode(!darkMode)} className={`p-3 border-4 ${borderColor} ${isDark ? 'bg-[#ffde59] text-black' : 'bg-black text-white'} shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all`}>
             {isDark ? <Sun size={20} strokeWidth={3} /> : <Moon size={20} strokeWidth={3} />}
           </button>
@@ -263,31 +276,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </header>
 
       <main className="max-w-[1600px] mx-auto p-8 space-y-12">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-8">
-          {[
-            { label: 'Agents', val: users.length, icon: Users, accent: 'bg-[#834bf1]' },
-            { label: 'Pending', val: users.filter(u => u.card_status === 'pending').length, icon: Search, accent: 'bg-[#ffde59]' },
-            { label: 'Alliance', val: brands.length, icon: Building2, accent: 'bg-[#39ff14]' },
-            { label: 'Missions', val: missions.length, icon: Zap, accent: 'bg-[#ff00ff]' },
-            { label: 'Queued', val: submissions.length, icon: ListChecks, accent: 'bg-rose-500' },
-            { label: 'Tx Volume', val: transactions.length, icon: Activity, accent: 'bg-white' }
-          ].map((stat, i) => (
-            <div key={i} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-4">{stat.label}</p>
-                  <h3 className="text-5xl font-black italic tracking-tighter leading-none">{stat.val.toString().padStart(2, '0')}</h3>
-                </div>
-                <stat.icon className={`w-10 h-10 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500`} />
-              </div>
-            </div>
-          ))}
-        </div>
-
         <div className={`flex border-4 ${borderColor} p-1.5 ${cardColor} shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]`}>
           {[
             { id: 'users', label: 'Command', icon: <Users size={18}/> },
-            { id: 'submissions', label: 'Queued', icon: <ListChecks size={18}/> },
+            { id: 'submissions', label: 'Incoming', icon: <ListChecks size={18}/> },
             { id: 'brands', label: 'Alliance', icon: <Building2 size={18}/> },
             { id: 'missions', label: 'Console', icon: <Target size={18}/> },
             { id: 'vouchers', label: 'Vault', icon: <Gift size={18}/> },
@@ -303,7 +295,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[600px]">
+        <div className="animate-in fade-in duration-500">
           {activeTab === 'users' && (
             <div className="space-y-8">
               <div className="flex items-center space-x-4">
@@ -340,8 +332,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         </td>
                         <td className="p-6 text-right">
                           <div className="flex justify-end gap-2">
-                             <button onClick={() => handleUpdateStatus(user.firebase_uid, 'rejected')} className="px-4 py-2 border-2 border-black bg-gray-200 hover:bg-rose-500 hover:text-white font-black text-[10px] shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 active:shadow-none transition-all uppercase">Reject</button>
-                             <button onClick={() => handleUpdateStatus(user.firebase_uid, 'approved')} className={`px-4 py-2 border-2 border-black ${user.card_status === 'approved' ? 'bg-emerald-500 text-white' : 'bg-emerald-400 text-black hover:bg-emerald-500'} font-black text-[10px] shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 active:shadow-none transition-all uppercase flex items-center gap-2`}>{user.card_status === 'approved' ? <Check size={14}/> : <Plus size={14}/>} {user.card_status === 'approved' ? 'Verified' : 'Approve'}</button>
+                             <button onClick={() => handleUpdateStatus(user.firebase_uid, 'rejected')} className="px-4 py-2 border-2 border-black bg-gray-200 hover:bg-rose-500 hover:text-white font-black text-[10px] shadow-[2px_2px_0px_0px_#000] transition-all uppercase">Reject</button>
+                             <button onClick={() => handleUpdateStatus(user.firebase_uid, 'approved')} className={`px-4 py-2 border-2 border-black ${user.card_status === 'approved' ? 'bg-emerald-500 text-white' : 'bg-emerald-400 text-black hover:bg-emerald-500'} font-black text-[10px] shadow-[2px_2px_0px_0px_#000] transition-all uppercase flex items-center gap-2`}>{user.card_status === 'approved' ? <Check size={14}/> : <Plus size={14}/>} {user.card_status === 'approved' ? 'Verified' : 'Approve'}</button>
                           </div>
                         </td>
                       </tr>
@@ -353,155 +345,85 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           )}
 
           {activeTab === 'submissions' && (
-            <div className="space-y-8">
-              <h3 className="text-3xl font-black italic uppercase font-display">Mission Queue</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {submissions.map(sub => (
-                  <div key={sub.id} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col space-y-6 group hover:-translate-y-1 transition-all`}>
-                    <div className="flex justify-between items-start">
-                      <div className="w-12 h-12 bg-[#834bf1] border-2 border-black flex items-center justify-center text-white shadow-[3px_3px_0px_0px_#000]">
-                        <Clock size={24} />
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Submitted At</p>
-                        <p className="text-xs font-bold">{new Date(sub.created_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-black text-xl uppercase italic mb-1">{sub.profiles?.display_name || 'Agent'}</h4>
-                      <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">{sub.missions?.title}</p>
-                    </div>
-                    <div className="bg-white border-2 border-black p-4 text-xs font-bold text-blue-600 underline truncate shadow-[2px_2px_0px_0px_#000]">
-                      {sub.link}
-                    </div>
-                    <button 
-                      onClick={() => setSelectedSubmission(sub)}
-                      className="w-full bg-[#ffde59] py-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all active:scale-95 flex items-center justify-center space-x-3"
-                    >
-                      <ListChecks size={18} />
-                      <span>Execute Verification</span>
-                    </button>
+            <div className="bg-slate-50 dark:bg-black/20 p-8 border-4 border-black mt-12">
+              <h2 className="text-4xl font-black italic uppercase mb-8 flex items-center gap-4 font-display">
+                <div className="w-4 h-4 bg-rose-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.6)]"></div>
+                📡 INCOMING SIGNALS ({submissions.length})
+              </h2>
+
+              <div className="grid grid-cols-1 gap-6">
+                {submissions.length === 0 ? (
+                  <div className="text-gray-400 font-bold text-center py-20 border-4 border-dashed border-gray-300 uppercase tracking-widest bg-white">
+                    NO PENDING ACTIVITY. THE NETWORK IS QUIET.
                   </div>
-                ))}
-                {submissions.length === 0 && (
-                  <div className="col-span-full py-24 text-center opacity-30 font-black uppercase tracking-[0.4em] text-xs">
-                    Clear Terminal. No Submissions Queued.
-                  </div>
+                ) : (
+                  submissions.map((item) => (
+                    <div key={item.id} className="bg-white border-4 border-black p-8 shadow-[10px_10px_0px_0px_#000] flex flex-col md:flex-row gap-8 relative overflow-hidden group hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                      
+                      <div className="absolute top-0 left-0 w-2 h-full bg-[#ffde59]"></div>
+
+                      {/* 1. AGENT IDENTITY */}
+                      <div className="min-w-[250px] border-b-2 md:border-b-0 md:border-r-2 border-gray-100 pb-6 md:pb-0 md:pr-8">
+                        <div className="flex items-center gap-4 mb-4">
+                           <div className="w-12 h-12 bg-[#834bf1] border-2 border-black flex items-center justify-center text-white font-black">
+                              {item.profiles?.display_name?.charAt(0) || "A"}
+                           </div>
+                           <div>
+                              <h4 className="font-black text-xl uppercase italic leading-none">{item.profiles?.display_name || "Unknown Agent"}</h4>
+                              <p className="text-[10px] font-bold text-[#834bf1] mt-1 tracking-widest uppercase">@{item.profiles?.handle || "unlinked"}</p>
+                           </div>
+                        </div>
+                        <div className="mt-4 inline-block bg-black text-[#ffde59] text-[9px] font-black px-3 py-1.5 uppercase tracking-widest italic">
+                           Waiting for Authorization
+                        </div>
+                      </div>
+
+                      {/* 2. MISSION INTEL */}
+                      <div className="flex-1 space-y-4">
+                         <div className="flex flex-col">
+                            <span className="font-black text-[#834bf1] text-[10px] uppercase tracking-widest mb-1">Assigned Mission</span>
+                            <h3 className="font-black italic text-2xl uppercase tracking-tighter text-black font-display">{item.missions?.title}</h3>
+                         </div>
+                         
+                         <div className="bg-slate-50 p-4 border-[3px] border-black flex items-center justify-between gap-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="min-w-0">
+                               <p className="text-[8px] font-black uppercase text-black/40 mb-1 tracking-widest">Evidence Deliverable</p>
+                               <a href={item.link} target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline truncate block text-sm italic">
+                                  {item.link}
+                               </a>
+                            </div>
+                            <a href={item.link} target="_blank" rel="noreferrer" className="bg-[#ffde59] border-2 border-black p-3 hover:shadow-[2px_2px_0px_0px_#000] active:scale-95 transition-all shrink-0">
+                               <ExternalLink size={20} strokeWidth={3} />
+                            </a>
+                         </div>
+                      </div>
+
+                      {/* 3. CONTROL CONSOLE */}
+                      <div className="flex flex-col gap-3 min-w-[180px] justify-center">
+                         <button 
+                           onClick={() => handleApprove(item)}
+                           disabled={submitting}
+                           className="bg-[#4ade80] text-black border-[3px] border-black py-4 font-black uppercase text-xs tracking-widest hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2"
+                         >
+                           <Check size={18} strokeWidth={4} /> AUTHORIZE
+                         </button>
+                         <button 
+                           onClick={() => handleReject(item)}
+                           disabled={submitting}
+                           className="bg-rose-500 text-white border-[3px] border-black py-4 font-black uppercase text-xs tracking-widest hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2"
+                         >
+                           <X size={18} strokeWidth={4} /> TERMINATE
+                         </button>
+                      </div>
+
+                    </div>
+                  ))
                 )}
               </div>
             </div>
           )}
 
           {activeTab === 'brands' && <BrandManager />}
-
-          {activeTab === 'missions' && (
-            <div className="grid lg:grid-cols-12 gap-12">
-              <div className="lg:col-span-5">
-                <form onSubmit={handleCreateMission} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
-                  <div className="flex justify-between items-center mb-8">
-                     <h3 className="text-2xl font-black uppercase italic flex items-center space-x-3 font-display"><Plus className="text-pink-500" strokeWidth={4} /><span>Mission Console</span></h3>
-                     <div className="bg-black text-white px-3 py-1 border-2 border-white text-[8px] font-black uppercase tracking-widest flex items-center space-x-1"><Megaphone size={10} className="text-[#ffde59]" /><span>Auto-Signal</span></div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Link Ecosystem Partner</label>
-                      <select className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none appearance-none cursor-pointer shadow-[4px_4px_0px_0px_#000] text-black`} value={missionForm.brand_id} onChange={(e) => handleBrandSelect(e.target.value)}>
-                        <option value="">-- Manual Config (No Link) --</option>
-                        {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Objective Header</label>
-                      <input required type="text" value={missionForm.title} onChange={e => setMissionForm({...missionForm, title: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none shadow-[4px_4px_0px_0px_#000] text-black`} placeholder="PROTOCOL NAME"/>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Intelligence Brief</label>
-                      <textarea required rows={3} value={missionForm.desc} onChange={e => setMissionForm({...missionForm, desc: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none resize-none shadow-[4px_4px_0px_0px_#000] text-black`} placeholder="DELIVERABLES..."/>
-                    </div>
-                    
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Mission Checkpoints (Criteria)</label>
-                       {missionForm.checkpoints.map((pt, idx) => (
-                          <input 
-                            key={idx}
-                            type="text" 
-                            placeholder={`Checkpoint ${idx + 1}`}
-                            className={`w-full bg-white border-2 ${borderColor} p-2 font-black text-[10px] focus:outline-none shadow-[2px_2px_0px_0px_#000] text-black mb-1`}
-                            value={pt}
-                            onChange={(e) => {
-                               const pts = [...missionForm.checkpoints];
-                               pts[idx] = e.target.value;
-                               setMissionForm({ ...missionForm, checkpoints: pts });
-                            }}
-                          />
-                       ))}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Reward (RC)</label><input required type="number" value={missionForm.reward} onChange={e => setMissionForm({...missionForm, reward: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none shadow-[4px_4px_0px_0px_#000] text-black`}/></div>
-                      <div><label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Target Agent</label>
-                        <select value={missionForm.assignTo} onChange={e => setMissionForm({...missionForm, assignTo: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none appearance-none cursor-pointer shadow-[4px_4px_0px_0px_#000] text-black`}>
-                          <option value="all">🌍 GLOBAL</option>
-                          {users.filter(u => u.card_status === 'approved').map(u => (<option key={u.id} value={u.firebase_uid}>👤 {u.display_name}</option>))}
-                        </select>
-                      </div>
-                    </div>
-                    <button type="submit" disabled={submitting} className={`w-full ${secondaryAccent} py-6 border-4 ${borderColor} shadow-[6px_6px_0px_0px_#000000] font-black uppercase tracking-[0.4em] text-xs hover:translate-y-[-2px] transition-all disabled:opacity-50 active:translate-y-0.5 active:shadow-none`}>{submitting ? 'EXECUTING...' : 'DEPLOY MISSION PROTOCOL'}</button>
-                  </div>
-                </form>
-              </div>
-              <div className="lg:col-span-7 space-y-6">
-                <h3 className="text-xl font-black uppercase italic tracking-widest font-display">Active Sync Grid</h3>
-                <div className="space-y-6 max-h-[800px] overflow-y-auto pr-4 scrollbar-hide">
-                  {missions.map(m => (
-                    <div key={m.id} className={`${cardColor} border-4 ${borderColor} p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex justify-between items-start group`}>
-                      <div className="space-y-3">
-                        <div className="flex items-center space-x-3"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 border-2 ${borderColor} ${m.assigned_to ? 'bg-pink-500 text-white' : 'bg-emerald-400 text-black'}`}>{m.assigned_to ? 'DIRECT' : 'GLOBAL'}</span></div>
-                        <h4 className="text-xl font-black uppercase italic group-hover:text-pink-500 transition-colors font-display">{m.title}</h4>
-                        <p className="text-[10px] font-bold opacity-60 uppercase max-w-md italic">{m.description}</p>
-                      </div>
-                      <div className="flex flex-col items-end space-y-4">
-                        <div className={`${primaryAccent} border-2 ${borderColor} px-4 py-2 font-black italic shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-sm`}>+{m.reward_amount} RC</div>
-                        <button onClick={() => handleDelete('missions', m.id)} className="text-rose-500 hover:scale-125 transition-transform"><Trash2 size={20} strokeWidth={3} /></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'vouchers' && (
-            <div className="grid lg:grid-cols-12 gap-12">
-              <div className="lg:col-span-5">
-                <form onSubmit={handleCreateVoucher} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
-                  <h3 className="text-2xl font-black uppercase italic flex items-center space-x-3 font-display"><Gift className="text-blue-500" strokeWidth={4} /><span>Mint Voucher</span></h3>
-                  <div className="space-y-4">
-                    <div><label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block italic">Inventory Label</label><input required type="text" value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none shadow-[4px_4px_0px_0px_#000] text-black`} placeholder="VOUCHER NAME"/></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block italic">Vault Cost (RC)</label><input required type="number" value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none shadow-[4px_4px_0px_0px_#000] text-black`}/></div>
-                      <div><label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block italic">Unlock Hash</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className={`w-full bg-white border-4 ${borderColor} p-4 font-black focus:outline-none uppercase shadow-[4px_4px_0px_0px_#000] text-black`} placeholder="RW-XXX"/></div>
-                    </div>
-                    <button type="submit" disabled={submitting} className={`w-full ${primaryAccent} py-6 border-4 ${borderColor} shadow-[6px_6px_0px_0px_#000000] font-black uppercase tracking-[0.4em] text-xs transition-all active:shadow-none`}>{submitting ? 'SYNCING...' : 'AUTHORIZE INVENTORY'}</button>
-                  </div>
-                </form>
-              </div>
-              <div className="lg:col-span-7 space-y-6">
-                <h3 className="text-xl font-black uppercase italic tracking-widest font-display">Vault Grid</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {vouchers.map(v => (
-                    <div key={v.id} className={`${cardColor} border-4 ${borderColor} p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] group relative`}>
-                      <div className="flex justify-between items-start mb-6"><div className={`w-10 h-10 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} border-2 ${borderColor} flex items-center justify-center`}><Gift size={20} strokeWidth={3} /></div><button onClick={() => handleDelete('rewards', v.id)} className="opacity-0 group-hover:opacity-100 text-rose-500 transition-opacity"><Trash2 size={16} /></button></div>
-                      <h4 className="text-xl font-black uppercase italic mb-1 font-display">{v.title}</h4>
-                      <p className={`text-2xl font-black ${isDark ? 'text-[#39ff14]' : 'text-[#834bf1]'}`}>{v.cost} RC</p>
-                      <div className="mt-4 pt-4 border-t-2 border-black/10"><code className="text-[8px] font-mono opacity-40 uppercase tracking-widest">HASH: {v.code}</code></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
           {activeTab === 'ledger' && (
             <div className={`${cardColor} border-4 ${borderColor} shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] overflow-x-auto`}>
               <table className="w-full text-left border-collapse">
