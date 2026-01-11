@@ -5,8 +5,7 @@ import {
   Users, ArrowUpRight, ArrowDownLeft, Search, X, 
   CheckCircle, Send, AlertCircle, Sparkles, Box, 
   ArrowLeft, Plus, Terminal, RefreshCw, LogOut, Layout, Bell, Building2, ShieldCheck, Ticket,
-  /* Added missing Activity icon import */
-  Activity
+  Activity, Briefcase, Instagram, Star
 } from 'lucide-react';
 import { VerificationModal } from './VerificationModal';
 import { BrandManager } from './BrandManager';
@@ -21,6 +20,8 @@ interface UserProfile {
   name: string;
   email: string;
   avatar: string;
+  niche: string;
+  followers: string;
   missionsCompleted: number;
   rcIncome: number; 
   rcExpense: number; 
@@ -36,12 +37,21 @@ interface LogItem {
 
 const ADMIN_EMAILS = ['calcutta16store@gmail.com', 'rohan00as@gmail.com', 'reelywood@gmail.com'];
 
+// --- Mock Alliance Data ---
+const PARTNER_ALLIANCE = [
+  { id: 'b1', name: 'Nike', category: 'Sportswear' },
+  { id: 'b2', name: 'Starbucks', category: 'F&B' },
+  { id: 'b3', name: 'Spotify', category: 'Tech' },
+  { id: 'b4', name: 'Zara', category: 'Fashion' },
+  { id: 'b5', name: 'Apple', category: 'Electronics' },
+];
+
 const MOCK_USERS: UserProfile[] = [
-  { id: 'u1', name: 'Rohan Sen', email: 'rohan@reely.com', avatar: 'RS', missionsCompleted: 42, rcIncome: 15000, rcExpense: 4200, status: 'active' },
-  { id: 'u2', name: 'Sarah Jenkins', email: 'sarah.j@gmail.com', avatar: 'SJ', missionsCompleted: 15, rcIncome: 5000, rcExpense: 1200, status: 'active' },
-  { id: 'u3', name: 'Mike Tyson', email: 'ironmike@box.com', avatar: 'MT', missionsCompleted: 8, rcIncome: 2400, rcExpense: 0, status: 'inactive' },
-  { id: 'u4', name: 'Priya Das', email: 'priya.d@yahoo.com', avatar: 'PD', missionsCompleted: 65, rcIncome: 32000, rcExpense: 28000, status: 'active' },
-  { id: 'u5', name: 'Alex Chen', email: 'chen.a@tech.io', avatar: 'AC', missionsCompleted: 22, rcIncome: 8500, rcExpense: 3000, status: 'active' },
+  { id: 'u1', name: 'Rohan Sen', email: 'rohan@reely.com', avatar: 'RS', niche: 'Tech & AI', followers: '1.2M', missionsCompleted: 42, rcIncome: 15000, rcExpense: 4200, status: 'active' },
+  { id: 'u2', name: 'Sarah Jenkins', email: 'sarah.j@gmail.com', avatar: 'SJ', niche: 'Lifestyle', followers: '450K', missionsCompleted: 15, rcIncome: 5000, rcExpense: 1200, status: 'active' },
+  { id: 'u3', name: 'Mike Tyson', email: 'ironmike@box.com', avatar: 'MT', niche: 'Fitness', followers: '12M', missionsCompleted: 8, rcIncome: 2400, rcExpense: 0, status: 'inactive' },
+  { id: 'u4', name: 'Priya Das', email: 'priya.d@yahoo.com', avatar: 'PD', niche: 'Fashion', followers: '890K', missionsCompleted: 65, rcIncome: 32000, rcExpense: 28000, status: 'active' },
+  { id: 'u5', name: 'Alex Chen', email: 'chen.a@tech.io', avatar: 'AC', niche: 'Gaming', followers: '2.1M', missionsCompleted: 22, rcIncome: 8500, rcExpense: 3000, status: 'active' },
 ];
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
@@ -55,6 +65,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [submissions, setSubmissions] = useState([] as any[]);
   const [logs, setLogs] = useState<LogItem[]>([
     { id: 'l1', title: 'System initialized', time: '10:00 AM', type: 'system' },
+    { id: 'l2', title: 'Alliance Data Synced', time: '10:01 AM', type: 'system' },
   ]);
   const [selectedUsers, setSelectedUsers] = useState<UserProfile[]>([]);
   const [directorySearch, setDirectorySearch] = useState('');
@@ -133,10 +144,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     
     setTimeout(() => {
       setDeployStep('success');
-      const countLabel = targetMode === 'all' ? 'All Users' : `${selectedUsers.length} Selected Agents`;
+      const countLabel = targetMode === 'all' ? 'Global Grid' : `${selectedUsers.length} Selected Agents`;
       const newLog: LogItem = {
         id: Date.now().toString(),
-        title: `Deployed "${formData.title}" to ${countLabel}`,
+        title: `Deployed "${formData.title}" for ${formData.brand} to ${countLabel}`,
         time: new Date().toLocaleTimeString(),
         type: 'system'
       };
@@ -252,8 +263,20 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     <div className="space-y-6">
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Partner Node</label>
-                          <input className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none focus:bg-[#ffde59] transition-all" placeholder="Nike, Starbucks..." value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})}/>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-black/40">Partner Alliance</label>
+                          <div className="relative">
+                            <select 
+                              className="w-full border-[3px] border-black p-4 font-bold text-sm outline-none appearance-none focus:bg-[#ffde59] transition-all"
+                              value={formData.brand}
+                              onChange={e => setFormData({...formData, brand: e.target.value})}
+                            >
+                              <option value="">Select Brand Node...</option>
+                              {PARTNER_ALLIANCE.map(brand => (
+                                <option key={brand.id} value={brand.name}>{brand.name} ({brand.category})</option>
+                              ))}
+                            </select>
+                            <Briefcase className="absolute right-4 top-4 text-black/30 pointer-events-none" size={18}/>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-[10px] font-black uppercase tracking-widest text-black/40">RC Bounty</label>
@@ -268,8 +291,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
                     <div className="p-6 bg-slate-50 border-[3px] border-black shadow-[6px_6px_0px_0px_#000]">
                       <div className="flex justify-between items-center mb-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Target Deployment:</span>
-                        <button onClick={() => setViewMode('directory')} className="text-[9px] font-black text-[#834bf1] uppercase tracking-widest hover:underline">Edit Selection {'>>'}</button>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Target Deployment Hub:</span>
+                        <button onClick={() => setViewMode('directory')} className="text-[9px] font-black text-[#834bf1] uppercase tracking-widest hover:underline">Edit Hub Selection {'>>'}</button>
                       </div>
                       <div className="font-black text-lg text-black italic">
                         {targetMode === 'all' ? 'BROADCAST TO GLOBAL GRID' : `${selectedUsers.length} TARGETED AGENT NODES`}
@@ -290,13 +313,15 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 <span className="text-[10px] bg-[#4ade80] text-black px-3 py-1 font-black uppercase">Active Grid Sync</span>
               </div>
               <div className="space-y-4 h-[600px] overflow-y-auto no-scrollbar pr-4">
-                <div className="border-b border-[#4ade80]/10 pb-4 flex gap-6 hover:bg-white/5 transition-colors p-3">
-                  <span className="text-gray-500 text-[10px] shrink-0 pt-1">[{new Date().toLocaleTimeString()}]</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[#ffde59] font-black mr-3 uppercase">[SYSTEM]</span>
-                    <span className="leading-relaxed text-sm break-words italic">Monitoring active data streams... Grid health optimal.</span>
+                {logs.map((log) => (
+                  <div key={log.id} className="border-b border-[#4ade80]/10 pb-4 flex gap-6 hover:bg-white/5 transition-colors p-3">
+                    <span className="text-gray-500 text-[10px] shrink-0 pt-1">[{log.time}]</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[#ffde59] font-black mr-3 uppercase">[{log.type}]</span>
+                      <span className="leading-relaxed text-sm break-words italic">{log.title}</span>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
@@ -313,7 +338,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   <p className="font-black text-xs leading-tight uppercase group-hover:text-[#834bf1] transition-colors">{log.title}</p>
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-[9px] text-black/30 font-black uppercase">{log.time}</span>
-                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 border-2 border-black ${log.type === 'system' ? 'bg-blue-50' : 'bg-green-50'}`}>{log.type}</span>
+                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 border border-black ${log.type === 'system' ? 'bg-blue-50' : 'bg-green-50'}`}>{log.type}</span>
                   </div>
                 </div>
               ))}
@@ -327,7 +352,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const renderDirectory = () => {
     const filteredDir = MOCK_USERS.filter(u => 
       u.name.toLowerCase().includes(directorySearch.toLowerCase()) || 
-      u.email.toLowerCase().includes(directorySearch.toLowerCase())
+      u.niche.toLowerCase().includes(directorySearch.toLowerCase())
     );
 
     return (
@@ -339,14 +364,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             </button>
             <div>
               <h1 className="text-5xl font-black italic uppercase font-display tracking-tighter">Agent Network</h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 italic">Biometric Node Directory • Authorized Access</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 italic">Alliance Hub • {MOCK_USERS.length} Node Directives Synchronized</p>
             </div>
           </div>
           <div className="relative w-full md:w-96">
             <Search className="absolute left-4 top-4 text-black/30" size={18} />
             <input 
               className="w-full pl-12 pr-4 py-4 border-[4px] border-black font-black text-xs outline-none shadow-[8px_8px_0px_0px_#ffde59] focus:shadow-none transition-all"
-              placeholder="Filter Nodes..."
+              placeholder="Search by Identity or Niche..."
               value={directorySearch}
               onChange={(e) => setDirectorySearch(e.target.value)}
             />
@@ -359,6 +384,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               <tr>
                 <th className="p-6 w-12"></th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest italic">Agent Node</th>
+                <th className="p-6 font-black uppercase text-[10px] tracking-widest">Niche</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-center">Protocol Sync</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-right">RC Inflow</th>
                 <th className="p-6 font-black uppercase text-[10px] tracking-widest text-right">RC Outflow</th>
@@ -386,9 +412,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                         </div>
                         <div>
                           <div className="font-black text-sm uppercase italic leading-none mb-1">{user.name}</div>
-                          <div className="text-[9px] font-bold text-black/40 uppercase tracking-widest">{user.email}</div>
+                          <div className="text-[9px] font-bold text-black/40 uppercase tracking-widest leading-none">{user.email}</div>
+                          <div className="mt-1 flex items-center gap-2">
+                             <Instagram size={10} className="text-pink-500"/>
+                             <span className="text-[9px] font-black text-black/80">{user.followers}</span>
+                          </div>
                         </div>
                       </div>
+                    </td>
+                    <td className="p-6">
+                       <span className="bg-gray-100 px-3 py-1 border-2 border-black text-[9px] font-black uppercase italic tracking-widest">{user.niche}</span>
                     </td>
                     <td className="p-6 text-center font-black italic">{user.missionsCompleted}</td>
                     <td className="p-6 text-right font-black italic text-emerald-500">+{user.rcIncome.toLocaleString()}</td>
