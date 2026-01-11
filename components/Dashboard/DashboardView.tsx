@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
@@ -21,8 +20,7 @@ import {
   Gift,
   Target,
   Info,
-  MapPin,
-  AlertTriangle
+  MapPin
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 
@@ -251,6 +249,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
   
+  // --- NOTIFICATION STATE ---
   const [isNotifPanelOpen, setIsNotifPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -261,6 +260,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
   
+  // Updated Real-time Notification State for Enhanced Toast
   const [toast, setToast] = useState<{ 
     show: boolean; 
     title: string; 
@@ -273,7 +273,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const fetchNotifications = async (user: FirebaseUser) => {
     if (!user || !supabase) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notifications')
       .select('*')
       .or(`user_id.eq.${user.uid},user_id.eq.global`)
@@ -304,11 +304,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     if (!supabase) return;
     const { data } = await supabase
       .from('submissions')
-      .select('*')
+      .select('mission_id, status')
       .eq('user_id', user.uid);
     if (data) setUserSubmissions(data);
   };
 
+  // --- ROBUST REAL-TIME NOTIFICATION LISTENER ---
   useEffect(() => {
     if (!currentUser || !supabase) return;
 
@@ -322,7 +323,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         },
         (payload) => {
           const notif = payload.new;
+          
           if (notif.user_id === 'global' || notif.user_id === currentUser.uid) {
+            console.log('🔔 LIVE NOTIFICATION RECEIVED:', notif);
+            
             setToast({
               show: true,
               title: notif.title,
@@ -330,20 +334,70 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               image: notif.metadata?.image || '',
               location: notif.metadata?.location || ''
             });
+
+            // Update local list and unread count
             setNotifications(prev => [notif, ...prev]);
             setUnreadCount(prev => prev + 1);
+
+            // Auto-hide toast after 5 seconds
             setTimeout(() => {
               setToast(prev => ({ ...prev, show: false, title: '', message: '', image: '', location: '' }));
             }, 5000);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+         console.log("SUBSCRIPTION STATUS:", status);
+      });
 
     return () => {
       supabase?.removeChannel(channel);
     };
   }, [currentUser]);
+
+  useEffect(() => {
+    const syncApplicationData = async () => {
+      const pendingData = localStorage.getItem('pending_application');
+      if (currentUser && pendingData && supabase) {
+        try {
+          const data = JSON.parse(pendingData);
+          const { error } = await supabase.from('profiles').upsert({
+            firebase_uid: currentUser.uid, 
+            email: currentUser.email || "no-email",
+            display_name: data.fullName || currentUser.displayName,
+            handle: data.handle,
+            niche: data.niche,
+            city: data.city,
+            phone: data.phone,
+            followers: parseInt(data.followers) || 0,
+            platform: data.platform,
+            card_status: 'pending', 
+            updated_at: new Date().toISOString(),
+            role: 'user',
+            reelcoins: 0
+          }, { onConflict: 'firebase_uid' });
+
+          if (!error) {
+            localStorage.removeItem('pending_application');
+            window.location.reload();
+          }
+        } catch (err) {
+          console.error("SYNC ERROR:", err);
+        }
+      }
+    };
+    syncApplicationData();
+  }, [currentUser]);
+
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login Failed:", error);
+      setLoading(false);
+    }
+  };
 
   const fetchDashboardData = async (user: FirebaseUser) => {
     if (!supabase) return;
@@ -408,23 +462,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 <Sparkles className="text-white w-8 h-8" />
               </div>
               <h1 className="text-3xl font-black italic tracking-tighter uppercase font-display text-black">Enter The Hub</h1>
+              <p className="text-black/50 dark:text-white/50 text-[10px] font-black uppercase tracking-[0.4em]">Identity Sync Protocol • Reelywood</p>
             </div>
-            <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full bg-white border-[3px] border-black py-4 font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_#834bf1] flex items-center justify-center space-x-3 active:scale-95 transition-all">
-              <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
-              <span>Verify with Google</span>
-            </button>
-            <button onClick={onBack} className="w-full text-[10px] font-black uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors">Return to Studio</button>
+            <div className="space-y-4">
+              <button 
+                onClick={handleLogin}
+                className="w-full bg-white border-[3px] border-black py-4 font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center space-x-3 active:scale-95"
+              >
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
+                <span>Verify with Google</span>
+              </button>
+              <button onClick={onBack} className="w-full text-[10px] font-black uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors">Return to Studio</button>
+            </div>
+            <div className="bg-[#ffde59] border-[3px] border-black p-4 text-center">
+              <p className="text-[9px] font-black uppercase tracking-wide leading-relaxed">No Platform Access? <br/> Contact Terminal Admin.</p>
+            </div>
+            <div className="text-center border-t-[3px] border-black/10 pt-6">
+               <p className="text-[8px] font-black uppercase text-black/20 tracking-[0.4em]">Protected by Reelywood Protocol</p>
+            </div>
           </div>
+          <div className="hidden md:block absolute -bottom-16 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 border-2 border-white font-black text-[8px] uppercase tracking-widest shadow-[4px_4px_0px_0px_#834bf1]">DRAG THE OWL TO PLAY</div>
         </div>
       </div>
     );
   }
 
+  // --- AUTHENTICATED VIEW ---
   const isApproved = profile?.card_status === 'approved';
   const coinBalance = profile?.reelcoins || 0;
 
   return (
-    <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden pb-20">
+    <div className="min-h-screen bg-white text-black font-lexend selection:bg-[#ffde59] overflow-x-hidden">
       {selectedMission && (
         <MissionModal 
           mission={selectedMission} 
@@ -436,6 +504,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         />
       )}
 
+      {/* Vault History Modal */}
       {showHistory && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowHistory(false)}></div>
@@ -465,11 +534,97 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       <header className="border-b-[6px] border-black bg-white sticky top-0 z-[100] px-6 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
-            <button onClick={onBack} className="p-2 border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white hover:translate-x-0.5 hover:translate-y-0.5 transition-all"><ArrowLeft size={24} strokeWidth={3} /></button>
+            <button onClick={onBack} className="p-2 border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"><ArrowLeft size={24} strokeWidth={3} /></button>
             <h1 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-display">Creator <span className="text-[#834bf1]">Hub</span></h1>
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* NOTIFICATION BELL WRAPPER */}
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setIsNotifPanelOpen(!isNotifPanelOpen);
+                  if (!isNotifPanelOpen) setUnreadCount(0); // Reset unread count when opening history
+                }}
+                className="relative p-3 border-[4px] border-black bg-white hover:bg-[#ffde59] shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              >
+                <Bell size={20} className="text-black" strokeWidth={3} />
+                {unreadCount > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black h-6 w-6 flex items-center justify-center border-2 border-black rounded-none animate-pulse">
+                    {unreadCount}
+                  </div>
+                )}
+              </button>
+
+              {/* DROPDOWN PANEL */}
+              {isNotifPanelOpen && (
+                <div className="absolute top-16 right-0 w-80 md:w-96 bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] z-50 animate-in slide-in-from-top-2 duration-200">
+                  <div className="bg-black text-white p-4 flex justify-between items-center">
+                    <span className="font-black italic tracking-widest text-xs uppercase">Incoming Signals</span>
+                    <button onClick={() => setIsNotifPanelOpen(false)} className="hover:text-[#ffde59] transition-colors">
+                      <X size={16} strokeWidth={3} />
+                    </button>
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto bg-white scrollbar-hide p-4">
+                    {notifications.length === 0 ? (
+                      <div className="p-12 text-center opacity-30">
+                        <Bell size={32} className="mx-auto mb-4" strokeWidth={3} />
+                        <p className="text-[10px] font-black uppercase tracking-widest">No New Transmissions</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 pr-2">
+                        {notifications.map((notif) => (
+                          <div key={notif.id} className="bg-white border-b-2 border-black py-4 flex gap-4 items-start group">
+                            
+                            {/* 1. THE ICON / LOGO LOGIC */}
+                            <div className="shrink-0">
+                              {notif.metadata?.image ? (
+                                // A: IF BRAND IMAGE EXISTS -> SHOW LOGO
+                                <div className="w-12 h-12 bg-white border-2 border-black p-1 shrink-0 group-hover:shadow-[2px_2px_0px_0px_#834bf1] transition-all">
+                                   <img 
+                                     src={notif.metadata.image} 
+                                     alt="Brand" 
+                                     className="w-full h-full object-contain" 
+                                   />
+                                </div>
+                              ) : (
+                                // B: NO IMAGE -> SHOW DEFAULT 'INFO' ICON
+                                <div className="w-12 h-12 bg-[#ffde59] border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_#000] shrink-0 group-hover:rotate-6 transition-transform">
+                                   <Info size={20} className="text-black" strokeWidth={3} />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 2. THE TEXT CONTENT */}
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-black italic uppercase text-xs mb-1 truncate">{notif.title}</h4>
+                              <p className="font-bold text-[10px] text-gray-500 uppercase tracking-wide leading-relaxed">
+                                {notif.message}
+                              </p>
+                              <span className="text-[8px] font-mono text-gray-300 mt-2 block uppercase tracking-widest">
+                                 {new Date(notif.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </span>
+                            </div>
+
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 border-t-4 border-black bg-slate-50 text-center">
+                    <button 
+                       onClick={() => setNotifications([])}
+                       className="text-[9px] font-black uppercase tracking-widest hover:text-red-600 transition-colors"
+                    >
+                      Clear Terminal History
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button onClick={() => auth.signOut()} className="flex items-center space-x-3 bg-black text-white px-5 py-2.5 border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[11px] font-black uppercase tracking-widest italic">
               <LogOut size={16} strokeWidth={3} />
               <span>Sign Out</span>
@@ -517,80 +672,74 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               <button onClick={() => setActiveTab('missions')} className={`flex-1 py-5 font-black uppercase text-sm tracking-[0.3em] italic ${activeTab === 'missions' ? 'bg-[#ffde59] border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : ''}`}>Missions</button>
               <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-5 font-black uppercase text-sm tracking-[0.3em] italic ${activeTab === 'rewards' ? 'bg-[#834bf1] text-white border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : ''}`}>Rewards</button>
             </div>
-            
             <div className={`space-y-8 min-h-[600px] ${!isApproved ? 'blur-[1px] pointer-events-none' : ''}`}>
               {activeTab === 'missions' ? (missions.length === 0 ? <div className="bg-white border-[6px] border-black p-24 text-center opacity-30 font-black uppercase text-xs tracking-widest italic">Scanning operational grid...</div> : 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {missions.map((m) => {
-                    const sub = userSubmissions.find(s => s.mission_id === m.id);
-                    const status = sub ? sub.status : 'idle';
+                    const submission = userSubmissions.find(sub => sub.mission_id === m.id);
+                    const status = submission ? submission.status : 'idle';
 
-                    let cardClass = "border-black bg-white";
-                    let btnClass = "bg-[#834bf1] text-white hover:bg-black";
-                    let btnText = "DEPLOY MISSION PROTOCOL";
-                    let isDisabled = false;
+                    let cardStyle = "border-black bg-white";
+                    let buttonText = "DEPLOY MISSION PROTOCOL";
+                    let isLockedCard = false;
 
                     if (status === 'pending') {
-                       cardClass = "border-black bg-[#ffde59]"; 
-                       btnClass = "bg-black text-[#ffde59] opacity-80 cursor-wait";
-                       btnText = "VERIFICATION IN PROGRESS...";
-                       isDisabled = true;
+                       cardStyle = "border-black bg-[#ffde59]"; 
+                       buttonText = "VERIFICATION IN PROGRESS...";
+                       isLockedCard = true;
                     } else if (status === 'approved') {
-                       cardClass = "border-[#4ade80] bg-[#dcfce7]"; 
-                       btnClass = "bg-[#4ade80] text-black cursor-default shadow-none";
-                       btnText = "MISSION COMPLETED ✅";
-                       isDisabled = true;
-                    } else if (status === 'rejected') {
-                       cardClass = "border-red-600 bg-red-50"; 
-                       btnClass = "bg-red-600 text-white hover:bg-red-700";
-                       btnText = "FAILED: RETRY MISSION ↻";
-                       isDisabled = false;
+                       cardStyle = "border-[#4ade80] bg-[#dcfce7]"; 
+                       buttonText = "MISSION COMPLETED ✅";
+                       isLockedCard = true;
                     }
 
                     return (
-                      <div key={m.id} className={`border-[4px] p-6 shadow-[8px_8px_0px_0px_#000] relative flex flex-col transition-all group ${cardClass}`}>
+                      <div key={m.id} className={`border-[4px] p-6 shadow-[8px_8px_0px_0px_#000] relative flex flex-col transition-all ${cardStyle} group`}>
                         <div className="flex items-center gap-4 mb-4">
                           <div className="w-16 h-16 bg-white border-2 border-black p-1 shrink-0 shadow-[2px_2px_0px_0px_#000]">
                              {m.partner_brands?.logo_url ? (
-                                <img src={m.partner_brands.logo_url} className="w-full h-full object-contain" alt="Brand" />
+                                <img 
+                                  src={m.partner_brands.logo_url} 
+                                  className="w-full h-full object-contain" 
+                                  alt="Brand"
+                                />
                              ) : (
                                 <div className="w-full h-full bg-black flex items-center justify-center text-white font-black text-xl italic font-display">R</div>
                              )}
                           </div>
                           <div className="min-w-0">
                              <h3 className="font-black text-xl uppercase leading-none truncate mb-1">{m.title}</h3>
-                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">
+                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                                 {m.partner_brands?.name || "REELYWOOD ORIGINAL"}
                              </p>
                           </div>
                         </div>
                         
-                        <div className="flex-1 space-y-4">
-                          <p className="text-[10px] font-bold text-black/60 leading-relaxed uppercase line-clamp-3 italic">
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold text-black/60 leading-relaxed uppercase line-clamp-3">
                             {m.description}
                           </p>
-                          <div className="bg-black text-[#ffde59] px-3 py-1.5 border-2 border-black font-black text-sm italic inline-block">
-                             +{m.reward_amount} RC
-                          </div>
                         </div>
 
-                        <div className="mt-8 pt-6 border-t-2 border-black/5">
+                        <div className="mt-6 flex items-center justify-between mb-4">
+                           <div className="bg-black text-[#ffde59] px-3 py-1.5 border-2 border-black font-black text-sm italic">
+                             +{m.reward_amount} RC
+                           </div>
+                           {status === 'approved' && <CheckCircle2 className="text-emerald-500" size={24} />}
+                        </div>
+
+                        <div className="mt-auto pt-6">
                            <button 
-                             onClick={() => !isDisabled && setSelectedMission(m)}
-                             disabled={isDisabled && status !== 'rejected'}
-                             className={`w-full py-4 font-black uppercase text-[10px] tracking-[0.2em] border-[3px] border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-2 ${btnClass}`}
+                             onClick={() => !isLockedCard && setSelectedMission(m)}
+                             disabled={isLockedCard}
+                             className={`w-full py-4 font-black uppercase text-[10px] tracking-[0.2em] border-[3px] border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${
+                                isLockedCard 
+                                ? 'opacity-70 cursor-not-allowed bg-black text-white' 
+                                : 'bg-[#834bf1] text-white hover:bg-black hover:shadow-[4px_4px_0px_0px_#fff]'
+                             }`}
                            >
-                             {btnText}
+                             {buttonText}
                            </button>
-                           
-                           {status === 'rejected' && sub.feedback && (
-                              <div className="mt-3 p-3 bg-red-100 border-2 border-red-600 flex items-start gap-2">
-                                <AlertTriangle size={14} className="text-red-600 shrink-0 mt-0.5" />
-                                <p className="text-[9px] font-black text-red-600 uppercase leading-tight">
-                                   REJECTION INTEL: {sub.feedback}
-                                </p>
-                              </div>
-                           )}
                         </div>
                       </div>
                     );
@@ -617,17 +766,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </main>
 
+      {/* --- ENHANCED CENTER SCREEN TOAST MODAL --- */}
       {toast.show && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border-[4px] border-black shadow-[16px_16px_0px_0px_#834bf1] max-w-md w-full relative animate-in zoom-in-95 duration-300 pointer-events-auto flex flex-col overflow-hidden p-10 text-center">
-            <button onClick={() => setToast({ ...toast, show: false, title: '', message: '', image: '', location: '' })} className="absolute top-4 right-4 p-1 bg-white border-2 border-black hover:bg-black hover:text-white shadow-[2px_2px_0px_0px_#000] transition-all"><X size={20} strokeWidth={3} /></button>
-            <div className="flex justify-center mb-6">
-              <div className="bg-black text-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_#ffde59]"><Bell size={32} strokeWidth={3} className="animate-bounce" /></div>
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-none">
+          <div className="bg-white border-[4px] border-black shadow-[16px_16px_0px_0px_#834bf1] max-w-md w-full relative animate-in zoom-in-95 duration-300 pointer-events-auto flex flex-col overflow-hidden">
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setToast({ ...toast, show: false, title: '', message: '', image: '', location: '' })}
+              className="absolute top-4 right-4 z-10 p-1 bg-white border-2 border-black hover:bg-black hover:text-white transition-colors shadow-[2px_2px_0px_0px_#000]"
+            >
+              <X size={20} strokeWidth={3} />
+            </button>
+
+            {/* TOP IMAGE SECTION */}
+            {toast.image ? (
+               <div className="h-56 w-full bg-slate-50 border-b-4 border-black relative overflow-hidden group">
+                  <img src={toast.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="Notification" />
+                  
+                  {/* LOCATION BADGE */}
+                  {toast.location && (
+                     <div className="absolute bottom-4 left-4 bg-[#ffde59] text-black font-black text-[10px] px-3 py-1.5 border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center gap-2 uppercase tracking-widest italic animate-in slide-in-from-left-4 duration-500 delay-200">
+                        <MapPin size={12} strokeWidth={3} /> {toast.location}
+                     </div>
+                  )}
+               </div>
+            ) : (
+               <div className="flex justify-center mt-12 mb-6">
+                 <div className="bg-black text-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_#ffde59]">
+                    <Bell size={32} strokeWidth={3} className="animate-bounce" />
+                 </div>
+               </div>
+            )}
+
+            {/* CONTENT SECTION */}
+            <div className="p-10 text-center bg-white">
+              <h2 className="text-3xl font-black text-center mb-3 italic tracking-tighter uppercase font-display leading-none text-[#834bf1]">
+                {toast.title}
+              </h2>
+              
+              <div className="h-1.5 w-20 bg-black mx-auto mb-6"></div>
+
+              <p className="text-center font-bold text-base tracking-wide mb-10 text-black/70 leading-relaxed uppercase">
+                {toast.message}
+              </p>
+
+              <button 
+                onClick={() => setToast({ ...toast, show: false, title: '', message: '', image: '', location: '' })}
+                className="w-full bg-black text-white py-5 font-black text-xl hover:bg-[#ffde59] hover:text-black border-[4px] border-black transition-all shadow-[6px_6px_0px_0px_#834bf1] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 uppercase italic font-display tracking-tight"
+              >
+                Acknowledge Intel
+              </button>
             </div>
-            <h2 className="text-3xl font-black mb-3 italic tracking-tighter uppercase font-display text-[#834bf1]">{toast.title}</h2>
-            <div className="h-1.5 w-20 bg-black mx-auto mb-6"></div>
-            <p className="font-bold text-base tracking-wide mb-10 text-black/70 leading-relaxed uppercase">{toast.message}</p>
-            <button onClick={() => setToast({ ...toast, show: false, title: '', message: '', image: '', location: '' })} className="w-full bg-black text-white py-5 font-black text-xl hover:bg-[#ffde59] hover:text-black border-[4px] border-black shadow-[6px_6px_0px_0px_#834bf1] transition-all uppercase italic font-display tracking-tight">Acknowledge Intel</button>
+            
+            <div className="bg-slate-50 border-t-2 border-black py-2 px-4 flex justify-between items-center">
+               <span className="text-[8px] font-black uppercase text-black/30 tracking-[0.3em]">Protocol Node v4.1</span>
+               <div className="flex gap-1">
+                  <div className="w-1 h-1 bg-emerald-500 rounded-full"></div>
+                  <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
+               </div>
+            </div>
           </div>
         </div>
       )}

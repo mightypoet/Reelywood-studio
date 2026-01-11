@@ -23,25 +23,6 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     
     setLoading(true);
     try {
-      // --- 1. AUTO-FIX: Ensure User Profile Exists ---
-      // We try to "Upsert" the profile to ensure the foreign key relation in 'submissions' is valid.
-      // We only update non-sensitive fields to avoid resetting coins or status.
-      const { error: profileError } = await supabase.from('profiles').upsert(
-        {
-          firebase_uid: user.uid,
-          email: user.email || "no-email",
-          display_name: user.displayName || "Agent",
-          photo_url: user.photoURL || null
-        },
-        { onConflict: 'firebase_uid' }
-      );
-
-      if (profileError) {
-        console.warn("Auto-registration warning:", profileError.message);
-        // Continue anyway as the user might already exist and this could be a RLS policy rejection on upsert
-      }
-
-      // --- 2. NOW SUBMIT THE MISSION ---
       const { error } = await supabase.from('submissions').insert([{
         mission_id: mission.id,
         user_id: user.uid,
