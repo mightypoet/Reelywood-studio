@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CreatorFormData } from './About';
 import { ChevronRight, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { LoginModal } from './Auth/LoginModal';
 
 interface CreatorFormProps {
   onUpdate: (data: Partial<CreatorFormData>) => void;
@@ -24,6 +25,7 @@ const initialData: CreatorFormData = {
 export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, isSubmitting, externalData, onAcademyClick }) => {
   const [data, setData] = useState<CreatorFormData>(initialData);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
 
   // Sync internal state if parent resets data
   useEffect(() => {
@@ -57,12 +59,6 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
     onSubmit(data);
   };
 
-  const handleEnterHub = () => {
-    window.history.pushState({}, '', '/dashboard');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   if (isSubmitted) {
     return (
       <div className="space-y-8 py-12 text-center animate-in fade-in zoom-in duration-500">
@@ -77,12 +73,13 @@ export const CreatorForm: React.FC<CreatorFormProps> = ({ onUpdate, onSubmit, is
           Your credentials have been cached. Verify your account in the hub to finalize the deployment.
         </p>
         <button 
-          onClick={handleEnterHub}
+          onClick={() => setIsLoginOpen(true)}
           className="w-full bg-[#834bf1] text-white py-6 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] font-black uppercase tracking-[0.4em] text-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center space-x-4 group"
         >
           <span>Enter Reelywood</span>
           <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" strokeWidth={3} />
         </button>
+        <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
       </div>
     );
   }
