@@ -7,7 +7,8 @@ import {
   Check, Shield, Plus, Moon, Sun, Trash2,
   Loader2, Activity, Terminal,
   Target, FileText, Bell, Megaphone,
-  Building2, ListChecks, Clock, X
+  Building2, ListChecks, Clock, X,
+  Crosshair, CheckSquare, Box
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -32,7 +33,7 @@ interface AdminDashboardProps {
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'missions' | 'vouchers' | 'ledger' | 'brands' | 'submissions'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'missions' | 'vouchers' | 'ledger' | 'brands' | 'submissions'>('missions');
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('admin-theme');
     return saved ? saved === 'dark' : true;
@@ -40,7 +41,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<Profile[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -49,9 +50,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
 
+  // Mission State
   const [missionForm, setMissionForm] = useState({ 
     title: '', desc: '', reward: '', brand_id: '', location: '', image_url: '', checkpoints: ['', '', '']
   });
+  const [targetMode, setTargetMode] = useState<'ALL' | 'SELECT'>('ALL');
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
+
+  // Voucher State
   const [voucherForm, setVoucherForm] = useState({ brandId: '', title: '', cost: '', code: '' });
 
   useEffect(() => {
@@ -89,43 +95,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleUpdateStatus = async (uid: string, status: string) => {
-    setSubmitting(true);
-    try {
-      const { error } = await supabase!
-        .from('profiles')
-        .update({ card_status: status })
-        .eq('firebase_uid', uid);
-      if (error) throw error;
-      await fetchAllData();
-    } catch (error: any) {
-      alert("Error: " + error.message);
-    } finally {
-      setSubmitting(false);
-    }
+  const toggleAgentSelection = (id: string) => {
+    setSelectedAgentIds(prev => 
+      prev.includes(id) ? prev.filter(aid => aid !== id) : [...prev, id]
+    );
   };
 
-  const handleCreateMission = async (e: React.FormEvent) => {
+  const handleDeployMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) {
-      alert("Please fill in required fields.");
+      alert("⚠️ SYSTEM ERROR: ALL FIELDS REQUIRED FOR PROTOCOL DEPLOYMENT");
       return;
     }
+
+    if (targetMode === 'SELECT' && selectedAgentIds.length === 0) {
+      alert("⚠️ TARGET ERROR: NO AGENTS SELECTED FOR SELECTIVE UPLINK");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const { error } = await supabase!.from('missions').insert([{
+      const missionPayload = {
         title: missionForm.title,
         description: missionForm.desc,
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
         location: missionForm.location,
         image_url: missionForm.image_url,
-        checkpoints: missionForm.checkpoints.filter(c => c.trim() !== '')
-      }]);
+        checkpoints: missionForm.checkpoints.filter(c => c.trim() !== ''),
+        assigned_to: targetMode === 'ALL' ? null : selectedAgentIds
+      };
+
+      const { error } = await supabase!.from('missions').insert([missionPayload]);
       if (error) throw error;
+
       setMissionForm({ title: '', desc: '', reward: '', brand_id: '', location: '', image_url: '', checkpoints: ['', '', ''] });
+      setSelectedAgentIds([]);
       await fetchAllData();
-      alert("🚀 Mission Deployed to Protocol!");
+      alert("🚀 MISSION PROTOCOL DEPLOYED SUCCESSFULLY");
     } catch (error: any) {
       alert(error.message);
     } finally {
@@ -144,23 +151,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleCreateVoucher = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!voucherForm.title || !voucherForm.cost || !voucherForm.brandId) return alert("All fields required");
+  const handleUpdateStatus = async (uid: string, status: string) => {
     setSubmitting(true);
     try {
-      const { error } = await supabase!.from('rewards').insert([{
-        title: voucherForm.title,
-        cost: parseInt(voucherForm.cost),
-        code: voucherForm.code.toUpperCase(),
-        brand_id: voucherForm.brandId
-      }]);
+      const { error } = await supabase!
+        .from('profiles')
+        .update({ card_status: status })
+        .eq('firebase_uid', uid);
       if (error) throw error;
-      setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
       await fetchAllData();
-      alert("🚀 Voucher Minted!");
     } catch (error: any) {
-      alert(error.message);
+      alert("Error: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -174,13 +175,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const accent = isDark ? 'bg-[#39ff14] text-black' : 'bg-[#834bf1] text-white';
 
   const filteredUsers = users.filter(u => filter === 'all' ? true : u.card_status === filter);
-
-  const getUserMetrics = (uid: string) => {
-    const userTx = transactions.filter(tx => tx.user_uid === uid);
-    const inflow = userTx.filter(tx => tx.amount > 0).reduce((acc, tx) => acc + tx.amount, 0);
-    const outflow = userTx.filter(tx => tx.amount < 0).reduce((acc, tx) => acc + Math.abs(tx.amount), 0);
-    return { inflow, outflow };
-  };
 
   return (
     <div className={`min-h-screen ${bgColor} ${textColor} font-mono transition-colors duration-500 pb-20`}>
@@ -211,6 +205,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </header>
 
       <main className="max-w-[1600px] mx-auto p-6 space-y-8">
+        {/* METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
             { label: 'AGENTS', val: users.length, icon: Users },
@@ -230,6 +225,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
+        {/* NAVIGATION */}
         <div className={`flex border-4 ${borderColor} p-1 ${cardColor} shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-x-auto`}>
           {[
             { id: 'users', label: 'COMMAND', icon: <Users size={16}/> },
@@ -249,80 +245,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
+        {/* CONTENT */}
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-400">
-          {activeTab === 'users' && (
-            <div className="space-y-6">
-              <div className="flex items-center space-x-2">
-                {['all', 'pending', 'approved'].map(f => (
-                  <button key={f} onClick={() => setFilter(f as any)} className={`px-4 py-1 border-2 ${borderColor} font-black uppercase text-[9px] ${filter === f ? 'bg-yellow-400 text-black shadow-[2px_2px_0px_0px_#000]' : 'opacity-40'}`}>
-                    {f}
-                  </button>
-                ))}
-              </div>
-              <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden`}>
-                <table className="w-full text-left border-collapse">
-                  <thead className={`bg-black text-white text-[10px] font-black uppercase tracking-widest`}>
-                    <tr>
-                      <th className="p-4 border-r border-white/20">Agent Identity</th>
-                      <th className="p-4 border-r border-white/20 text-center">Missions</th>
-                      <th className="p-4 border-r border-white/20 text-right text-emerald-400">Inflow (Inc)</th>
-                      <th className="p-4 border-r border-white/20 text-right text-rose-400">Outflow (Exp)</th>
-                      <th className="p-4 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs font-bold">
-                    {filteredUsers.map(user => {
-                      const metrics = getUserMetrics(user.firebase_uid);
-                      return (
-                        <tr key={user.id} className={`border-b-2 ${borderColor} hover:bg-black/5`}>
-                          <td className="p-4 border-r-2 ${borderColor}">
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-10 h-10 border-2 ${borderColor} ${accent} flex items-center justify-center font-black`}>{user.display_name?.charAt(0)}</div>
-                              <div>
-                                <p className="font-black uppercase truncate max-w-[150px]">{user.display_name}</p>
-                                <p className="text-[9px] opacity-40 font-mono">{user.email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4 border-r-2 ${borderColor} text-center font-black text-lg italic">
-                            {transactions.filter(t => t.user_uid === user.firebase_uid && t.amount > 0).length}
-                          </td>
-                          <td className="p-4 border-r-2 ${borderColor} text-right font-black font-mono text-emerald-600">
-                            +{metrics.inflow.toLocaleString()} RC
-                          </td>
-                          <td className="p-4 border-r-2 ${borderColor} text-right font-black font-mono text-rose-600">
-                            -{metrics.outflow.toLocaleString()} RC
-                          </td>
-                          <td className="p-4 text-center">
-                             <div className="flex items-center justify-center gap-2">
-                               {user.card_status === 'pending' ? (
-                                 <>
-                                   <button onClick={() => handleUpdateStatus(user.firebase_uid, 'rejected')} className="p-2 border-2 border-black bg-rose-500 text-white"><X size={14}/></button>
-                                   <button onClick={() => handleUpdateStatus(user.firebase_uid, 'approved')} className="p-2 border-2 border-black bg-emerald-500 text-white"><Check size={14}/></button>
-                                 </>
-                               ) : (
-                                 <span className={`px-2 py-1 border-2 border-black text-[9px] uppercase ${user.card_status === 'approved' ? 'bg-emerald-400' : 'bg-rose-400'}`}>
-                                   {user.card_status}
-                                 </span>
-                               )}
-                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           {activeTab === 'missions' && (
-            <div className="grid lg:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
-                  <Zap className="text-purple-600" /> MISSION CONSOLE
-                </h3>
-                <form onSubmit={handleCreateMission} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left: Input Console */}
+              <div className="flex flex-col h-full">
+                <h2 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
+                  <span className="text-purple-600">+</span> MISSION CONSOLE
+                </h2>
+                <form onSubmit={handleDeployMission} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
+                  
                   <div>
                     <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">LINK ECOSYSTEM PARTNER</label>
                     <select 
@@ -335,16 +268,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       {brands.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
                     </select>
                   </div>
+
                   <div>
-                    <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">MISSION TITLE</label>
+                    <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">OBJECTIVE HEADER</label>
                     <input 
                       required
                       className="w-full border-4 border-black p-4 font-bold text-sm outline-none focus:bg-yellow-50 transition-colors text-black"
-                      placeholder="e.g. POST A REEL FOR CABIN 17A"
+                      placeholder="e.g. POST A REEL"
                       value={missionForm.title}
                       onChange={(e) => setMissionForm({...missionForm, title: e.target.value})}
                     />
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">REWARD (RC)</label>
@@ -367,29 +302,74 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">DESCRIPTION</label>
-                    <textarea 
-                      className="w-full border-4 border-black p-4 font-bold text-sm outline-none text-black h-24"
-                      placeholder="Mission deliverables..."
-                      value={missionForm.desc}
-                      onChange={(e) => setMissionForm({...missionForm, desc: e.target.value})}
-                    />
+
+                  {/* DEPLOYMENT TARGETING */}
+                  <div className="bg-gray-100 dark:bg-black/20 border-2 border-dashed border-black dark:border-white/20 p-4">
+                    <label className="block text-[9px] font-black uppercase text-black dark:text-white mb-3 flex items-center gap-2">
+                      <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
+                    </label>
+                    
+                    <div className="flex gap-2 mb-4">
+                       <button 
+                         type="button"
+                         onClick={() => setTargetMode('ALL')}
+                         className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}
+                       >
+                         GLOBAL BROADCAST
+                       </button>
+                       <button 
+                         type="button"
+                         onClick={() => setTargetMode('SELECT')}
+                         className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}
+                       >
+                         SELECTIVE UPLINK
+                       </button>
+                    </div>
+
+                    {targetMode === 'SELECT' && (
+                      <div className="bg-white border-2 border-black max-h-[150px] overflow-y-auto p-2 space-y-1">
+                        {users.map(agent => (
+                          <div 
+                            key={agent.firebase_uid}
+                            onClick={() => toggleAgentSelection(agent.firebase_uid)}
+                            className={`flex items-center gap-3 p-2 cursor-pointer border border-transparent hover:bg-gray-100 ${selectedAgentIds.includes(agent.firebase_uid) ? 'bg-purple-50 border-purple-200' : ''}`}
+                          >
+                            <div className={`w-4 h-4 border-2 border-black flex items-center justify-center ${selectedAgentIds.includes(agent.firebase_uid) ? 'bg-purple-600' : 'bg-white'}`}>
+                              {selectedAgentIds.includes(agent.firebase_uid) && <CheckSquare className="w-3 h-3 text-white" />}
+                            </div>
+                            <span className="text-[10px] font-bold uppercase text-black">
+                              {agent.display_name} <span className="opacity-30">@{agent.handle}</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <button type="submit" disabled={submitting} className={`w-full py-5 font-black text-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] uppercase transition-all ${submitting ? 'opacity-50 bg-gray-400' : `${accent} hover:translate-y-1 hover:shadow-none`}`}>
-                    {submitting ? 'DEPLOYING...' : 'DEPLOY MISSION PROTOCOL'}
+
+                  <button 
+                    type="submit" 
+                    disabled={submitting} 
+                    className={`w-full py-5 font-black text-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] uppercase transition-all ${submitting ? 'opacity-50 bg-gray-400' : `${accent} hover:translate-y-1 hover:shadow-none`}`}
+                  >
+                    {submitting ? (
+                      <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" /> PROCESSING...</span>
+                    ) : 'DEPLOY MISSION PROTOCOL'}
                   </button>
                 </form>
               </div>
-              <div>
-                <h3 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
+              
+              {/* Right: Live Sync Grid */}
+              <div className="flex flex-col h-full">
+                <h2 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-2">
                   <Activity className="text-emerald-500" /> ACTIVE SYNC GRID
-                </h3>
-                <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
+                </h2>
+                <div className="space-y-4 overflow-y-auto pr-2 max-h-[800px]">
                   {missions.map((m) => (
                     <div key={m.id} className={`${cardColor} border-4 ${borderColor} p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative group`}>
                       <div className="flex justify-between items-start mb-4">
-                        <span className="bg-emerald-400 text-black border-2 border-black px-2 py-0.5 text-[8px] font-black uppercase">LIVE NODE</span>
+                        <span className="bg-emerald-400 text-black border-2 border-black px-2 py-0.5 text-[8px] font-black uppercase">
+                          {m.assigned_to ? 'TARGETED' : 'GLOBAL NODE'}
+                        </span>
                         <div className="flex gap-2">
                            <span className="bg-[#834bf1] text-white border-2 border-black px-2 py-0.5 text-[10px] font-black">+{m.reward_amount} RC</span>
                            <button onClick={() => handleDeleteMission(m.id)} className="text-rose-500 hover:scale-110 transition-transform"><Trash2 size={16} /></button>
@@ -397,7 +377,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       </div>
                       <h4 className="font-black italic text-xl uppercase mb-1">{m.title}</h4>
                       <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Partner: {m.partner_brands?.name || 'Reelywood'}</p>
-                      <p className="text-[10px] leading-relaxed text-black/60 dark:text-white/60 uppercase">{m.description}</p>
+                      <p className="text-[10px] leading-relaxed text-black/60 dark:text-white/60 uppercase line-clamp-2">{m.description}</p>
                     </div>
                   ))}
                 </div>
@@ -405,47 +385,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           )}
 
-          {activeTab === 'vouchers' && (
-            <div className="grid lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-5">
-                <form onSubmit={handleCreateVoucher} className={`${cardColor} border-4 ${borderColor} p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-4`}>
-                  <h3 className="text-xl font-black uppercase italic flex items-center space-x-2"><Gift className="text-blue-500" /><span>Mint Voucher</span></h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Link Partner Node</label>
-                      <select required className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" value={voucherForm.brandId} onChange={e => setVoucherForm({...voucherForm, brandId: e.target.value})}>
-                        <option value="">-- SELECT BRAND --</option>
-                        {brands.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Voucher Label</label>
-                      <input required type="text" value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" placeholder="e.g. Free Coffee"/>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Cost (RC)</label><input required type="number" value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black"/></div>
-                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Hash Code</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black uppercase" placeholder="RW-XXX"/></div>
-                    </div>
-                    <button type="submit" disabled={submitting} className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest`}>
-                      {submitting ? 'SYNCING...' : 'AUTHORIZE INVENTORY'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-              <div className="lg:col-span-7 grid md:grid-cols-2 gap-4">
-                {vouchers.map(v => (
-                  <div key={v.id} className={`${cardColor} border-2 ${borderColor} p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative group`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="bg-black text-white p-2 border border-white"><Gift size={16}/></div>
-                      <span className="text-[8px] font-black uppercase bg-yellow-400 text-black px-1 border border-black">
-                        {brands.find(b => b.id === v.brand_id)?.name || 'ORIGINAL'}
-                      </span>
-                    </div>
-                    <h4 className="font-black uppercase text-sm">{v.title}</h4>
-                    <p className="text-lg font-black text-purple-600">{v.cost} RC</p>
-                    <code className="text-[8px] opacity-30 mt-2 block">HASH: {v.code}</code>
-                  </div>
+          {activeTab === 'users' && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-2">
+                {['all', 'pending', 'approved'].map(f => (
+                  <button key={f} onClick={() => setFilter(f as any)} className={`px-4 py-1 border-2 ${borderColor} font-black uppercase text-[9px] ${filter === f ? 'bg-yellow-400 text-black shadow-[2px_2px_0px_0px_#000]' : 'opacity-40'}`}>
+                    {f}
+                  </button>
                 ))}
+              </div>
+              <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden`}>
+                <table className="w-full text-left border-collapse">
+                  <thead className={`bg-black text-white text-[10px] font-black uppercase tracking-widest`}>
+                    <tr>
+                      <th className="p-4 border-r border-white/20">Agent Identity</th>
+                      <th className="p-4 border-r border-white/20 text-right">Balance</th>
+                      <th className="p-4 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs font-bold">
+                    {filteredUsers.map(user => (
+                      <tr key={user.id} className={`border-b-2 ${borderColor} hover:bg-black/5`}>
+                        <td className="p-4 border-r-2 ${borderColor}">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-10 h-10 border-2 ${borderColor} ${accent} flex items-center justify-center font-black`}>{user.display_name?.charAt(0)}</div>
+                            <div>
+                              <p className="font-black uppercase truncate max-w-[150px]">{user.display_name}</p>
+                              <p className="text-[9px] opacity-40 font-mono">{user.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 border-r-2 ${borderColor} text-right font-black font-mono text-emerald-600">
+                          {user.reelcoins?.toLocaleString()} RC
+                        </td>
+                        <td className="p-4 text-center">
+                           <div className="flex items-center justify-center gap-2">
+                             {user.card_status === 'pending' ? (
+                               <>
+                                 <button onClick={() => handleUpdateStatus(user.firebase_uid, 'rejected')} className="p-2 border-2 border-black bg-rose-500 text-white"><X size={14}/></button>
+                                 <button onClick={() => handleUpdateStatus(user.firebase_uid, 'approved')} className="p-2 border-2 border-black bg-emerald-500 text-white"><Check size={14}/></button>
+                               </>
+                             ) : (
+                               <span className={`px-2 py-1 border-2 border-black text-[9px] uppercase ${user.card_status === 'approved' ? 'bg-emerald-400' : 'bg-rose-400'}`}>
+                                 {user.card_status}
+                               </span>
+                             )}
+                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -467,6 +457,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           )}
 
           {activeTab === 'brands' && <BrandManager />}
+
+          {activeTab === 'vouchers' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-5">
+                <form className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
+                  <h3 className="text-xl font-black uppercase italic flex items-center space-x-2"><Gift className="text-blue-500" /><span>Mint Voucher</span></h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Link Partner Node</label>
+                      <select required className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" value={voucherForm.brandId} onChange={e => setVoucherForm({...voucherForm, brandId: e.target.value})}>
+                        <option value="">-- SELECT BRAND --</option>
+                        {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Voucher Label</label>
+                      <input required type="text" value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" placeholder="e.g. Free Coffee"/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Cost (RC)</label><input required type="number" value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black"/></div>
+                      <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Hash Code</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black uppercase" placeholder="RW-XXX"/></div>
+                    </div>
+                    <button type="button" className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest`}>
+                      AUTHORIZE INVENTORY
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <div className="lg:col-span-7 grid md:grid-cols-2 gap-4">
+                {vouchers.map(v => (
+                  <div key={v.id} className={`${cardColor} border-2 ${borderColor} p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative group`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="bg-black text-white p-2 border border-white"><Box size={16}/></div>
+                      <span className="text-[8px] font-black uppercase bg-yellow-400 text-black px-1 border border-black">
+                        {brands.find(b => b.id === v.brand_id)?.name || 'ORIGINAL'}
+                      </span>
+                    </div>
+                    <h4 className="font-black uppercase text-sm">{v.title}</h4>
+                    <p className="text-lg font-black text-purple-600">{v.cost} RC</p>
+                    <code className="text-[8px] opacity-30 mt-2 block">HASH: {v.code}</code>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {activeTab === 'ledger' && (
             <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden`}>
