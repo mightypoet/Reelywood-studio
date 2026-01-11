@@ -301,10 +301,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         fetchNotifications(user);
         fetchMySubmissions(user);
 
-        // --- FIX: Add Null Check for Supabase ---
+        // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
         if (!supabase) return; 
 
-        // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
         const channel = supabase
           .channel('user-dashboard-realtime')
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'missions' }, () => {

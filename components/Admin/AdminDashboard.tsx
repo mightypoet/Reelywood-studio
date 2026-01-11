@@ -47,8 +47,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
-  // Notification State
-  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  // Custom Notification State (Replaces Alerts)
+  const [notify, setNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
   // Data Stores
   const [users, setUsers] = useState<Profile[]>([]);
@@ -78,29 +78,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
     fetchAllData();
 
-    // --- FIX: Add Null Check for Supabase ---
-    if (!supabase) return; 
+    // --- INTELLIGENT AUTO-REFRESH (Realtime) ---
+    if (!supabase) return;
 
-    // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
     const channel = supabase
-      .channel('admin-dashboard-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => refreshData('Agent Status Changed'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => refreshData('Missions Updated'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => refreshData('New Submission Received'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => refreshData('Inventory Updated'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_brands' }, () => refreshData('Brand Data Changed'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => refreshData('Ledger Updated'))
+      .channel('admin-dashboard-live')
+      // Listen for EVERYTHING relevant
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => triggerRefresh('Missions Updated'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => triggerRefresh('New Submission'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => triggerRefresh('Ledger Activity'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => triggerRefresh('Voucher Updated'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => triggerRefresh('User Status Change'))
       .subscribe();
 
-    // Cleanup listener on unmount
     return () => {
-      if (supabase) supabase.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
-  const refreshData = async (reason?: string) => {
-    console.log(`⚡ Auto-Refresh Triggered: ${reason}`);
-    await fetchAllData();
+  const triggerRefresh = (reason: string) => {
+    console.log(`⚡ Live Update: ${reason}`);
+    fetchAllData(); // Silent refresh
   };
 
   const fetchAllData = async () => {
@@ -110,6 +108,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        // Fetch Ledger
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name, email), missions(title, reward_amount, checkpoints)').eq('status', 'pending').order('created_at', { ascending: false })
@@ -126,28 +125,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const showNotify = (type: 'success' | 'error', message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 3000);
+  // --- HELPER: Notification System ---
+  const showToast = (type: 'success' | 'error', msg: string) => {
+    setNotify({ type, msg });
+    setTimeout(() => setNotify(null), 4000);
   };
+
+  // --- ACTIONS ---
 
   const handleDeployMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) {
-      showNotify('error', "MISSING DATA: FILL ALL FIELDS");
+      showToast('error', "MISSING DATA: Please fill all mission fields.");
       return;
     }
     if (targetMode === 'SELECT' && selectedAgentIds.length === 0) {
-      showNotify('error', "TARGET ERROR: SELECT AGENTS OR SWITCH TO GLOBAL");
+      showToast('error', "TARGET ERROR: Select agents or switch to Global Broadcast.");
       return;
     }
 
     setSubmitting(true);
     try {
       const brand = brands.find(b => b.id === missionForm.brand_id);
+      
       const missionPayload = {
         title: missionForm.title,
-        description: brand?.description || "Brief Loading...",
+        description: brand?.description || "Mission Brief Loading...",
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
         location: brand?.location_text || 'Global',
@@ -161,21 +164,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       setMissionForm({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
       setSelectedAgentIds([]);
-      showNotify('success', "🚀 MISSION PROTOCOL DEPLOYED");
+      showToast('success', "🚀 MISSION PROTOCOL DEPLOYED");
     } catch (error: any) {
-      showNotify('error', error.message);
+      showToast('error', error.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDeployVoucher = async () => {
+  const handleDeployVoucher = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!voucherForm.brandId || !voucherForm.title || !voucherForm.cost || !voucherForm.code) {
-      showNotify('error', "DATA MISSING: Fill all voucher fields.");
+      showToast('error', "DATA MISSING: Please fill all voucher fields.");
       return;
     }
     if (targetMode === 'SELECT' && selectedAgentIds.length === 0) {
-      showNotify('error', "TARGET ERROR: Select agents or switch to Global.");
+      showToast('error', "TARGET ERROR: Select agents or switch to Global.");
       return;
     }
 
@@ -192,24 +196,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       const { error } = await supabase!.from('rewards').insert([payload]);
       if (error) throw error;
       
-      showNotify('success', "🎟️ VOUCHER MINTED & DEPLOYED");
+      showToast('success', "🎟️ VOUCHER MINTED & DEPLOYED");
       setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
       setSelectedAgentIds([]);
     } catch (e: any) {
-      showNotify('error', e.message);
+      showToast('error', e.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteMission = async (id: string) => {
-    if (!confirm("Delete this mission?")) return;
+    if (!confirm("Are you sure you want to delete this mission?")) return;
     try {
       const { error } = await supabase!.from('missions').delete().eq('id', id);
       if (error) throw error;
-      showNotify('success', "MISSION DELETED");
+      showToast('success', "MISSION DELETED FROM NETWORK");
     } catch (error: any) {
-      showNotify('error', error.message);
+      showToast('error', error.message);
     }
   };
 
@@ -218,9 +222,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     try {
       const { error } = await supabase!.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
       if (error) throw error;
-      showNotify('success', `AGENT STATUS: ${status.toUpperCase()}`);
+      showToast('success', `AGENT STATUS UPDATED: ${status.toUpperCase()}`);
     } catch (error: any) {
-      showNotify('error', error.message);
+      showToast('error', error.message);
     } finally {
       setSubmitting(false);
     }
@@ -230,6 +234,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setSelectedAgentIds(prev => prev.includes(id) ? prev.filter(aid => aid !== id) : [...prev, id]);
   };
 
+  // --- UI CONSTANTS ---
   const isDark = darkMode;
   const bgColor = isDark ? 'bg-[#0a0a0a]' : 'bg-gray-100';
   const textColor = isDark ? 'text-white' : 'text-black';
@@ -240,14 +245,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   return (
     <div className={`min-h-screen ${bgColor} ${textColor} font-mono transition-colors duration-500 pb-20`}>
-      {notification && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4 fade-in duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] ${notification.type === 'success' ? 'bg-[#39ff14] text-black' : 'bg-rose-500 text-white'}`}>
-            {notification.type === 'success' ? <CheckCircle size={24} strokeWidth={3}/> : <AlertCircle size={24} strokeWidth={3}/>}
-            <div>
-              <h4 className="font-black uppercase text-sm tracking-widest">{notification.type === 'success' ? 'SYSTEM SUCCESS' : 'SYSTEM ERROR'}</h4>
-              <p className="font-bold text-xs uppercase">{notification.message}</p>
+      
+      {/* --- STATUS TOAST NOTIFICATION (Replaces Alerts) --- */}
+      {notify && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4 fade-in duration-300 w-full max-w-md px-4">
+          <div className={`flex items-center gap-4 px-6 py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_#000] ${notify.type === 'success' ? 'bg-[#39ff14] text-black' : 'bg-rose-500 text-white'}`}>
+            {notify.type === 'success' ? <CheckCircle size={24} strokeWidth={3}/> : <AlertCircle size={24} strokeWidth={3}/>}
+            <div className="flex-1">
+              <h4 className="font-black uppercase text-xs tracking-[0.2em] mb-1">{notify.type === 'success' ? 'SYSTEM SUCCESS' : 'SYSTEM ERROR'}</h4>
+              <p className="font-bold text-xs uppercase leading-tight">{notify.msg}</p>
             </div>
+            <button onClick={() => setNotify(null)}><X size={18}/></button>
           </div>
         </div>
       )}
@@ -383,7 +391,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                        <button type="button" onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE UPLINK</button>
                     </div>
                     {targetMode === 'SELECT' && (
-                      <div className="bg-white border-2 border-black max-h-[300px] overflow-y-auto">
+                      <div className="bg-white border-2 border-black max-h-[200px] overflow-y-auto">
                         <table className="w-full text-left border-collapse">
                           <tbody className="text-[10px] font-bold text-black">
                             {users.map(agent => (
@@ -444,8 +452,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <div className="lg:col-span-5">
                 <div className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
                   <h3 className="text-xl font-black uppercase italic flex items-center space-x-2"><Gift className="text-blue-500" /><span>Mint Voucher</span></h3>
-                  
-                  <div className="space-y-4">
+                  <form onSubmit={handleDeployVoucher} className="space-y-4">
                     <div>
                       <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Link Partner Node</label>
                       <select required className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black" value={voucherForm.brandId} onChange={e => setVoucherForm({...voucherForm, brandId: e.target.value})}>
@@ -467,8 +474,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
                       </label>
                       <div className="flex gap-2 mb-4">
-                         <button onClick={() => setTargetMode('ALL')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>GLOBAL</button>
-                         <button onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE</button>
+                         <button type="button" onClick={() => setTargetMode('ALL')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>GLOBAL</button>
+                         <button type="button" onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE</button>
                       </div>
                       {targetMode === 'SELECT' && (
                         <div className="bg-white border-2 border-black max-h-[150px] overflow-y-auto p-1">
@@ -482,19 +489,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       )}
                     </div>
 
-                    <button onClick={handleDeployVoucher} disabled={submitting} className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0px_0px_#000] transition-all`}>
+                    <button type="submit" disabled={submitting} className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0px_0px_#000] transition-all`}>
                       {submitting ? 'PROCESSING...' : 'AUTHORIZE INVENTORY'}
                     </button>
-                  </div>
+                  </form>
                 </div>
               </div>
               <div className="lg:col-span-7 grid md:grid-cols-2 gap-4">
                 {vouchers.map(v => (
                   <div key={v.id} className={`${cardColor} border-2 ${borderColor} p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative group`}>
                     <div className="flex justify-between items-start mb-2">
-                      <div className="bg-black text-white p-2 border border-white">
-                         {v.partner_brands?.logo_url ? <img src={v.partner_brands.logo_url} className="w-4 h-4 object-cover"/> : <Box size={16}/>}
-                      </div>
+                      <div className="bg-black text-white p-2 border border-white"><Box size={16}/></div>
                       <span className={`text-[8px] font-black uppercase px-1 border border-black ${v.assigned_to ? 'bg-blue-300 text-black' : 'bg-yellow-400 text-black'}`}>
                         {v.assigned_to ? 'RESTRICTED' : 'PUBLIC'}
                       </span>
@@ -505,6 +510,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'ledger' && (
+            <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden`}>
+              <table className="w-full text-left">
+                <thead className="bg-black text-white text-[9px] uppercase font-black">
+                  <tr>
+                    <th className="p-4">Timestamp</th>
+                    <th className="p-4">Identity</th>
+                    <th className="p-4 text-right">Delta</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[11px] font-bold">
+                  {transactions.map((tx, i) => (
+                    <tr key={i} className={`border-b border-black/10`}>
+                      <td className="p-4 font-mono opacity-40">{new Date(tx.created_at).toLocaleString()}</td>
+                      <td className="p-4 uppercase italic">{users.find(u => u.firebase_uid === tx.user_uid)?.display_name || 'Agent'}</td>
+                      <td className={`p-4 text-right italic ${tx.amount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} RC</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
@@ -580,29 +608,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           )}
 
           {activeTab === 'brands' && <BrandManager />}
-
-          {activeTab === 'ledger' && (
-            <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden`}>
-              <table className="w-full text-left">
-                <thead className="bg-black text-white text-[9px] uppercase font-black">
-                  <tr>
-                    <th className="p-4">Timestamp</th>
-                    <th className="p-4">Identity</th>
-                    <th className="p-4 text-right">Delta</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[11px] font-bold">
-                  {transactions.map((tx, i) => (
-                    <tr key={i} className={`border-b border-black/10`}>
-                      <td className="p-4 font-mono opacity-40">{new Date(tx.created_at).toLocaleString()}</td>
-                      <td className="p-4 uppercase italic">{users.find(u => u.firebase_uid === tx.user_uid)?.display_name || 'Agent'}</td>
-                      <td className={`p-4 text-right italic ${tx.amount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} RC</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       </main>
     </div>
