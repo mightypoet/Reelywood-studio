@@ -23,22 +23,6 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     
     setLoading(true);
     try {
-      // --- 1. AUTO-FIX: Ensure User Profile Exists ---
-      const { error: profileError } = await supabase.from('profiles').upsert(
-        {
-          firebase_uid: user.uid,
-          email: user.email || "no-email",
-          display_name: user.displayName || "Agent",
-          photo_url: user.photoURL || null
-        },
-        { onConflict: 'firebase_uid' }
-      );
-
-      if (profileError) {
-        console.warn("Auto-registration warning:", profileError.message);
-      }
-
-      // --- 2. NOW SUBMIT THE MISSION ---
       const { error } = await supabase.from('submissions').insert([{
         mission_id: mission.id,
         user_id: user.uid,
