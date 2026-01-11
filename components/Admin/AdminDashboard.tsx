@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
@@ -8,13 +7,13 @@ import {
   Loader2, Activity, Terminal,
   Building2, ListChecks, Clock, X,
   Crosshair, CheckSquare, Box,
-  Instagram, Youtube, Twitter,
-  // Added FileText to fix "Cannot find name 'FileText'" error
-  FileText
+  Instagram, Youtube, Twitter, MapPin,
+  FileText, ShieldCheck
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
 
+// --- TYPES ---
 export interface Profile {
   id: string;
   firebase_uid: string;
@@ -31,6 +30,8 @@ export interface Profile {
   created_at: string;
 }
 
+export type Agent = Profile;
+
 interface AdminDashboardProps {
   onLogout: () => void;
 }
@@ -46,24 +47,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
+  // Data Stores
   const [users, setUsers] = useState<Profile[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
 
-  // Mission State
+  // Mission Form State
   const [missionForm, setMissionForm] = useState({ 
-    title: '', desc: '', reward: '', brand_id: '', location: '', image_url: '', checkpoints: ['', '', '']
+    title: '', 
+    reward: '', 
+    brand_id: '', 
+    // Checkpoints for the 3 Key Factors
+    checkpoint1: '',
+    checkpoint2: '',
+    checkpoint3: ''
   });
+  
+  // Voucher Form State
+  const [voucherForm, setVoucherForm] = useState({ 
+    brandId: '', title: '', cost: '', code: '' 
+  });
+
+  // Targeting Logic
   const [targetMode, setTargetMode] = useState<'ALL' | 'SELECT'>('ALL');
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
-
-  // Voucher State
-  const [voucherForm, setVoucherForm] = useState({ brandId: '', title: '', cost: '', code: '' });
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -80,8 +93,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       const [profilesRes, missionsRes, rewardsRes, transRes, brandsRes, submissionsRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('missions').select('*, partner_brands(name)').order('created_at', { ascending: false }),
-        supabase.from('rewards').select('*').order('created_at', { ascending: false }),
+        supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name, email), missions(title, reward_amount, checkpoints)').eq('status', 'pending').order('created_at', { ascending: false })
@@ -106,6 +119,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     );
   };
 
+  // --- MISSION DEPLOYMENT ---
   const handleDeployMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) {
@@ -120,26 +134,76 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
     setSubmitting(true);
     try {
+      // 1. AUTO-FETCH BRAND DETAILS
+      const brand = brands.find(b => b.id === missionForm.brand_id);
+      if (!brand) throw new Error("Critical Error: Brand Node Not Found");
+
+      // 2. BUILD PAYLOAD WITH BRAND DATA & CHECKPOINTS
       const missionPayload = {
         title: missionForm.title,
-        description: missionForm.desc,
+        description: brand.description || "Mission Brief Loading...", // Fallback or auto-fill
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
-        location: missionForm.location,
-        image_url: missionForm.image_url,
-        checkpoints: missionForm.checkpoints.filter(c => c.trim() !== ''),
+        // Automatically attach brand location & cover image
+        location: brand.location_text || 'Global', 
+        image_url: brand.cover_image_url || '',
+        // Combine the 3 key factor inputs into the array
+        checkpoints: [
+          missionForm.checkpoint1 || "Verify Link Authority",
+          missionForm.checkpoint2 || "Quality Control Check",
+          missionForm.checkpoint3 || "Tag/Caption Audit"
+        ].filter(c => c.trim() !== ''),
         assigned_to: targetMode === 'ALL' ? null : selectedAgentIds
       };
 
       const { error } = await supabase!.from('missions').insert([missionPayload]);
       if (error) throw error;
 
-      setMissionForm({ title: '', desc: '', reward: '', brand_id: '', location: '', image_url: '', checkpoints: ['', '', ''] });
+      setMissionForm({ 
+        title: '', reward: '', brand_id: '', 
+        checkpoint1: '', checkpoint2: '', checkpoint3: '' 
+      });
       setSelectedAgentIds([]);
       await fetchAllData();
       alert("🚀 MISSION PROTOCOL DEPLOYED SUCCESSFULLY");
     } catch (error: any) {
       alert(error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // --- VOUCHER DEPLOYMENT ---
+  const handleDeployVoucher = async () => {
+    if (!voucherForm.brandId || !voucherForm.title || !voucherForm.cost || !voucherForm.code) {
+      alert("⚠️ DATA MISSING: Fill all voucher fields.");
+      return;
+    }
+    
+    if (targetMode === 'SELECT' && selectedAgentIds.length === 0) {
+      alert("⚠️ TARGET ERROR: Select agents or switch to Global Broadcast.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        brand_id: voucherForm.brandId,
+        title: voucherForm.title,
+        cost: parseInt(voucherForm.cost),
+        code: voucherForm.code,
+        assigned_to: targetMode === 'ALL' ? null : selectedAgentIds
+      };
+
+      const { error } = await supabase!.from('rewards').insert([payload]);
+      if (error) throw error;
+      
+      alert("🎟️ VOUCHER MINTED & DEPLOYED");
+      setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
+      setSelectedAgentIds([]);
+      await fetchAllData();
+    } catch (e: any) {
+      alert(e.message);
     } finally {
       setSubmitting(false);
     }
@@ -238,7 +302,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             { id: 'brands', label: 'ALLIANCE', icon: <Building2 size={16}/> },
             { id: 'missions', label: 'CONSOLE', icon: <Zap size={16}/> },
             { id: 'vouchers', label: 'VAULT', icon: <Gift size={16}/> },
-            // Corrected icon use from FileText
             { id: 'ledger', label: 'LEDGER', icon: <FileText size={16}/> }
           ].map(tab => (
             <button 
@@ -262,6 +325,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </h2>
                 <form onSubmit={handleDeployMission} className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
                   
+                  {/* Brand Link */}
                   <div>
                     <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">LINK ECOSYSTEM PARTNER</label>
                     <select 
@@ -275,6 +339,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </select>
                   </div>
 
+                  {/* Objective */}
                   <div>
                     <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">OBJECTIVE HEADER</label>
                     <input 
@@ -286,7 +351,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">REWARD (RC)</label>
                       <input 
@@ -298,15 +363,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         onChange={(e) => setMissionForm({...missionForm, reward: e.target.value})}
                       />
                     </div>
-                    <div>
-                      <label className="block text-[9px] font-black uppercase text-gray-400 mb-2">LOCATION</label>
-                      <input 
-                        className="w-full border-4 border-black p-4 font-bold text-sm outline-none text-black"
-                        placeholder="Kolkata, IN"
-                        value={missionForm.location}
-                        onChange={(e) => setMissionForm({...missionForm, location: e.target.value})}
-                      />
-                    </div>
+                  </div>
+
+                  {/* 3 KEY FACTORS (Checkpoints) */}
+                  <div className="bg-slate-50 border-2 border-black p-4 space-y-3">
+                     <label className="block text-[9px] font-black uppercase text-gray-400 flex items-center gap-2">
+                       <ShieldCheck size={14} className="text-purple-600" /> 3 KEY VERIFICATION FACTORS
+                     </label>
+                     <input className="w-full p-2 border-2 border-black font-bold text-xs text-black" placeholder="Factor 1 (e.g. Follow Account)" 
+                        value={missionForm.checkpoint1} onChange={e => setMissionForm({...missionForm, checkpoint1: e.target.value})} />
+                     <input className="w-full p-2 border-2 border-black font-bold text-xs text-black" placeholder="Factor 2 (e.g. Like Post)" 
+                        value={missionForm.checkpoint2} onChange={e => setMissionForm({...missionForm, checkpoint2: e.target.value})} />
+                     <input className="w-full p-2 border-2 border-black font-bold text-xs text-black" placeholder="Factor 3 (e.g. Tag 2 Friends)" 
+                        value={missionForm.checkpoint3} onChange={e => setMissionForm({...missionForm, checkpoint3: e.target.value})} />
                   </div>
 
                   {/* DEPLOYMENT TARGETING */}
@@ -411,9 +480,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                            <button onClick={() => handleDeleteMission(m.id)} className="text-rose-500 hover:scale-110 transition-transform"><Trash2 size={16} /></button>
                         </div>
                       </div>
-                      <h4 className="font-black italic text-xl uppercase mb-1">{m.title}</h4>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Partner: {m.partner_brands?.name || 'Reelywood'}</p>
-                      <p className="text-[10px] leading-relaxed text-black/60 dark:text-white/60 uppercase line-clamp-2">{m.description}</p>
+                      
+                      {/* Visual Data Injection */}
+                      <div className="flex gap-4 items-center mb-4">
+                         <img src={m.partner_brands?.logo_url} alt="Brand" className="w-12 h-12 border-2 border-black object-cover bg-gray-200" 
+                              onError={(e) => {e.currentTarget.src = 'https://via.placeholder.com/48'}}/>
+                         <div>
+                            <h4 className="font-black italic text-xl uppercase mb-0 leading-none">{m.title}</h4>
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                               <MapPin size={10} /> {m.location}
+                            </p>
+                         </div>
+                      </div>
+
+                      {/* Checkpoints Preview */}
+                      {m.checkpoints && m.checkpoints.length > 0 && (
+                        <div className="bg-gray-50 border-t-2 border-black pt-2 mt-2 space-y-1">
+                           {m.checkpoints.map((pt: string, i: number) => (
+                             <div key={i} className="flex items-center gap-2 text-[9px] font-bold text-black/60 uppercase">
+                                <div className="w-2 h-2 border border-black bg-white"></div> {pt}
+                             </div>
+                           ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -497,8 +586,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           {activeTab === 'vouchers' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-5">
-                <form className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
+                <div className={`${cardColor} border-4 ${borderColor} p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-6`}>
                   <h3 className="text-xl font-black uppercase italic flex items-center space-x-2"><Gift className="text-blue-500" /><span>Mint Voucher</span></h3>
+                  
                   <div className="space-y-4">
                     <div>
                       <label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Link Partner Node</label>
@@ -515,19 +605,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Cost (RC)</label><input required type="number" value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black"/></div>
                       <div><label className="text-[9px] font-black uppercase opacity-40 mb-1 block">Hash Code</label><input required type="text" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} className="w-full bg-white border-2 border-black p-3 font-black text-xs text-black uppercase" placeholder="RW-XXX"/></div>
                     </div>
-                    <button type="button" className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest`}>
-                      AUTHORIZE INVENTORY
+
+                    {/* VOUCHER TARGETING */}
+                    <div className="bg-gray-100 dark:bg-black/20 border-2 border-dashed border-black dark:border-white/20 p-4">
+                      <label className="block text-[9px] font-black uppercase text-black dark:text-white mb-3 flex items-center gap-2">
+                        <Crosshair size={14} className="text-purple-500" /> DEPLOYMENT TARGET
+                      </label>
+                      
+                      <div className="flex gap-2 mb-4">
+                         <button onClick={() => setTargetMode('ALL')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'ALL' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>GLOBAL</button>
+                         <button onClick={() => setTargetMode('SELECT')} className={`flex-1 py-3 font-black text-[9px] uppercase border-2 border-black ${targetMode === 'SELECT' ? 'bg-black text-white' : 'bg-white text-gray-400'}`}>SELECTIVE</button>
+                      </div>
+
+                      {targetMode === 'SELECT' && (
+                        <div className="bg-white border-2 border-black max-h-[150px] overflow-y-auto p-1">
+                           {users.map(u => (
+                             <div key={u.firebase_uid} onClick={() => toggleAgentSelection(u.firebase_uid)} className={`flex items-center gap-2 p-1 cursor-pointer hover:bg-gray-50 ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-blue-50' : ''}`}>
+                                <div className={`w-3 h-3 border border-black ${selectedAgentIds.includes(u.firebase_uid) ? 'bg-black' : 'bg-white'}`}></div>
+                                <span className="text-[9px] font-bold text-black truncate">{u.display_name}</span>
+                             </div>
+                           ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={handleDeployVoucher}
+                      disabled={submitting}
+                      className={`w-full ${accent} py-4 border-2 border-black font-black uppercase text-[10px] tracking-widest hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0px_0px_#000] transition-all`}
+                    >
+                      {submitting ? 'PROCESSING...' : 'AUTHORIZE INVENTORY'}
                     </button>
                   </div>
-                </form>
+                </div>
               </div>
               <div className="lg:col-span-7 grid md:grid-cols-2 gap-4">
                 {vouchers.map(v => (
                   <div key={v.id} className={`${cardColor} border-2 ${borderColor} p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative group`}>
                     <div className="flex justify-between items-start mb-2">
-                      <div className="bg-black text-white p-2 border border-white"><Box size={16}/></div>
-                      <span className="text-[8px] font-black uppercase bg-yellow-400 text-black px-1 border border-black">
-                        {brands.find(b => b.id === v.brand_id)?.name || 'ORIGINAL'}
+                      <div className="bg-black text-white p-2 border border-white">
+                         {v.partner_brands?.logo_url ? <img src={v.partner_brands.logo_url} className="w-4 h-4 object-cover"/> : <Box size={16}/>}
+                      </div>
+                      <span className={`text-[8px] font-black uppercase bg-yellow-400 text-black px-1 border border-black`}>
+                        {v.partner_brands?.name || 'ORIGINAL'}
                       </span>
                     </div>
                     <h4 className="font-black uppercase text-sm">{v.title}</h4>
