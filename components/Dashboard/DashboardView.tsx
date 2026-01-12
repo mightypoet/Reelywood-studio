@@ -121,7 +121,7 @@ const ReelywoodSlingshot: React.FC = () => {
     };
 
     const onEnd = () => {
-      if (!bird.isDragging) return;
+      if (!bird.isDragging) bird.isDragging = false;
       bird.isDragging = false;
       bird.isFlying = true;
       bird.vx = (bird.startX - bird.x) * 0.16;
@@ -280,8 +280,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         supabase.from('submissions').select('mission_id, status').eq('user_id', currentUser.uid)
       ]);
 
-      const currentProfile = profileRes.data;
-      if (currentProfile) setProfile(currentProfile);
+      const userProfile = profileRes.data;
+      if (userProfile) setProfile(userProfile);
       
       if (missionsRes.data) {
         // SMART FILTER: Checks for global vs targeted assignments
@@ -293,8 +293,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
           // Case B: Targeted Mission
           const targets = Array.isArray(mission.assigned_to) ? mission.assigned_to : [mission.assigned_to];
-          // Check both Firebase UID and internal ID (if available in profile) for maximum robustness
-          const isMatch = targets.includes(currentUser.uid) || (currentProfile?.id && targets.includes(currentProfile.id));
+          const isMatch = targets.includes(currentUser.uid) || (userProfile?.id && targets.includes(userProfile.id));
 
           if (isMatch) {
             console.log(`✅ MATCH FOUND: Mission "${mission.title}" is for me.`);
@@ -308,13 +307,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       }
 
       if (rewardsRes.data) {
-        // Similar smart filtering for rewards/vouchers
+        // Apply similar smart filtering for rewards/vouchers
         const myRewards = rewardsRes.data.filter((reward: any) => {
           if (!reward.assigned_to || (Array.isArray(reward.assigned_to) && reward.assigned_to.length === 0)) {
             return true;
           }
           const targets = Array.isArray(reward.assigned_to) ? reward.assigned_to : [reward.assigned_to];
-          return targets.includes(currentUser.uid) || (currentProfile?.id && targets.includes(currentProfile.id));
+          return targets.includes(currentUser.uid) || (userProfile?.id && targets.includes(userProfile.id));
         });
         setRewards(myRewards);
       }
