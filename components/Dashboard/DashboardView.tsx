@@ -269,6 +269,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const fetchUserData = async () => {
     if (!currentUser || !supabase) return;
 
+    console.log("🔍 DEBUG: My User ID is:", currentUser.uid);
+
     try {
       const [profileRes, missionsRes, rewardsRes, transRes, submissionsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('firebase_uid', currentUser.uid).single(),
@@ -278,34 +280,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         supabase.from('submissions').select('mission_id, status').eq('user_id', currentUser.uid)
       ]);
 
-      if (profileRes.data) setProfile(profileRes.data);
+      const currentProfile = profileRes.data;
+      if (currentProfile) setProfile(currentProfile);
       
       if (missionsRes.data) {
-        // 2. CRITICAL STEP: Filter out missions not meant for this user
+        // SMART FILTER: Checks for global vs targeted assignments
         const myMissions = missionsRes.data.filter((mission: any) => {
-          // Case A: Mission is GLOBAL (assigned_to is null or empty) -> SHOW IT
-          if (!mission.assigned_to || mission.assigned_to.length === 0) {
-            return true; 
+          // Case A: Global Mission (Show to everyone)
+          if (!mission.assigned_to || (Array.isArray(mission.assigned_to) && mission.assigned_to.length === 0)) {
+            return true;
           }
-          // Case B: Mission is TARGETED -> Check if MY ID is in the list
-          if (Array.isArray(mission.assigned_to) && mission.assigned_to.includes(currentUser.uid)) {
-            return true; 
+
+          // Case B: Targeted Mission
+          const targets = Array.isArray(mission.assigned_to) ? mission.assigned_to : [mission.assigned_to];
+          // Check both Firebase UID and internal ID (if available in profile) for maximum robustness
+          const isMatch = targets.includes(currentUser.uid) || (currentProfile?.id && targets.includes(currentProfile.id));
+
+          if (isMatch) {
+            console.log(`✅ MATCH FOUND: Mission "${mission.title}" is for me.`);
+            return true;
+          } else {
+            console.log(`⛔ HIDDEN: Mission "${mission.title}" is targeted to ${targets} (I am ${currentUser.uid})`);
+            return false;
           }
-          // Case C: Targeted at someone else -> HIDE IT
-          return false; 
         });
         setMissions(myMissions);
       }
 
       if (rewardsRes.data) {
+        // Similar smart filtering for rewards/vouchers
         const myRewards = rewardsRes.data.filter((reward: any) => {
           if (!reward.assigned_to || (Array.isArray(reward.assigned_to) && reward.assigned_to.length === 0)) {
             return true;
           }
-          if (Array.isArray(reward.assigned_to) && reward.assigned_to.includes(currentUser.uid)) {
-            return true;
-          }
-          return false;
+          const targets = Array.isArray(reward.assigned_to) ? reward.assigned_to : [reward.assigned_to];
+          return targets.includes(currentUser.uid) || (currentProfile?.id && targets.includes(currentProfile.id));
         });
         setRewards(myRewards);
       }
