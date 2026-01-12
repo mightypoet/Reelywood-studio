@@ -280,29 +280,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         supabase.from('submissions').select('mission_id, status').eq('user_id', currentUser.uid)
       ]);
 
-      const currentProfile = profileRes.data;
-      if (currentProfile) {
-        setProfile(currentProfile);
-        console.log("🔍 [SMART FILTER] Internal DB ID:", currentProfile.id);
+      const userProfile = profileRes.data;
+      if (userProfile) {
+        setProfile(userProfile);
+        console.log("🔍 [SMART FILTER] Internal DB ID:", userProfile.id);
       }
       
       if (missionsRes.data) {
-        // SMART FILTER: Handle global vs targeted missions
+        // SMART FILTER: Checks for global vs targeted assignments
         const myMissions = missionsRes.data.filter((mission: any) => {
-          // Rule 1: Global Mission (Show if assigned_to is empty or null)
+          // Rule 1: Global Mission (Show if assigned_to is empty or null or empty array)
           if (!mission.assigned_to || (Array.isArray(mission.assigned_to) && mission.assigned_to.length === 0)) {
             return true;
           }
 
           // Rule 2: Targeted Mission
+          // Ensure assigned_to is treated as an array for the search
           const targets = Array.isArray(mission.assigned_to) ? mission.assigned_to : [mission.assigned_to];
-          const isMatch = targets.includes(currentUser.uid) || (currentProfile?.id && targets.includes(currentProfile.id));
+          
+          // Check both Firebase UID and internal ID for maximum sync reliability
+          const isMatch = targets.includes(currentUser.uid) || (userProfile?.id && targets.includes(userProfile.id));
 
           if (isMatch) {
-            console.log(`✅ [SYNC MATCH]: Mission "${mission.title}" assigned to user.`);
+            console.log(`✅ [SYNC MATCH]: Mission "${mission.title}" is explicitly for you.`);
             return true;
           } else {
-            console.log(`⛔ [SYNC HIDE]: Mission "${mission.title}" targeted to ${targets}.`);
+            console.log(`⛔ [SYNC HIDE]: Mission "${mission.title}" restricted to other nodes.`);
             return false;
           }
         });
@@ -310,13 +313,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       }
 
       if (rewardsRes.data) {
-        // Apply identical smart filtering for rewards/vouchers
+        // Identical Smart Filter for rewards/vouchers
         const myRewards = rewardsRes.data.filter((reward: any) => {
           if (!reward.assigned_to || (Array.isArray(reward.assigned_to) && reward.assigned_to.length === 0)) {
             return true;
           }
           const targets = Array.isArray(reward.assigned_to) ? reward.assigned_to : [reward.assigned_to];
-          return targets.includes(currentUser.uid) || (currentProfile?.id && targets.includes(currentProfile.id));
+          return targets.includes(currentUser.uid) || (userProfile?.id && targets.includes(userProfile.id));
         });
         setRewards(myRewards);
       }

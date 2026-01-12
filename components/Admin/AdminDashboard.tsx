@@ -7,8 +7,7 @@ import {
   Loader2, Activity, Terminal,
   Building2, ListChecks, Clock, X,
   Crosshair, CheckSquare, Box,
-  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter,
-  ShieldCheck
+  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -35,8 +34,12 @@ const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad1020
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   // SET DEFAULT TAB TO 'DEPLOY'
   const [activeTab, setActiveTab] = useState<'deploy' | 'missions' | 'vouchers' | 'users' | 'ledger' | 'brands' | 'submissions'>('deploy');
-  /* Fix: Set correct boolean type for darkMode state to avoid SetStateAction<true> error */
-  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('admin-theme') === 'dark' || true);
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+       return localStorage.getItem('admin-theme') === 'dark' || true;
+    }
+    return true;
+  });
   const [notify, setNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -59,15 +62,24 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   useEffect(() => {
     const user = auth.currentUser;
-    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) onLogout();
+    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
+        onLogout();
+        return;
+    }
+
+    // 1. Initial Fetch
     fetchAllData();
 
-    if (supabase) {
-      const channel = supabase.channel('admin-live')
+    // 2. Realtime Subscription (Strict Null Check)
+    if (!supabase) return;
+
+    const channel = supabase.channel('admin-live')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchAllData())
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
-    }
+
+    return () => { 
+        if (supabase) supabase.removeChannel(channel); 
+    };
   }, []);
 
   const fetchAllData = async () => {
@@ -79,7 +91,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
-        supabase.from('submissions').select('*, profiles(display_name, email), missions(title, reward_amount, checkpoints)').order('created_at', { ascending: false })
+        supabase.from('submissions').select('*, profiles(display_name), missions(title)').order('created_at', { ascending: false })
       ]);
       
       if (u.data) setUsers(u.data);
@@ -99,7 +111,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   // --- STATS CALCULATOR ---
   const getAgentStats = (uid: string) => {
     return {
-      completed: submissions.filter(s => (s.user_id === uid || s.profiles?.firebase_uid === uid) && s.status === 'approved').length,
+      completed: submissions.filter(s => s.user_id === uid && s.status === 'approved').length,
       claimed: transactions.filter(t => t.user_uid === uid && t.amount < 0).length,
       active: missions.filter(m => Array.isArray(m.assigned_to) && m.assigned_to.includes(uid)).length
     };
@@ -108,6 +120,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   // --- ACTIONS ---
 
   const handleExecuteDeploy = async () => {
+    if (!supabase) return;
     if (!selectedProtocol) return showToast('error', "SELECT A MISSION OR VOUCHER FIRST");
     
     // Logic: If NO creators selected -> Confirm Global Deploy. If Creators selected -> Selective Deploy.
@@ -115,13 +128,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     
     if (selectedCreatorIds.length === 0) {
        if (!confirm("⚠️ NO CREATORS SELECTED.\n\nDeploy this globally to ALL users?")) return;
-       targetList = null; // API expects null for Global
+       targetList = null; // API expects null for Global broadcast
     }
 
     setSubmitting(true);
     try {
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'rewards';
-      const { error } = await supabase!
+      const { error } = await supabase
         .from(table)
         .update({ assigned_to: targetList })
         .eq('id', selectedProtocol.id);
@@ -142,11 +155,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   const createDraftMission = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) return showToast('error', "MISSING FIELDS");
+    
     setSubmitting(true);
     try {
       const brand = brands.find(b => b.id === missionForm.brand_id);
-      await supabase!.from('missions').insert([{
+      await supabase.from('missions').insert([{
         title: missionForm.title,
         description: brand?.description,
         reward_amount: parseInt(missionForm.reward),
@@ -154,7 +169,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         location: missionForm.location || brand?.location_text,
         image_url: brand?.cover_image_url,
         checkpoints: [missionForm.checkpoint1, missionForm.checkpoint2, missionForm.checkpoint3].filter(c => c),
-        assigned_to: ['DRAFT'] // HIDDEN FROM EVERYONE INITIALLY
+        assigned_to: ['DRAFT'] // Initially hidden from all feeds
       }]);
       showToast('success', "MISSION DRAFTED. SWITCH TO DEPLOY TAB TO LAUNCH.");
       setMissionForm({ title: '', reward: '', brand_id: '', location: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
@@ -165,15 +180,17 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   const createDraftVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     if (!voucherForm.title || !voucherForm.brandId) return showToast('error', "MISSING FIELDS");
+    
     setSubmitting(true);
     try {
-      await supabase!.from('rewards').insert([{
+      await supabase.from('rewards').insert([{
         brand_id: voucherForm.brandId,
         title: voucherForm.title,
         cost: parseInt(voucherForm.cost),
         code: voucherForm.code,
-        assigned_to: ['DRAFT'] // HIDDEN INITIALLY
+        assigned_to: ['DRAFT'] // Initially hidden from all feeds
       }]);
       showToast('success', "VOUCHER DRAFTED. SWITCH TO DEPLOY TAB TO LAUNCH.");
       setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
@@ -183,9 +200,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   };
 
   const handleUpdateStatus = async (uid: string, status: string) => {
+    if (!supabase) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase!.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
+      const { error } = await supabase.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
       if (error) throw error;
       showToast('success', `AGENT STATUS UPDATED: ${status.toUpperCase()}`);
       fetchAllData();
@@ -224,11 +242,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       <header className={`border-b-4 ${border} ${card} px-6 py-4 flex justify-between sticky top-0 z-50`}>
         <div className="flex items-center gap-4"><Terminal size={24}/><h1 className="text-xl font-black italic">TERMINAL <span className="text-gray-500 text-sm not-italic ml-2">v2.0 Deploy</span></h1></div>
         <div className="flex gap-4">
-           {/* Fix: setDarkMode correctly updates boolean state */}
            <button onClick={() => setDarkMode(!darkMode)} className={`p-2 border-2 ${border} ${isDark ? 'bg-yellow-400 text-black' : 'bg-black text-white'}`}>
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button onClick={onLogout} className="bg-rose-600 text-white px-4 py-1 text-xs font-black uppercase border-2 border-black">Exit</button>
+          <button onClick={onLogout} className="bg-rose-600 text-white px-4 py-1 text-xs font-black uppercase border-2 border-black shadow-[2px_2px_0px_0px_#000]">Exit</button>
         </div>
       </header>
 
@@ -338,7 +355,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 )}
               </div>
 
-              <div className="flex-1 overflow-auto space-y-3 pr-2">
+              <div className="flex-1 overflow-auto space-y-3 pr-2 custom-scrollbar">
                 <p className="text-[10px] font-black uppercase bg-gray-800 text-white px-2 py-1 sticky top-0">SELECT PROTOCOL</p>
                 
                 {/* LIST MISSIONS */}
@@ -444,7 +461,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                  <input className="w-full p-4 border-4 border-black font-bold text-black" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
                  <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="CODE / HASH" required value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})}/>
               </div>
-              <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase">SAVE AS DRAFT</button>
+              <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase border-2 border-black shadow-[4px_4px_0px_0px_#000]">SAVE AS DRAFT</button>
             </form>
           </div>
         )}
@@ -454,30 +471,30 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         
         {activeTab === 'users' && (
           <div className="bg-white text-black p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000]">
-            <h3 className="font-black mb-6 text-xl uppercase">FULL AGENT ROSTER</h3>
+            <h3 className="font-black mb-6 text-xl uppercase italic font-display">Full Agent Roster</h3>
             <div className="overflow-auto max-h-[600px]">
               {users.map(u => (
-                <div key={u.id} className="border-b-2 border-gray-100 py-4 flex justify-between items-center hover:bg-gray-50 px-2">
-                   <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-black text-white flex items-center justify-center font-black">{u.display_name?.charAt(0)}</div>
+                <div key={u.id} className="border-b-2 border-gray-100 py-4 flex justify-between items-center hover:bg-gray-50 px-4 transition-colors">
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-black italic">{u.display_name?.charAt(0)}</div>
                       <div>
-                        <div className="font-bold uppercase">{u.display_name}</div>
-                        <div className="text-xs text-gray-400">{u.email}</div>
+                        <div className="font-bold uppercase text-sm tracking-tight">{u.display_name}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">{u.email}</div>
                       </div>
                    </div>
-                   <div className="flex gap-4">
+                   <div className="flex gap-6 items-center">
                       <div className="text-right">
-                         <div className="text-[10px] font-black text-gray-400">BALANCE</div>
-                         <div className="font-bold text-emerald-600">{u.reelcoins} RC</div>
+                         <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Liquid Assets</div>
+                         <div className="font-bold text-emerald-600 text-sm">{u.reelcoins} RC</div>
                       </div>
                       <div className="flex items-center gap-2">
                          {u.card_status === 'pending' ? (
-                           <>
-                             <button onClick={() => handleUpdateStatus(u.firebase_uid, 'rejected')} className="p-2 border-2 border-black bg-rose-500 text-white"><X size={14}/></button>
-                             <button onClick={() => handleUpdateStatus(u.firebase_uid, 'approved')} className="p-2 border-2 border-black bg-emerald-500 text-white"><Check size={14}/></button>
-                           </>
+                           <div className="flex gap-2">
+                             <button onClick={() => handleUpdateStatus(u.firebase_uid, 'rejected')} className="p-2 border-2 border-black bg-rose-500 text-white hover:bg-rose-600 transition-colors" title="Reject"><X size={14} strokeWidth={3}/></button>
+                             <button onClick={() => handleUpdateStatus(u.firebase_uid, 'approved')} className="p-2 border-2 border-black bg-emerald-500 text-white hover:bg-emerald-600 transition-colors" title="Approve"><Check size={14} strokeWidth={3}/></button>
+                           </div>
                          ) : (
-                           <span className={`px-2 py-1 border-2 border-black text-[10px] uppercase h-fit ${u.card_status === 'approved' ? 'bg-emerald-400' : 'bg-rose-400'}`}>{u.card_status}</span>
+                           <span className={`px-3 py-1 border-2 border-black text-[9px] font-black uppercase h-fit tracking-widest ${u.card_status === 'approved' ? 'bg-emerald-400 text-black' : 'bg-rose-400 text-black'}`}>{u.card_status}</span>
                          )}
                       </div>
                    </div>
@@ -488,31 +505,35 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         )}
 
         {activeTab === 'submissions' && (
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {submissions.filter(s => s.status === 'pending').length === 0 && <div className="p-8 text-center opacity-50 font-black">NO PENDING SUBMISSIONS</div>}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             {submissions.filter(s => s.status === 'pending').length === 0 && <div className="col-span-full py-20 text-center opacity-40 font-black uppercase text-xs tracking-[0.5em] italic">No pending transmissions detected.</div>}
              {submissions.filter(s => s.status === 'pending').map(sub => (
-               <div key={sub.id} className="bg-white p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] text-black">
-                  <h4 className="font-black">{sub.profiles?.display_name}</h4>
-                  <p className="text-xs text-gray-500 mb-2">Submitted for: {sub.missions?.title}</p>
-                  <button onClick={() => setSelectedSubmission(sub)} className="bg-yellow-400 w-full py-2 font-black text-xs border-2 border-black">VERIFY PROOF</button>
+               <div key={sub.id} className="bg-white p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-black hover:-translate-y-1 transition-transform">
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="font-black text-lg uppercase leading-tight italic">{sub.profiles?.display_name}</h4>
+                    <span className="text-[8px] bg-slate-100 px-2 py-1 font-bold border border-black uppercase tracking-widest italic">Mission Signal</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">Deployment: {sub.missions?.title}</p>
+                  <button onClick={() => setSelectedSubmission(sub)} className="bg-yellow-400 w-full py-3 font-black text-xs border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all uppercase tracking-widest italic">Verify Evidence</button>
                </div>
              ))}
            </div>
         )}
 
         {activeTab === 'ledger' && (
-          <div className="bg-white text-black p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000]">
-            <h3 className="font-black mb-6 text-xl uppercase">GLOBAL TRANSACTION LEDGER</h3>
-            <div className="overflow-auto max-h-[600px]">
+          <div className="bg-white text-black p-8 border-4 border-black shadow-[8px_8px_0px_0px_#000]">
+            <h3 className="font-black mb-8 text-2xl uppercase italic font-display tracking-tight">Global Transaction Ledger</h3>
+            <div className="overflow-auto max-h-[600px] border-[3px] border-black">
               {transactions.map(t => (
-                <div key={t.id} className="border-b border-gray-100 py-3 flex justify-between items-center text-xs font-bold">
-                   <div>
-                     <span className="text-gray-400 mr-4 font-mono">{new Date(t.created_at).toLocaleDateString()}</span>
-                     <span className="uppercase">{t.description}</span>
+                <div key={t.id} className="border-b-2 border-slate-100 last:border-b-0 py-4 px-6 flex justify-between items-center text-[11px] font-bold hover:bg-slate-50 transition-colors">
+                   <div className="flex items-center gap-6">
+                     <span className="text-gray-400 font-mono text-[9px] uppercase">{new Date(t.created_at).toLocaleDateString()}</span>
+                     <span className="uppercase tracking-tight">{t.description}</span>
                    </div>
-                   <span className={t.amount > 0 ? 'text-emerald-600' : 'text-rose-600'}>{t.amount > 0 ? '+' : ''}{t.amount} RC</span>
+                   <span className={`italic font-black text-sm ${t.amount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{t.amount > 0 ? '+' : ''}{t.amount} RC</span>
                 </div>
               ))}
+              {transactions.length === 0 && <div className="p-12 text-center opacity-30 font-black uppercase text-[10px] tracking-widest italic">Ledger empty. No assets shifted.</div>}
             </div>
           </div>
         )}
