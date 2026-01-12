@@ -281,22 +281,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (profileRes.data) setProfile(profileRes.data);
       
       if (missionsRes.data) {
-        // FILTER: Only show missions meant for THIS user
+        // 2. CRITICAL STEP: Filter out missions not meant for this user
         const myMissions = missionsRes.data.filter((mission: any) => {
-          if (!mission.assigned_to) return true;
-          if (Array.isArray(mission.assigned_to) && mission.assigned_to.length === 0) return true;
-          if (Array.isArray(mission.assigned_to) && mission.assigned_to.includes(currentUser.uid)) return true;
-          return false;
+          // Case A: Mission is GLOBAL (assigned_to is null or empty) -> SHOW IT
+          if (!mission.assigned_to || mission.assigned_to.length === 0) {
+            return true; 
+          }
+          // Case B: Mission is TARGETED -> Check if MY ID is in the list
+          if (Array.isArray(mission.assigned_to) && mission.assigned_to.includes(currentUser.uid)) {
+            return true; 
+          }
+          // Case C: Targeted at someone else -> HIDE IT
+          return false; 
         });
         setMissions(myMissions);
       }
 
       if (rewardsRes.data) {
-        // FILTER: Only show rewards meant for THIS user
         const myRewards = rewardsRes.data.filter((reward: any) => {
-          if (!reward.assigned_to) return true;
-          if (Array.isArray(reward.assigned_to) && reward.assigned_to.length === 0) return true;
-          if (Array.isArray(reward.assigned_to) && reward.assigned_to.includes(currentUser.uid)) return true;
+          if (!reward.assigned_to || (Array.isArray(reward.assigned_to) && reward.assigned_to.length === 0)) {
+            return true;
+          }
+          if (Array.isArray(reward.assigned_to) && reward.assigned_to.includes(currentUser.uid)) {
+            return true;
+          }
           return false;
         });
         setRewards(myRewards);
