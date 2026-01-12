@@ -7,7 +7,7 @@ import {
   Loader2, Activity, Terminal,
   Building2, ListChecks, Clock, X,
   Crosshair, CheckSquare, Box,
-  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck
+  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck, Ticket
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -33,7 +33,6 @@ const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad1020
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'deploy' | 'missions' | 'vouchers' | 'users' | 'ledger' | 'brands' | 'submissions'>('deploy');
-  // Explicitly typing as boolean to ensure stability
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
        const saved = localStorage.getItem('admin-theme');
@@ -59,7 +58,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   // Forms
   const [missionForm, setMissionForm] = useState({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
-  const [voucherForm, setVoucherForm] = useState({ brandId: '', title: '', cost: '', code: '' });
+  const [voucherForm, setVoucherForm] = useState({ title: '', cost: '', brand_id: '', code: '', description: '' });
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -175,19 +174,17 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setSubmitting(true);
     try {
       const brand = brands.find(b => b.id === missionForm.brand_id);
-      const autoLocation = brand?.location_text || 'Global Sync';
-
       await supabase.from('missions').insert([{
         title: missionForm.title,
         description: brand?.description || 'No specific mission brief provided.',
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
-        location: autoLocation,
+        location: brand?.location_text || 'Global Sync',
         image_url: brand?.cover_image_url || '',
         checkpoints: [missionForm.checkpoint1, missionForm.checkpoint2, missionForm.checkpoint3].filter(c => c),
         assigned_to: ['DRAFT'] 
       }]);
-      showToast('success', "MISSION DRAFTED. NAVIGATE TO DEPLOY TO LAUNCH.");
+      showToast('success', "MISSION DRAFTED. LAUNCH VIA DEPLOY TAB.");
       setMissionForm({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
       fetchAllData();
     } catch (e: any) { showToast('error', e.message); } 
@@ -197,19 +194,21 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const createDraftVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
-    if (!voucherForm.title || !voucherForm.brandId) return showToast('error', "MISSING VOUCHER DATA");
+    if (!voucherForm.title || !voucherForm.brand_id || !voucherForm.cost) return showToast('error', "MISSING VOUCHER DATA");
     
     setSubmitting(true);
     try {
+      const brand = brands.find(b => b.id === voucherForm.brand_id);
       await supabase.from('rewards').insert([{
-        brand_id: voucherForm.brandId,
+        brand_id: voucherForm.brand_id,
         title: voucherForm.title,
         cost: parseInt(voucherForm.cost),
-        code: voucherForm.code,
+        code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+        description: voucherForm.description || brand?.description || 'Exclusive partner voucher.',
         assigned_to: ['DRAFT'] 
       }]);
-      showToast('success', "VOUCHER DRAFTED. SWITCH TO DEPLOY TAB TO FINALIZE.");
-      setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
+      showToast('success', "VOUCHER DRAFTED. LAUNCH VIA DEPLOY TAB.");
+      setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '' });
       fetchAllData();
     } catch (e: any) { showToast('error', e.message); }
     finally { setSubmitting(false); }
@@ -272,7 +271,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         {[
           { l: 'AGENTS', v: users.length, i: Users },
           { l: 'MISSIONS', v: missions.length, i: Zap },
-          { l: 'ALLIANCE', v: brands.length, i: Building2 },
+          { l: 'VOUCHERS', v: vouchers.length, i: Gift },
           { l: 'TX VOL', v: transactions.length, i: Activity }
         ].map((s, i) => (
           <div key={i} className={`${card} border-2 ${border} p-4 shadow-[4px_4px_0px_0px_#000]`}>
@@ -371,7 +370,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                    return (
                     <div key={m.id} 
                         onClick={() => setSelectedProtocol({id: m.id, type: 'mission'})}
-                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === m.id ? 'border-purple-500 bg-purple-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
+                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === m.id && selectedProtocol.type === 'mission' ? 'border-purple-500 bg-purple-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
                       <div className="flex justify-between items-start">
                         <span className="font-black text-xs uppercase truncate pr-6">{m.title}</span>
                         <button onClick={(e) => handleDeleteProtocol(e, m.id, 'mission')} className="text-gray-500 hover:text-rose-500 p-1 transition-colors"><Trash2 size={12}/></button>
@@ -389,7 +388,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                    return (
                     <div key={v.id} 
                         onClick={() => setSelectedProtocol({id: v.id, type: 'voucher'})}
-                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === v.id ? 'border-blue-500 bg-blue-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
+                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === v.id && selectedProtocol.type === 'voucher' ? 'border-blue-500 bg-blue-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
                       <div className="flex justify-between items-start">
                         <span className="font-black text-xs uppercase truncate pr-6">{v.title}</span>
                         <button onClick={(e) => handleDeleteProtocol(e, v.id, 'voucher')} className="text-gray-500 hover:text-rose-500 p-1 transition-colors"><Trash2 size={12}/></button>
@@ -449,16 +448,34 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           <div className="max-w-2xl mx-auto py-8">
             <h2 className="text-2xl font-black italic uppercase mb-8 flex items-center gap-3"><Gift className="text-blue-500"/> CREATE VOUCHER TEMPLATE</h2>
             <form onSubmit={createDraftVoucher} className="space-y-6 bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_#000]">
-              <select className="w-full p-4 border-4 border-black font-bold text-black" required value={voucherForm.brandId} onChange={e => setVoucherForm({...voucherForm, brandId: e.target.value})}>
-                <option value="">SELECT BRAND</option>
-                {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-              <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="VOUCHER IDENTITY" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
-              <div className="grid grid-cols-2 gap-4">
-                 <input className="w-full p-4 border-4 border-black font-bold text-black" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
-                 <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="HASH CODE" required value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})}/>
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Alliance Node</label>
+                <select className="w-full p-4 border-4 border-black font-bold text-black bg-gray-50" required value={voucherForm.brand_id} onChange={e => setVoucherForm({...voucherForm, brand_id: e.target.value})}>
+                  <option value="">-- SELECT BRAND --</option>
+                  {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
               </div>
-              <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase border-2 border-black shadow-[4px_4px_0px_0px_#000]">SAVE AS DRAFT</button>
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Voucher Identity</label>
+                <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="e.g. 50% OFF PREMIUM DINING" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <label className="text-[10px] font-black uppercase text-gray-400">Acquisition Cost (RC)</label>
+                   <input className="w-full p-4 border-4 border-black font-bold text-black" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
+                 </div>
+                 <div>
+                   <label className="text-[10px] font-black uppercase text-gray-400">System Hash Code</label>
+                   <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="OPTIONAL HASH" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})}/>
+                 </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Briefing (Optional)</label>
+                <textarea className="w-full p-4 border-4 border-black font-bold text-black resize-none" rows={3} placeholder="Describe the voucher perks..." value={voucherForm.description} onChange={e => setVoucherForm({...voucherForm, description: e.target.value})}></textarea>
+              </div>
+              <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase border-2 border-black shadow-[4px_4px_0px_0px_#000] hover:bg-gray-900 transition-all">
+                {submitting ? 'SYNCING...' : 'SAVE AS DRAFT'}
+              </button>
             </form>
           </div>
         )}
