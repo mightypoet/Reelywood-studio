@@ -14,7 +14,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Use useMemo to ensure we have a stable reference to the bounty amount defined in the mission profile
+  // Extract amount from join: submissions.missions.reward_amount
   const allocatedRC = useMemo(() => {
     return submission?.missions?.reward_amount ?? 0;
   }, [submission]);
@@ -35,7 +35,6 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
   };
 
   const handleExecuteVerification = async () => {
-    // SYSTEM RULE: All 3 checkpoints must be verified before distribution
     if (checks.some(c => !c)) {
        alert("⚠️ PROTOCOL VIOLATION: Quality Control factors must be fully verified before reward distribution.");
        return;
@@ -47,18 +46,21 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
 
       /**
        * TRIGGER SEQUENCE:
-       * 1. Update submission status to 'approved'
-       * 2. Calculate and Allocate RC to Profile using the specific amount from the mission
-       * 3. Insert Ledger Transaction
+       * Calls the revised SQL function that maps text-based firebase_uid
        */
-      const { error } = await supabase.rpc('grant_mission_reward', {
+      const { data, error } = await supabase.rpc('grant_mission_reward', {
          submission_id_param: submission.id,
-         user_id_param: submission.user_id,
-         amount_param: allocatedRC, // This passes the actual mission value (e.g., 500) instead of 0
+         user_id_param: submission.user_id, // This is the string UID
+         amount_param: allocatedRC,
          mission_title_param: missionTitle
       });
 
       if (error) throw error;
+      
+      // Checking function's internal return logic
+      if (data && data.success === false) {
+        throw new Error(data.message);
+      }
 
       setIsSuccess(true);
       setTimeout(() => {
@@ -109,7 +111,6 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
               </p>
             </div>
 
-            {/* EVIDENCE LINK */}
             <div className="bg-slate-50 border-[3px] border-black p-6 mb-8 relative">
                <div className="absolute -top-3 left-4 bg-black text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest border-2 border-white shadow-[3px_3px_0px_0px_#000]">
                  Content Evidence
@@ -124,7 +125,6 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
                </div>
             </div>
 
-            {/* CHECKLIST */}
             <div className="space-y-4 mb-10">
                <p className="font-black text-[10px] uppercase tracking-[0.4em] text-black/30 italic mb-4">Verification Factors:</p>
                {checkpoints.slice(0, 3).map((pt: string, i: number) => (
@@ -139,7 +139,6 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
                ))}
             </div>
 
-            {/* ACTION BUTTON - DYNAMIC REWARD DISPLAY */}
             <button 
                onClick={handleExecuteVerification}
                disabled={loading}
