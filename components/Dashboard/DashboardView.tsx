@@ -26,6 +26,7 @@ import {
   Building2
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
+import { RedeemConfirmationModal } from './RedeemConfirmationModal';
 
 interface DashboardViewProps {
   onBack: () => void;
@@ -43,6 +44,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
+  
+  // Custom Modal State
+  const [pendingRedeem, setPendingRedeem] = useState<any>(null);
 
   const fetchOperationalGrid = async (user: FirebaseUser, isInitial = false) => {
     if (!supabase) return;
@@ -110,20 +114,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     };
   }, []);
 
-  const handleRedeem = async (reward: any) => {
-    if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
-    if (!confirm(`Redeem "${reward.title}" from ${reward.partner_brands?.name || 'Reelywood'}?`)) return;
+  const handleRedeemClick = (reward: any) => {
+    if (!profile || profile.reelcoins < reward.cost) {
+      return alert("⛔ INSUFFICIENT RC BAL: " + reward.cost + " required.");
+    }
+    setPendingRedeem(reward);
+  };
+
+  const executeRedemption = async () => {
+    if (!pendingRedeem || !currentUser) return;
     
-    setIsProcessing(reward.id);
+    setIsProcessing(pendingRedeem.id);
     try {
       const { error } = await supabase!.rpc('redeem_reward', {
         user_uid: currentUser?.uid,
-        cost: reward.cost,
-        item_title: reward.title
+        cost: pendingRedeem.cost,
+        item_title: pendingRedeem.title
       });
       if (error) throw error;
-      setRevealedCodes(prev => ({ ...prev, [reward.id]: reward.code || 'DECRYPTED_HASH' }));
-      if (currentUser) fetchOperationalGrid(currentUser);
+      setRevealedCodes(prev => ({ ...prev, [pendingRedeem.id]: pendingRedeem.code || 'DECRYPTED_HASH' }));
+      fetchOperationalGrid(currentUser);
+      setPendingRedeem(null);
     } catch (err: any) {
       alert("Redemption Protocol Failure: " + err.message);
     } finally {
@@ -178,6 +189,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           }} 
         />
       )}
+
+      {/* Neobrutalist Redemption Modal */}
+      <RedeemConfirmationModal 
+        isOpen={!!pendingRedeem}
+        onClose={() => setPendingRedeem(null)}
+        onConfirm={executeRedemption}
+        reward={pendingRedeem}
+        isProcessing={!!isProcessing}
+      />
 
       <header className="border-b-[6px] border-black bg-white sticky top-0 z-[50] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -360,7 +380,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                    <span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span>
                                 </div>
                                 <button 
-                                  onClick={() => handleRedeem(r)}
+                                  onClick={() => handleRedeemClick(r)}
                                   disabled={isProcessing === r.id || !!revealedCodes[r.id]}
                                   className={`px-8 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all ${revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000]' : 'bg-black text-white hover:bg-[#834bf1]'}`}
                                 >
