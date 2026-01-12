@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { RedeemConfirmationModal } from './RedeemConfirmationModal';
+import { NotificationBell } from './NotificationBell';
+import { NewAlertModal } from './NewAlertModal';
 
 interface DashboardViewProps {
   onBack: () => void;
@@ -49,6 +51,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   
   // Custom Modal State
   const [pendingRedeem, setPendingRedeem] = useState<any>(null);
+  const [urgentAlert, setUrgentAlert] = useState<any>(null);
 
   const fetchOperationalGrid = async (user: FirebaseUser, isInitial = false) => {
     if (!supabase) return;
@@ -77,13 +80,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setMissions(filtered);
       }
 
-      const [rRes, sRes] = await Promise.all([
+      const [rRes, sRes, nRes] = await Promise.all([
         supabase.from('rewards').select('*, partner_brands(*)'),
-        supabase.from('submissions').select('*').eq('user_id', user.uid)
+        supabase.from('submissions').select('*').eq('user_id', user.uid),
+        // Only fetch urgent deployment alerts on initial load
+        isInitial ? supabase.from('notifications')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('is_read', false)
+          .in('type', ['MISSION_DEPLOYED', 'VOUCHER_ADDED'])
+          .order('created_at', { ascending: false })
+          .limit(1) : Promise.resolve({ data: null })
       ]);
 
       if (rRes.data) setRewards(rRes.data);
       if (sRes.data) setUserSubmissions(sRes.data);
+      if (nRes.data && nRes.data.length > 0) {
+        setUrgentAlert(nRes.data[0]);
+      }
 
     } catch (err) {
       console.error("GRID_SYNC_FAILURE:", err);
@@ -98,10 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        // Initial Fetch with loader
         fetchOperationalGrid(user, true);
-
-        // Silent Polling every 8 seconds
         pollInterval = window.setInterval(() => {
           fetchOperationalGrid(user, false);
         }, 8000);
@@ -142,6 +153,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     } finally {
       setIsProcessing(null);
     }
+  };
+
+  const dismissUrgentAlert = async () => {
+    if (urgentAlert && supabase) {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', urgentAlert.id);
+    }
+    setUrgentAlert(null);
   };
 
   if (loading) {
@@ -192,7 +210,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         />
       )}
 
-      {/* Neobrutalist Redemption Modal */}
+      {/* Landing Priority Notification */}
+      <NewAlertModal 
+        notification={urgentAlert} 
+        onClose={dismissUrgentAlert} 
+      />
+
+      {/* Redemption Confirmation Modal */}
       <RedeemConfirmationModal 
         isOpen={!!pendingRedeem}
         onClose={() => setPendingRedeem(null)}
@@ -210,7 +234,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <h1 className="text-xl md:text-3xl font-black uppercase italic font-display">Creator <span className="text-[#834bf1]">Hub</span></h1>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-6">
+            {/* Notification Bell Component */}
+            <NotificationBell userId={currentUser.uid} />
+
             <div className="hidden md:flex flex-col items-end">
                <span className="text-[10px] font-black uppercase opacity-40">Identity Node</span>
                <span className="text-xs font-bold uppercase">{currentUser.email}</span>
@@ -293,7 +320,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         const isRejected = submission?.status === 'rejected';
                         const brand = m.partner_brands;
 
-                        // Conditional UI Styling based on status
                         const cardStyles = isDone 
                           ? 'bg-emerald-50 border-emerald-400 shadow-emerald-200' 
                           : isPending 
