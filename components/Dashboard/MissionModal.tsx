@@ -1,7 +1,6 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { X, MapPin, Link as LinkIcon, CheckCircle2, ShieldCheck, Loader2, Building2 } from 'lucide-react';
+import { X, MapPin, Link as LinkIcon, CheckCircle2, ShieldCheck, Loader2, Building2, AlertCircle, Clock } from 'lucide-react';
 
 interface MissionModalProps {
   mission: any;
@@ -12,7 +11,32 @@ interface MissionModalProps {
 export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClose }) => {
   const [link, setLink] = useState('');
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [existingSubmission, setExistingSubmission] = useState<any>(null);
+  const [initialFetchLoading, setInitialFetchLoading] = useState(true);
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!supabase || !mission.id || !user.uid) return;
+      try {
+        const { data } = await supabase
+          .from('submissions')
+          .select('*')
+          .eq('mission_id', mission.id)
+          .eq('user_id', user.uid)
+          .maybeSingle();
+        
+        if (data) {
+          setExistingSubmission(data);
+          setLink(data.link || '');
+        }
+      } catch (err) {
+        console.error("STATUS_CHECK_FAILED:", err);
+      } finally {
+        setInitialFetchLoading(false);
+      }
+    };
+    checkStatus();
+  }, [mission.id, user.uid]);
 
   const brand = mission.partner_brands;
   const checkpoints = mission.checkpoints && mission.checkpoints.length > 0 
@@ -34,13 +58,26 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
       }]);
 
       if (error) throw error;
-      setSubmitted(true);
+      
+      // Refresh local state
+      const { data } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('mission_id', mission.id)
+        .eq('user_id', user.uid)
+        .single();
+      setExistingSubmission(data);
     } catch (err: any) {
       alert("Submission Error: " + err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  const isSubmitted = !!existingSubmission;
+  const status = existingSubmission?.status;
+  const isApproved = status === 'approved' || status === 'completed';
+  const isPending = status === 'pending' || status === 'verifying';
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 animate-in fade-in duration-300">
@@ -100,37 +137,55 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                  </div>
               </div>
 
-              <div className="bg-slate-50 border-[4px] border-black p-8 relative shadow-[8px_8px_0px_0px_#000]">
-                 <div className="absolute -top-4 left-6 bg-white px-4 py-1 border-[3px] border-black font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-                    <ShieldCheck size={14} strokeWidth={3} className="text-emerald-500"/> Verification Factors
-                 </div>
-                 <ul className="space-y-6 mt-4">
-                    {checkpoints.map((pt, i) => (
-                      <li key={i} className="flex items-center gap-6">
-                         <div className="w-10 h-10 bg-white border-[3px] border-black flex items-center justify-center font-black text-sm italic shadow-[3px_3px_0px_0px_#000]">
-                            {i+1}
-                         </div>
-                         <span className="font-black text-xs uppercase tracking-tight leading-tight text-black/70">{pt}</span>
-                      </li>
-                    ))}
-                 </ul>
-              </div>
+              {initialFetchLoading ? (
+                <div className="flex justify-center py-10">
+                   <Loader2 className="animate-spin text-[#834bf1]" size={32} />
+                </div>
+              ) : (
+                <>
+                  <div className={`border-[4px] p-8 relative shadow-[8px_8px_0px_0px] transition-all ${isApproved ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200' : isPending ? 'bg-yellow-50 border-yellow-500 shadow-yellow-200' : 'bg-slate-50 border-black shadow-black'}`}>
+                    <div className={`absolute -top-4 left-6 px-4 py-1 border-[3px] border-black font-black text-[10px] uppercase tracking-widest flex items-center gap-2 ${isApproved ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : 'bg-white text-black'}`}>
+                        {/* Fix: Clock is now imported from lucide-react above */}
+                        {isApproved ? <CheckCircle2 size={14} /> : isPending ? <Clock size={14} /> : <ShieldCheck size={14} className="text-emerald-500"/>} 
+                        {isApproved ? 'Mission Accomplished' : isPending ? 'Review Stage Active' : 'Verification Factors'}
+                    </div>
+                    <ul className="space-y-6 mt-4">
+                        {checkpoints.map((pt, i) => (
+                          <li key={i} className="flex items-center gap-6">
+                            <div className="w-10 h-10 bg-white border-[3px] border-black flex items-center justify-center font-black text-sm italic shadow-[3px_3px_0px_0px_#000]">
+                                {i+1}
+                            </div>
+                            <span className="font-black text-xs uppercase tracking-tight leading-none text-black/70">{pt}</span>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
 
-              <div className="space-y-4">
-                 <p className="text-xs font-black uppercase text-black/40 italic">Intelligence Package:</p>
-                 <p className="text-sm font-bold text-black/60 uppercase leading-relaxed border-l-4 border-[#834bf1] pl-6">
-                    {mission.description || `Task: Execute visual content strategy for ${brand?.name || 'the partner brand'} at the specified location node. Ensure all brand identity standards are met.`}
-                 </p>
-              </div>
+                  <div className="space-y-4">
+                    <p className="text-xs font-black uppercase text-black/40 italic">Intelligence Package:</p>
+                    <p className="text-sm font-bold text-black/60 uppercase leading-relaxed border-l-4 border-[#834bf1] pl-6">
+                        {mission.description || `Task: Execute visual content strategy for ${brand?.name || 'the partner brand'} at the specified location node. Ensure all brand identity standards are met.`}
+                    </p>
+                  </div>
+                </>
+              )}
            </div>
 
            {/* SUBMISSION AREA */}
            <div className="mt-12 pt-10 border-t-[4px] border-black">
-              {submitted ? (
-                <div className="bg-[#39ff14] border-[4px] border-black p-8 text-center animate-in zoom-in duration-300 shadow-[8px_8px_0px_0px_#000]">
-                   <CheckCircle2 size={48} className="mx-auto mb-4" strokeWidth={3}/>
-                   <h3 className="font-black text-2xl uppercase italic font-display">Transmission Syncing</h3>
-                   <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-2">Manual Verification Queue Initialized</p>
+              {initialFetchLoading ? null : isSubmitted ? (
+                <div className={`border-[4px] border-black p-8 text-center animate-in zoom-in duration-300 shadow-[8px_8px_0px_0px_#000] ${isApproved ? 'bg-[#39ff14]' : 'bg-yellow-400'}`}>
+                   {isApproved ? <CheckCircle2 size={48} className="mx-auto mb-4" strokeWidth={3}/> : <Loader2 className="animate-spin mx-auto mb-4" size={48} strokeWidth={3}/>}
+                   <h3 className="font-black text-2xl uppercase italic font-display">
+                     {isApproved ? 'Transmission Verified' : 'Transmission Syncing'}
+                   </h3>
+                   <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-2">
+                     {isApproved ? 'Rewards Credited to Ledger' : 'Manual Verification Queue Initialized'}
+                   </p>
+                   <div className="mt-6 pt-4 border-t-2 border-black/10 flex items-center justify-center gap-2">
+                      <LinkIcon size={12} strokeWidth={3}/>
+                      <span className="text-[9px] font-black underline truncate max-w-xs">{link}</span>
+                   </div>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -142,7 +197,8 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                        </div>
                        <input 
                          type="text" 
-                         className="w-full p-5 font-black text-sm outline-none placeholder:text-black/20"
+                         disabled={loading}
+                         className="w-full p-5 font-black text-sm outline-none placeholder:text-black/20 disabled:bg-slate-100"
                          placeholder="https://instagram.com/reel/..."
                          value={link}
                          onChange={(e) => setLink(e.target.value)}
