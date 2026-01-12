@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '../../lib/clients';
 import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, ArrowRight, Coins } from 'lucide-react';
 
@@ -14,14 +14,19 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Extract info from joined data - strictly adhering to the mission's allocated reward
-  const checkpoints = submission.missions?.checkpoints && submission.missions.checkpoints.length >= 3 
-    ? submission.missions.checkpoints 
-    : ["Verify Link Authority", "Quality Control Check", "Tag/Caption Audit"];
+  // Use useMemo to ensure we have a stable reference to the bounty amount defined in the mission profile
+  const allocatedRC = useMemo(() => {
+    return submission?.missions?.reward_amount ?? 0;
+  }, [submission]);
+
+  const checkpoints = useMemo(() => {
+    return submission?.missions?.checkpoints && submission.missions.checkpoints.length >= 3 
+      ? submission.missions.checkpoints 
+      : ["Verify Link Authority", "Quality Control Check", "Tag/Caption Audit"];
+  }, [submission]);
   
-  const allocatedRC = submission.missions?.reward_amount || 0;
-  const missionTitle = submission.missions?.title || "UNSPECIFIED MISSION";
-  const agentName = submission.profiles?.display_name || "AGENT";
+  const missionTitle = submission?.missions?.title || "UNSPECIFIED MISSION";
+  const agentName = submission?.profiles?.display_name || "AGENT";
 
   const toggleCheck = (index: number) => {
     const newChecks = [...checks];
@@ -43,13 +48,13 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
       /**
        * TRIGGER SEQUENCE:
        * 1. Update submission status to 'approved'
-       * 2. Calculate and Allocate RC to Profile
+       * 2. Calculate and Allocate RC to Profile using the specific amount from the mission
        * 3. Insert Ledger Transaction
        */
-      const { data, error } = await supabase.rpc('grant_mission_reward', {
+      const { error } = await supabase.rpc('grant_mission_reward', {
          submission_id_param: submission.id,
          user_id_param: submission.user_id,
-         amount_param: allocatedRC,
+         amount_param: allocatedRC, // This passes the actual mission value (e.g., 500) instead of 0
          mission_title_param: missionTitle
       });
 
