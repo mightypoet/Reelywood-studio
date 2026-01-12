@@ -88,7 +88,9 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ userName, dash
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${user.uid}` }, () => fetchData())
         .subscribe();
 
-      return () => { supabase.removeChannel(channel); };
+      return () => { 
+        if (supabase) supabase.removeChannel(channel); 
+      };
     }
   }, [user]);
 
@@ -109,9 +111,14 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ userName, dash
     if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
     if (!confirm(`Authorize redemption of "${reward.title}" for ${reward.cost} RC?`)) return;
     
+    if (!supabase) {
+        alert("Database connection severed. Retrying handshake...");
+        return;
+    }
+
     setProcessingId(reward.id);
     try {
-      const { error } = await supabase!.rpc('redeem_reward', {
+      const { error } = await supabase.rpc('redeem_reward', {
         user_uid: user?.uid,
         cost: reward.cost,
         item_title: reward.title
@@ -199,7 +206,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ userName, dash
           </div>
           <div className="space-y-6">
             <h2 className="text-7xl md:text-9xl font-black text-black dark:text-white uppercase font-display italic tracking-tighter leading-[0.8]">
-              Creator <br /> <span className="text-[#834bf1] drop-shadow-[6px_6px_0px_#000] dark:drop-shadow-[6px_6px_0px_#fff]">Hub</span>
+              Creator <br /> <span className="text-[#834bf1] drop-shadow-[4px_4px_0px_#000] dark:drop-shadow-[4px_4px_0px_#fff]">Hub</span>
             </h2>
             <p className="text-black/60 dark:text-white/60 text-xl md:text-2xl font-black uppercase italic tracking-tight border-l-[10px] border-[#ffde59] pl-10 py-4 bg-slate-50 dark:bg-white/5">
               Sync complete. Bounty grid active. proceed to execution.
@@ -311,7 +318,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ userName, dash
                       <div className="flex justify-between items-start mb-8">
                         <div className="flex gap-6">
                            <div className="w-16 h-16 bg-white border-[3px] border-black p-2 shrink-0 shadow-[4px_4px_0px_0px_#000]">
-                              {mission.partner_brands?.logo_url ? <img src={mission.partner_brands.logo_url} className="w-full h-full object-contain" alt="Brand"/> : <div className="w-full h-full bg-black flex items-center justify-center text-white font-black text-xl italic font-display">R</div>}
+                              {mission.partner_brands?.logo_url ? <img src={mission.partner_brands.logo_url} className="w-full h-full object-contain" alt="Brand Logo"/> : <div className="w-full h-full bg-black flex items-center justify-center text-white font-black text-xl italic font-display">R</div>}
                            </div>
                            <div>
                               <h4 className="font-black uppercase italic text-2xl leading-none mb-2 font-display">{mission.title}</h4>

@@ -33,7 +33,7 @@ const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad1020
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'deploy' | 'missions' | 'vouchers' | 'users' | 'ledger' | 'brands' | 'submissions'>('deploy');
-  // Type explicitly as boolean to prevent 'true' type narrowing
+  // Explicitly typing as boolean to ensure stability
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
        const saved = localStorage.getItem('admin-theme');
@@ -126,7 +126,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         const { error } = await supabase.from(table).delete().eq('id', id);
         if (error) throw error;
         
-        showToast('success', `${type.toUpperCase()} DELETED`);
+        showToast('success', `${type.toUpperCase()} PURGED FROM GRID`);
         if (selectedProtocol?.id === id) setSelectedProtocol(null);
         fetchAllData();
     } catch (e: any) {
@@ -142,7 +142,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     
     let targetList: string[] | null = selectedCreatorIds;
     if (selectedCreatorIds.length === 0) {
-       if (!confirm("⚠️ NO CREATORS SELECTED.\n\nDeploy this globally to ALL users?")) return;
+       if (!confirm("⚠️ NO CREATORS SELECTED.\n\nDeploy this globally to ALL active nodes?")) return;
        targetList = null; 
     }
 
@@ -170,16 +170,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const createDraftMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
-    if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) return showToast('error', "MISSING FIELDS");
+    if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) return showToast('error', "MISSING IDENTITY FIELDS");
     
     setSubmitting(true);
     try {
       const brand = brands.find(b => b.id === missionForm.brand_id);
-      const autoLocation = brand?.location_text || 'Global';
+      const autoLocation = brand?.location_text || 'Global Sync';
 
       await supabase.from('missions').insert([{
         title: missionForm.title,
-        description: brand?.description || '',
+        description: brand?.description || 'No specific mission brief provided.',
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
         location: autoLocation,
@@ -187,7 +187,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         checkpoints: [missionForm.checkpoint1, missionForm.checkpoint2, missionForm.checkpoint3].filter(c => c),
         assigned_to: ['DRAFT'] 
       }]);
-      showToast('success', "MISSION DRAFTED. SWITCH TO DEPLOY TAB TO LAUNCH.");
+      showToast('success', "MISSION DRAFTED. NAVIGATE TO DEPLOY TO LAUNCH.");
       setMissionForm({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
       fetchAllData();
     } catch (e: any) { showToast('error', e.message); } 
@@ -197,7 +197,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const createDraftVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
-    if (!voucherForm.title || !voucherForm.brandId) return showToast('error', "MISSING FIELDS");
+    if (!voucherForm.title || !voucherForm.brandId) return showToast('error', "MISSING VOUCHER DATA");
     
     setSubmitting(true);
     try {
@@ -208,7 +208,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         code: voucherForm.code,
         assigned_to: ['DRAFT'] 
       }]);
-      showToast('success', "VOUCHER DRAFTED. SWITCH TO DEPLOY TAB TO LAUNCH.");
+      showToast('success', "VOUCHER DRAFTED. SWITCH TO DEPLOY TAB TO FINALIZE.");
       setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
       fetchAllData();
     } catch (e: any) { showToast('error', e.message); }
@@ -221,7 +221,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     try {
       const { error } = await supabase.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
       if (error) throw error;
-      showToast('success', `AGENT STATUS UPDATED: ${status.toUpperCase()}`);
+      showToast('success', `NODE STATUS UPDATED: ${status.toUpperCase()}`);
       fetchAllData();
     } catch (error: any) {
       showToast('error', error.message);
@@ -313,9 +313,9 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   <thead className="bg-black text-white text-[9px] uppercase font-black sticky top-0 z-10">
                     <tr>
                       <th className="p-3 w-10 text-center"><CheckSquare size={14}/></th>
-                      <th className="p-3">Identity</th>
-                      <th className="p-3">Stats</th>
-                      <th className="p-3">Performance</th>
+                      <th className="p-3">Identity (Name/ID)</th>
+                      <th className="p-3">Profile Stats</th>
+                      <th className="p-3">Performance Data</th>
                     </tr>
                   </thead>
                   <tbody className="text-[10px] font-bold">
@@ -374,7 +374,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                         className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === m.id ? 'border-purple-500 bg-purple-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
                       <div className="flex justify-between items-start">
                         <span className="font-black text-xs uppercase truncate pr-6">{m.title}</span>
-                        <button onClick={(e) => handleDeleteProtocol(e, m.id, 'mission')} className="text-gray-500 hover:text-rose-500 p-1"><Trash2 size={12}/></button>
+                        <button onClick={(e) => handleDeleteProtocol(e, m.id, 'mission')} className="text-gray-500 hover:text-rose-500 p-1 transition-colors"><Trash2 size={12}/></button>
                       </div>
                       <div className="flex gap-2 mt-1 items-center">
                          {isDraft && <span className="text-[8px] bg-yellow-500 text-black px-1 font-bold">DRAFT</span>}
@@ -392,7 +392,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                         className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === v.id ? 'border-blue-500 bg-blue-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
                       <div className="flex justify-between items-start">
                         <span className="font-black text-xs uppercase truncate pr-6">{v.title}</span>
-                        <button onClick={(e) => handleDeleteProtocol(e, v.id, 'voucher')} className="text-gray-500 hover:text-rose-500 p-1"><Trash2 size={12}/></button>
+                        <button onClick={(e) => handleDeleteProtocol(e, v.id, 'voucher')} className="text-gray-500 hover:text-rose-500 p-1 transition-colors"><Trash2 size={12}/></button>
                       </div>
                       <div className="flex gap-2 mt-1 items-center">
                          {isDraft && <span className="text-[8px] bg-yellow-500 text-black px-1 font-bold">DRAFT</span>}
@@ -420,13 +420,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               <div>
                 <label className="text-[10px] font-black uppercase text-gray-400">Partner Brand</label>
                 <select className="w-full p-4 border-4 border-black font-bold text-black bg-gray-50" required value={missionForm.brand_id} onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}>
-                  <option value="">-- SELECT BRAND --</option>
+                  <option value="">-- SELECT ALLIANCE NODE --</option>
                   {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase text-gray-400">Mission Title</label>
-                <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="e.g. POST REEL" required value={missionForm.title} onChange={e => setMissionForm({...missionForm, title: e.target.value})}/>
+                <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="e.g. VISUAL CAPTURE: CABIN17" required value={missionForm.title} onChange={e => setMissionForm({...missionForm, title: e.target.value})}/>
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase text-gray-400">Reward (RC)</label>
@@ -434,12 +434,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               </div>
               <div className="bg-gray-100 p-4 border-2 border-black space-y-2">
                 <p className="text-xs font-black text-black flex items-center gap-2"><ShieldCheck size={14}/> VERIFICATION FACTORS</p>
-                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 1 (e.g. Follow)" value={missionForm.checkpoint1} onChange={e => setMissionForm({...missionForm, checkpoint1: e.target.value})}/>
-                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 2 (e.g. Like)" value={missionForm.checkpoint2} onChange={e => setMissionForm({...missionForm, checkpoint2: e.target.value})}/>
-                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 3 (e.g. Tag)" value={missionForm.checkpoint3} onChange={e => setMissionForm({...missionForm, checkpoint3: e.target.value})}/>
+                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 1 (e.g. Primary Tag)" value={missionForm.checkpoint1} onChange={e => setMissionForm({...missionForm, checkpoint1: e.target.value})}/>
+                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 2 (e.g. Visual Match)" value={missionForm.checkpoint2} onChange={e => setMissionForm({...missionForm, checkpoint2: e.target.value})}/>
+                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 3 (e.g. Caption Check)" value={missionForm.checkpoint3} onChange={e => setMissionForm({...missionForm, checkpoint3: e.target.value})}/>
               </div>
               <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase border-2 border-transparent hover:bg-gray-800 transition-all">
-                {submitting ? 'SAVING...' : 'SAVE AS DRAFT'}
+                {submitting ? 'SYNCING...' : 'SAVE AS DRAFT'}
               </button>
             </form>
           </div>
@@ -453,10 +453,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 <option value="">SELECT BRAND</option>
                 {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
-              <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="VOUCHER TITLE" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
+              <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="VOUCHER IDENTITY" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
               <div className="grid grid-cols-2 gap-4">
                  <input className="w-full p-4 border-4 border-black font-bold text-black" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
-                 <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="CODE / HASH" required value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})}/>
+                 <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="HASH CODE" required value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})}/>
               </div>
               <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase border-2 border-black shadow-[4px_4px_0px_0px_#000]">SAVE AS DRAFT</button>
             </form>
