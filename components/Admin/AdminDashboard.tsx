@@ -67,16 +67,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         return;
     }
 
+    // Initial load
     fetchAllData();
 
-    if (!supabase) return;
-
-    const channel = supabase.channel('admin-live')
-        .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchAllData())
-        .subscribe();
+    // Set up invisible background polling every 5 seconds
+    const pollId = window.setInterval(() => {
+      fetchAllData();
+    }, 5000);
 
     return () => { 
-        if (supabase) supabase.removeChannel(channel); 
+        if (pollId) clearInterval(pollId); 
     };
   }, []);
 

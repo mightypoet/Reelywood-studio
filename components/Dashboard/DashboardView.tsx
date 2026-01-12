@@ -44,7 +44,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
 
-  const fetchOperationalGrid = async (user: FirebaseUser) => {
+  const fetchOperationalGrid = async (user: FirebaseUser, isInitial = false) => {
     if (!supabase) return;
 
     try {
@@ -82,20 +82,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     } catch (err) {
       console.error("GRID_SYNC_FAILURE:", err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
+    let pollInterval: number;
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        fetchOperationalGrid(user);
+        // Initial Fetch with loader
+        fetchOperationalGrid(user, true);
+
+        // Silent Polling every 8 seconds
+        pollInterval = window.setInterval(() => {
+          fetchOperationalGrid(user, false);
+        }, 8000);
       } else {
         setLoading(false);
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribe();
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, []);
 
   const handleRedeem = async (reward: any) => {
