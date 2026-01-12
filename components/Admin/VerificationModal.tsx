@@ -150,7 +150,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
 
             <div className="mt-8 text-center">
                <p className="text-[8px] font-black uppercase tracking-[0.5em] text-black/20 italic">
-                 Security Sequence: Status(Approved) -> Get(AllocatedRC) -> Transfer(UserNode)
+                 Security Sequence: Status(Approved) {"->"} Get(AllocatedRC) {"->"} Transfer(UserNode)
                </p>
             </div>
           </>
