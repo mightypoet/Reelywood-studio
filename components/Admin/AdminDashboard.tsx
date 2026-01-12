@@ -523,7 +523,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           )}
 
-          {/* TAB: LEDGER */}
+          {/* TAB: LEDGER (FIXED IDENTITY LOOKUP) */}
           {activeTab === 'ledger' && (
             <div className={`${cardColor} border-4 ${borderColor} shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden`}>
               <table className="w-full text-left">
@@ -537,17 +537,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </thead>
                 <tbody className="text-[11px] font-bold">
                   {transactions.map((tx, i) => {
-                    const agent = users.find(u => u.firebase_uid === tx.user_uid);
+                    // FIX: Check BOTH firebase_uid AND internal id to ensure we find the user
+                    const agent = users.find(u => u.firebase_uid === tx.user_uid || u.id === tx.user_uid);
+                    
                     const isCredit = tx.amount > 0;
                     return (
                       <tr key={i} className={`border-b border-black/10 hover:bg-black/5`}>
                         <td className="p-4 font-mono opacity-40">{new Date(tx.created_at).toLocaleString()}</td>
                         <td className="p-4 uppercase italic">
                            <div className="flex items-center gap-2">
-                              <div className={`w-6 h-6 border border-black flex items-center justify-center text-[10px] ${isCredit ? 'bg-emerald-200 text-emerald-800' : 'bg-rose-200 text-rose-800'}`}>
+                              <div className={`w-6 h-6 border border-black flex items-center justify-center text-[10px] font-black ${isCredit ? 'bg-emerald-200 text-emerald-800' : 'bg-rose-200 text-rose-800'}`}>
                                  {agent?.display_name?.charAt(0) || '?'}
                               </div>
-                              {agent?.display_name || 'Unknown Agent'}
+                              <div className="flex flex-col">
+                                <span className="leading-none">{agent?.display_name || 'Unknown Agent'}</span>
+                                <span className="text-[8px] opacity-40 font-mono">{agent?.email || tx.user_uid?.slice(0, 8) + '...'}</span>
+                              </div>
                            </div>
                         </td>
                         <td className="p-4 uppercase text-xs tracking-wide">
