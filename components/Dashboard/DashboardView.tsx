@@ -267,59 +267,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   });
 
   const fetchUserData = async () => {
-    if (!currentUser || !supabase) return;
+    const user = auth.currentUser;
+    if (!user || !supabase) return;
 
-    console.log("🔍 [SMART FILTER] Current Firebase UID:", currentUser.uid);
+    console.log("🔍 [SMART FILTER] Current Firebase UID:", user.uid);
 
     try {
       const [profileRes, missionsRes, rewardsRes, transRes, submissionsRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('firebase_uid', currentUser.uid).single(),
+        supabase.from('profiles').select('*').eq('firebase_uid', user.uid).single(),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').eq('user_uid', currentUser.uid).order('created_at', { ascending: false }),
-        supabase.from('submissions').select('mission_id, status').eq('user_id', currentUser.uid)
+        supabase.from('transactions').select('*').eq('user_uid', user.uid).order('created_at', { ascending: false }),
+        supabase.from('submissions').select('mission_id, status').eq('user_id', user.uid)
       ]);
 
       const userProfile = profileRes.data;
-      if (userProfile) {
-        setProfile(userProfile);
-        console.log("🔍 [SMART FILTER] Internal DB ID:", userProfile.id);
-      }
+      if (userProfile) setProfile(userProfile);
       
       if (missionsRes.data) {
-        // SMART FILTER: Checks for global vs targeted assignments
+        // --- THE SMART FILTER ---
         const myMissions = missionsRes.data.filter((mission: any) => {
-          // Rule 1: Global Mission (Show if assigned_to is empty or null or empty array)
-          if (!mission.assigned_to || (Array.isArray(mission.assigned_to) && mission.assigned_to.length === 0)) {
-            return true;
-          }
+          const targets = mission.assigned_to;
 
-          // Rule 2: Targeted Mission
-          // Ensure assigned_to is treated as an array for the search
-          const targets = Array.isArray(mission.assigned_to) ? mission.assigned_to : [mission.assigned_to];
-          
-          // Check both Firebase UID and internal ID for maximum sync reliability
-          const isMatch = targets.includes(currentUser.uid) || (userProfile?.id && targets.includes(userProfile.id));
+          // RULE 1: If 'assigned_to' is ['DRAFT'], NO ONE sees it.
+          if (Array.isArray(targets) && targets.includes('DRAFT')) return false;
 
-          if (isMatch) {
+          // RULE 2: If 'assigned_to' is NULL or Empty, it is GLOBAL -> SHOW IT.
+          if (!targets || (Array.isArray(targets) && targets.length === 0)) return true;
+
+          // RULE 3: If 'assigned_to' has IDs, check if I AM in the list.
+          if (Array.isArray(targets) && (targets.includes(user.uid) || (userProfile?.id && targets.includes(userProfile.id)))) {
             console.log(`✅ [SYNC MATCH]: Mission "${mission.title}" is explicitly for you.`);
             return true;
-          } else {
-            console.log(`⛔ [SYNC HIDE]: Mission "${mission.title}" restricted to other nodes.`);
-            return false;
           }
+
+          // Otherwise -> HIDE IT
+          console.log(`⛔ [SYNC HIDE]: Mission "${mission.title}" restricted to other nodes.`);
+          return false;
         });
+
         setMissions(myMissions);
       }
 
       if (rewardsRes.data) {
         // Identical Smart Filter for rewards/vouchers
         const myRewards = rewardsRes.data.filter((reward: any) => {
-          if (!reward.assigned_to || (Array.isArray(reward.assigned_to) && reward.assigned_to.length === 0)) {
-            return true;
-          }
-          const targets = Array.isArray(reward.assigned_to) ? reward.assigned_to : [reward.assigned_to];
-          return targets.includes(currentUser.uid) || (userProfile?.id && targets.includes(userProfile.id));
+          const targets = reward.assigned_to;
+          if (Array.isArray(targets) && targets.includes('DRAFT')) return false;
+          if (!targets || (Array.isArray(targets) && targets.length === 0)) return true;
+          return Array.isArray(targets) && (targets.includes(user.uid) || (userProfile?.id && targets.includes(userProfile.id)));
         });
         setRewards(myRewards);
       }
@@ -358,9 +354,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
         if (!supabase) return; 
 
+        // --- SMART NOTIFICATION LISTENER ---
         const channel = supabase
-          .channel('user-dashboard-realtime')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
+          .channel('user-dashboard-smart')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, (payload: any) => {
+            const newMission = payload.new;
+            
+            // CHECK: Is this mission actually for me?
+            if (newMission.assigned_to?.includes('DRAFT')) return;
+
+            if (newMission.assigned_to && Array.isArray(newMission.assigned_to) && newMission.assigned_to.length > 0) {
+               if (!newMission.assigned_to.includes(user.uid)) {
+                  console.log("Ignored notification for targeted mission:", newMission.title);
+                  return;
+               }
+            }
+
+            console.log("⚡ New Mission Signal detected!");
             fetchUserData();
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
@@ -385,7 +395,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   }, []);
 
   useEffect(() => {
-    if (!currentUser || !supabase) return;
+    const user = auth.currentUser;
+    if (!user || !supabase) return;
 
     const channel = supabase?.channel('public:notifications:all')
       .on(
@@ -398,7 +409,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         (payload) => {
           const notif = payload.new;
           
-          if (notif.user_id === 'global' || notif.user_id === currentUser.uid) {
+          if (notif.user_id === 'global' || notif.user_id === user.uid) {
             setToast({
               show: true,
               title: notif.title,

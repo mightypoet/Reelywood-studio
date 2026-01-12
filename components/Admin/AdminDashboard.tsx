@@ -70,7 +70,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     // 1. Initial Fetch
     fetchAllData();
 
-    // 2. Realtime Subscription (Strict Null Check)
+    // 2. Realtime Subscription (Fixed for TS18047)
     if (!supabase) return;
 
     const channel = supabase.channel('admin-live')
@@ -78,7 +78,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         .subscribe();
 
     return () => { 
-        if (supabase) supabase.removeChannel(channel); 
+        supabase?.removeChannel(channel); 
     };
   }, []);
 
@@ -123,12 +123,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     if (!supabase) return;
     if (!selectedProtocol) return showToast('error', "SELECT A MISSION OR VOUCHER FIRST");
     
-    // Logic: If NO creators selected -> Confirm Global Deploy. If Creators selected -> Selective Deploy.
     let targetList: string[] | null = selectedCreatorIds;
-    
     if (selectedCreatorIds.length === 0) {
        if (!confirm("⚠️ NO CREATORS SELECTED.\n\nDeploy this globally to ALL users?")) return;
-       targetList = null; // API expects null for Global broadcast
+       targetList = null; 
     }
 
     setSubmitting(true);
@@ -142,7 +140,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       if (error) throw error;
       showToast('success', `PROTOCOL DEPLOYED TO ${targetList ? targetList.length : 'ALL'} NODES`);
       
-      // Reset
       setSelectedCreatorIds([]);
       setSelectedProtocol(null);
       fetchAllData();
@@ -163,13 +160,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const brand = brands.find(b => b.id === missionForm.brand_id);
       await supabase.from('missions').insert([{
         title: missionForm.title,
-        description: brand?.description,
+        description: brand?.description || '',
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
-        location: missionForm.location || brand?.location_text,
-        image_url: brand?.cover_image_url,
+        location: missionForm.location || brand?.location_text || '',
+        image_url: brand?.cover_image_url || '',
         checkpoints: [missionForm.checkpoint1, missionForm.checkpoint2, missionForm.checkpoint3].filter(c => c),
-        assigned_to: ['DRAFT'] // Initially hidden from all feeds
+        assigned_to: ['DRAFT'] 
       }]);
       showToast('success', "MISSION DRAFTED. SWITCH TO DEPLOY TAB TO LAUNCH.");
       setMissionForm({ title: '', reward: '', brand_id: '', location: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
@@ -190,7 +187,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         title: voucherForm.title,
         cost: parseInt(voucherForm.cost),
         code: voucherForm.code,
-        assigned_to: ['DRAFT'] // Initially hidden from all feeds
+        assigned_to: ['DRAFT'] 
       }]);
       showToast('success', "VOUCHER DRAFTED. SWITCH TO DEPLOY TAB TO LAUNCH.");
       setVoucherForm({ brandId: '', title: '', cost: '', code: '' });
@@ -214,11 +211,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }
   };
 
-  const isDark = darkMode;
-  const bg = isDark ? 'bg-[#0a0a0a]' : 'bg-gray-100';
-  const text = isDark ? 'text-white' : 'text-black';
-  const card = isDark ? 'bg-[#1a1a1a]' : 'bg-white';
-  const border = isDark ? 'border-white' : 'border-black';
+  // Fixed errors below: using 'darkMode' instead of 'isDark'
+  const bg = darkMode ? 'bg-[#0a0a0a]' : 'bg-gray-100';
+  const text = darkMode ? 'text-white' : 'text-black';
+  const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
+  const border = darkMode ? 'border-white' : 'border-black';
 
   return (
     <div className={`min-h-screen ${bg} ${text} font-mono pb-20`}>
@@ -242,14 +239,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       <header className={`border-b-4 ${border} ${card} px-6 py-4 flex justify-between sticky top-0 z-50`}>
         <div className="flex items-center gap-4"><Terminal size={24}/><h1 className="text-xl font-black italic">TERMINAL <span className="text-gray-500 text-sm not-italic ml-2">v2.0 Deploy</span></h1></div>
         <div className="flex gap-4">
-           <button onClick={() => setDarkMode(!darkMode)} className={`p-2 border-2 ${border} ${isDark ? 'bg-yellow-400 text-black' : 'bg-black text-white'}`}>
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+           {/* Fixed errors below: using 'darkMode' instead of 'isDark' */}
+           <button onClick={() => setDarkMode(!darkMode)} className={`p-2 border-2 ${border} ${darkMode ? 'bg-yellow-400 text-black' : 'bg-black text-white'}`}>
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button onClick={onLogout} className="bg-rose-600 text-white px-4 py-1 text-xs font-black uppercase border-2 border-black shadow-[2px_2px_0px_0px_#000]">Exit</button>
+          <button onClick={onLogout} className="bg-rose-600 text-white px-4 py-1 text-xs font-black uppercase border-2 border-black">Exit</button>
         </div>
       </header>
 
-      {/* METRICS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6">
         {[
           { l: 'AGENTS', v: users.length, i: Users },
@@ -264,7 +261,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         ))}
       </div>
 
-      {/* TABS */}
       <div className="px-6 flex overflow-x-auto gap-1">
         {[
           { id: 'deploy', label: 'DEPLOY', icon: Send },
@@ -284,17 +280,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
       <div className={`mx-6 border-4 ${border} ${card} min-h-[600px] p-6 shadow-[8px_8px_0px_0px_#000]`}>
         
-        {/* === TAB 1: DEPLOYMENT CENTER === */}
         {activeTab === 'deploy' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-            
-            {/* LEFT: CREATOR INTELLIGENCE TABLE (8 cols) */}
             <div className="lg:col-span-8 flex flex-col gap-4 h-[700px]">
               <div className="flex justify-between items-center bg-gray-100 p-3 border-2 border-black">
                 <h3 className="text-lg font-black text-black italic uppercase flex items-center gap-2"><Users size={18}/> CREATOR INTELLIGENCE</h3>
                 <span className="text-xs font-bold bg-blue-500 text-white px-3 py-1 border border-black shadow-[2px_2px_0px_0px_#000]">SELECTED: {selectedCreatorIds.length}</span>
               </div>
-              
               <div className="flex-1 overflow-auto border-4 border-black bg-white shadow-[4px_4px_0px_0px_#000]">
                 <table className="w-full text-left text-black">
                   <thead className="bg-black text-white text-[9px] uppercase font-black sticky top-0 z-10">
@@ -340,12 +332,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               </div>
             </div>
 
-            {/* RIGHT: PROTOCOL SELECTOR (4 cols) */}
             <div className="lg:col-span-4 flex flex-col gap-4 h-[700px] border-l-4 border-black pl-8 border-dashed">
               <div className="bg-black text-white p-3 border-2 border-white shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]">
                 <h3 className="text-lg font-black italic uppercase flex items-center gap-2"><Send size={18}/> DEPLOYMENT CONSOLE</h3>
               </div>
-              
               <div className="bg-[#111] p-4 border-2 border-gray-700 mb-2">
                 <p className="text-[9px] font-black uppercase text-gray-500 mb-2">TARGET SUMMARY</p>
                 {selectedCreatorIds.length > 0 ? (
@@ -354,11 +344,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   <div className="text-sm font-black text-rose-500 animate-pulse">GLOBAL BROADCAST (ALL)</div>
                 )}
               </div>
-
               <div className="flex-1 overflow-auto space-y-3 pr-2 custom-scrollbar">
                 <p className="text-[10px] font-black uppercase bg-gray-800 text-white px-2 py-1 sticky top-0">SELECT PROTOCOL</p>
-                
-                {/* LIST MISSIONS */}
                 {missions.map(m => {
                    const isDraft = m.assigned_to?.includes('DRAFT');
                    return (
@@ -376,8 +363,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     </div>
                   );
                 })}
-
-                {/* LIST VOUCHERS */}
                 {vouchers.map(v => {
                    const isDraft = v.assigned_to?.includes('DRAFT');
                    return (
@@ -396,7 +381,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   );
                 })}
               </div>
-
               <button 
                 onClick={handleExecuteDeploy}
                 disabled={submitting || !selectedProtocol}
@@ -408,7 +392,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           </div>
         )}
 
-        {/* === TAB 2: CREATE MISSION === */}
         {activeTab === 'missions' && (
           <div className="max-w-2xl mx-auto py-8">
             <h2 className="text-2xl font-black italic uppercase mb-8 flex items-center gap-3"><Zap className="text-purple-500"/> CREATE MISSION TEMPLATE</h2>
@@ -447,7 +430,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           </div>
         )}
 
-        {/* === TAB 3: CREATE VOUCHER === */}
         {activeTab === 'vouchers' && (
           <div className="max-w-2xl mx-auto py-8">
             <h2 className="text-2xl font-black italic uppercase mb-8 flex items-center gap-3"><Gift className="text-blue-500"/> CREATE VOUCHER TEMPLATE</h2>
@@ -466,7 +448,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           </div>
         )}
 
-        {/* === OTHER TABS === */}
         {activeTab === 'brands' && <BrandManager />}
         
         {activeTab === 'users' && (
