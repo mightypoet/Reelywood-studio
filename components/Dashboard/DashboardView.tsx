@@ -23,7 +23,9 @@ import {
   TrendingUp,
   Maximize2,
   RefreshCw,
-  Building2
+  Building2,
+  Link as LinkIcon,
+  AlertTriangle
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { RedeemConfirmationModal } from './RedeemConfirmationModal';
@@ -77,7 +79,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       const [rRes, sRes] = await Promise.all([
         supabase.from('rewards').select('*, partner_brands(*)'),
-        supabase.from('submissions').select('mission_id, status').eq('user_id', user.uid)
+        supabase.from('submissions').select('*').eq('user_id', user.uid)
       ]);
 
       if (rRes.data) setRewards(rRes.data);
@@ -287,7 +289,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       missions.map((m) => {
                         const submission = userSubmissions.find(s => s.mission_id === m.id);
                         const isDone = submission?.status === 'approved' || submission?.status === 'completed';
-                        const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
+                        const isPending = submission?.status === 'pending' || submission?.status === 'verifying' || submission?.status === 'review';
+                        const isRejected = submission?.status === 'rejected';
                         const brand = m.partner_brands;
 
                         // Conditional UI Styling based on status
@@ -295,13 +298,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                           ? 'bg-emerald-50 border-emerald-400 shadow-emerald-200' 
                           : isPending 
                             ? 'bg-yellow-50 border-yellow-400 shadow-yellow-200' 
-                            : 'bg-white border-black shadow-black';
+                            : isRejected
+                              ? 'bg-rose-50 border-rose-400 shadow-rose-200'
+                              : 'bg-white border-black shadow-black';
 
                         const buttonStyles = isDone 
                           ? 'bg-emerald-500 text-white border-emerald-600' 
                           : isPending 
                             ? 'bg-yellow-400 text-black border-yellow-500' 
-                            : 'bg-[#834bf1] text-white hover:bg-black';
+                            : isRejected
+                              ? 'bg-rose-500 text-white border-rose-600'
+                              : 'bg-[#834bf1] text-white hover:bg-black';
 
                         return (
                           <div key={m.id} className={`border-[4px] p-8 shadow-[8px_8px_0px_0px] group hover:-translate-y-1 transition-all flex flex-col ${cardStyles}`}>
@@ -313,25 +320,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                      <Building2 size={24} className="text-[#834bf1]" />
                                    )}
                                 </div>
-                                <div className={`px-3 py-1 font-black text-xs italic border-[2px] ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : 'bg-black text-[#ffde59]'}`}>
-                                  {isDone ? 'VERIFIED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
+                                <div className={`px-3 py-1 font-black text-[10px] italic border-[2px] shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] flex items-center gap-1.5 ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : isRejected ? 'bg-rose-500 text-white' : 'bg-black text-[#ffde59]'}`}>
+                                  {isDone && <CheckCircle2 size={12}/>}
+                                  {isPending && <Clock size={12}/>}
+                                  {isRejected && <AlertTriangle size={12}/>}
+                                  {isDone ? 'COMPLETED' : isPending ? 'VERIFYING' : isRejected ? 'REJECTED' : `+${m.reward_amount} RC`}
                                 </div>
                              </div>
                              
                              <div className="mb-4">
-                               <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isDone ? 'text-emerald-600' : isPending ? 'text-yellow-600' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood Labs'}</p>
+                               <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isDone ? 'text-emerald-600' : isPending ? 'text-yellow-600' : isRejected ? 'text-rose-600' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood Labs'}</p>
                                <h3 className="text-xl font-black uppercase italic font-display leading-tight">{m.title}</h3>
                              </div>
                              
                              <p className="text-[10px] font-bold text-black/50 leading-relaxed uppercase mb-8 line-clamp-3 border-l-2 border-slate-100 pl-3">{m.description}</p>
                              
+                             {submission && (
+                               <div className="mb-8 p-3 bg-white/40 border-2 border-black/10 flex items-center gap-3">
+                                 <LinkIcon size={14} className="opacity-40" />
+                                 <p className="text-[9px] font-bold uppercase truncate max-w-[150px] opacity-40">{submission.link}</p>
+                               </div>
+                             )}
+
                              <div className="mt-auto">
                                 <button 
                                   onClick={() => setSelectedMission(m)}
                                   disabled={isDone || isPending}
                                   className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all ${buttonStyles}`}
                                 >
-                                  {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEW IN PROGRESS' : 'INITIALIZE MISSION'}
+                                  {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEW IN PROGRESS' : isRejected ? 'RE-ATTEMPT SUBMISSION' : 'INITIALIZE MISSION'}
                                 </button>
                              </div>
                           </div>
