@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../../lib/clients';
-import { X, MapPin, Link as LinkIcon, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
+import { X, MapPin, Link as LinkIcon, CheckCircle2, ShieldCheck, Loader2, Building2 } from 'lucide-react';
 
 interface MissionModalProps {
   mission: any;
@@ -13,6 +14,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const brand = mission.partner_brands;
   const checkpoints = mission.checkpoints && mission.checkpoints.length > 0 
     ? mission.checkpoints 
     : ["Tag @Reelywood in caption", "Use brand hashtags", "Ensure high visual fidelity"];
@@ -49,28 +51,37 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
         </button>
 
         {/* LEFT: BRAND INTEL */}
-        <div className="w-full md:w-5/12 relative bg-black border-r-[6px] border-black overflow-hidden group">
+        <div className="w-full md:w-5/12 relative bg-black border-r-[6px] border-black overflow-hidden group min-h-[300px]">
            <img 
-              src={mission.partner_brands?.cover_image_url || mission.image_url || "https://images.unsplash.com/photo-1492684223066-81342ee5ff30"} 
+              src={brand?.cover_image_url || mission.image_url || "https://images.unsplash.com/photo-1492684223066-81342ee5ff30"} 
               className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-all duration-1000" 
               alt="Mission cover"
            />
            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
            
-           <div className="absolute bottom-0 left-0 p-10 w-full space-y-6">
+           {/* Dynamic Logo Overlay */}
+           <div className="absolute top-10 left-10 w-20 h-20 bg-white border-[4px] border-black p-3 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] z-20">
+              {brand?.logo_url ? (
+                <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" />
+              ) : (
+                <Building2 className="w-full h-full text-black" />
+              )}
+           </div>
+
+           <div className="absolute bottom-0 left-0 p-10 w-full space-y-6 z-10">
               <div className="inline-block bg-[#ffde59] text-black font-black text-[10px] uppercase tracking-[0.4em] px-4 py-2 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
-                 PROTOCOL: {mission.partner_brands?.name || "REELYWOOD"}
+                 ALLIANCE NODE: {brand?.name || "REELYWOOD"}
               </div>
               <h2 className="text-5xl font-black italic uppercase font-display tracking-tighter leading-none text-white drop-shadow-lg">{mission.title}</h2>
               
               <a 
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mission.location || mission.partner_brands?.location_text || "Kolkata")}`}
+                href={brand?.map_link || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mission.location || brand?.location_text || "Kolkata")}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center space-x-3 font-black text-xs text-gray-300 uppercase tracking-widest hover:text-[#ffde59] hover:underline transition-all cursor-pointer group/loc"
               >
                  <MapPin size={16} strokeWidth={3} className="text-[#ffde59] group-hover/loc:scale-110 transition-transform" /> 
-                 <span>{mission.location || mission.partner_brands?.location_text || "Global Sync"} (View Map)</span>
+                 <span>{mission.location || brand?.location_text || "Global Sync"}</span>
               </a>
            </div>
         </div>
@@ -81,7 +92,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
               <div className="flex justify-between items-start">
                  <div className="space-y-1">
                     <h3 className="font-black text-3xl uppercase italic tracking-tighter font-display">Operational Brief</h3>
-                    <p className="text-[10px] font-black text-black/30 uppercase tracking-[0.4em]">Authorization: {user.uid.slice(0,10)}...</p>
+                    <p className="text-[10px] font-black text-black/30 uppercase tracking-[0.4em]">Node Auth: {user.uid.slice(0,10)}...</p>
                  </div>
                  <div className="bg-black text-white p-6 border-[4px] border-black shadow-[6px_6px_0px_0px_#834bf1] text-center min-w-[120px]">
                     <div className="text-4xl font-black italic font-display">{mission.reward_amount || 0}</div>
@@ -91,7 +102,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
 
               <div className="bg-slate-50 border-[4px] border-black p-8 relative shadow-[8px_8px_0px_0px_#000]">
                  <div className="absolute -top-4 left-6 bg-white px-4 py-1 border-[3px] border-black font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-                    <ShieldCheck size={14} strokeWidth={3} className="text-emerald-500"/> Deployment Checkpoints
+                    <ShieldCheck size={14} strokeWidth={3} className="text-emerald-500"/> Verification Factors
                  </div>
                  <ul className="space-y-6 mt-4">
                     {checkpoints.map((pt, i) => (
@@ -108,7 +119,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
               <div className="space-y-4">
                  <p className="text-xs font-black uppercase text-black/40 italic">Intelligence Package:</p>
                  <p className="text-sm font-bold text-black/60 uppercase leading-relaxed border-l-4 border-[#834bf1] pl-6">
-                    {mission.description}
+                    {mission.description || `Task: Execute visual content strategy for ${brand?.name || 'the partner brand'} at the specified location node. Ensure all brand identity standards are met.`}
                  </p>
               </div>
            </div>

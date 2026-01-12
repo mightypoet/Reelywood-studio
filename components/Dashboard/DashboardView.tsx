@@ -23,7 +23,8 @@ import {
   MapPin,
   TrendingUp,
   Maximize2,
-  RefreshCw
+  RefreshCw,
+  Building2
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 
@@ -44,12 +45,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
 
-  // Core Data Fetcher
   const fetchOperationalGrid = async (user: FirebaseUser) => {
     if (!supabase) return;
 
     try {
-      // 1. Get Profile with Verification Status
       const { data: profileData, error: pError } = await supabase
         .from('profiles')
         .select('*')
@@ -59,8 +58,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (pError && pError.code !== 'PGRST116') throw pError;
       setProfile(profileData);
 
-      // 2. Complex Mission Query (Assigned OR Global)
-      // We filter on the client side for complex array contains if RLS is tight
       const { data: allMissions } = await supabase
         .from('missions')
         .select('*, partner_brands(*)');
@@ -68,7 +65,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (allMissions) {
         const filtered = allMissions.filter(m => {
           if (m.assigned_to?.includes('DRAFT')) return false;
-          // Logic: (Is Global) OR (I am specifically in the assigned_to array)
           const isGlobal = !m.assigned_to || m.assigned_to.length === 0;
           const isAssigned = m.assigned_to?.includes(user.uid) || m.assigned_to?.includes(profileData?.id);
           return isGlobal || isAssigned;
@@ -76,7 +72,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setMissions(filtered);
       }
 
-      // 3. Rewards & Submissions
       const [rRes, sRes] = await Promise.all([
         supabase.from('rewards').select('*, partner_brands(*)'),
         supabase.from('submissions').select('mission_id, status').eq('user_id', user.uid)
@@ -106,7 +101,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const handleRedeem = async (reward: any) => {
     if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
-    if (!confirm(`Redeem "${reward.title}"?`)) return;
+    if (!confirm(`Redeem "${reward.title}" from ${reward.partner_brands?.name || 'Reelywood'}?`)) return;
     
     setIsProcessing(reward.id);
     try {
@@ -116,7 +111,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         item_title: reward.title
       });
       if (error) throw error;
-      setRevealedCodes(prev => ({ ...prev, [reward.id]: reward.code || 'DECRYPTED' }));
+      setRevealedCodes(prev => ({ ...prev, [reward.id]: reward.code || 'DECRYPTED_HASH' }));
       if (currentUser) fetchOperationalGrid(currentUser);
     } catch (err: any) {
       alert("Redemption Protocol Failure: " + err.message);
@@ -173,7 +168,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         />
       )}
 
-      {/* Hub Header */}
       <header className="border-b-[6px] border-black bg-white sticky top-0 z-[50] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
@@ -197,7 +191,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       <main className="max-w-7xl mx-auto p-6 lg:p-12">
         <div className="grid lg:grid-cols-12 gap-12">
-          {/* Sidebar */}
           <div className="lg:col-span-4 space-y-12">
             <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000] relative overflow-hidden group">
                <div className="absolute top-4 right-4 bg-[#ffde59] border-[3px] border-black px-3 py-1 font-black text-[9px] uppercase tracking-widest shadow-[3px_3px_0px_0px_#000]">
@@ -227,9 +220,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             </div>
           </div>
 
-          {/* Main Grid */}
           <div className="lg:col-span-8 space-y-10">
-            {/* Tab Controller */}
             <div className="flex border-[6px] border-black bg-white p-2 shadow-[10px_10px_0px_0px_#000]">
               <button 
                 onClick={() => setActiveTab('missions')} 
@@ -245,7 +236,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               </button>
             </div>
 
-            {/* Locked Content Overlay */}
             {!isApproved && (
                <div className="bg-[#ffde59] border-[6px] border-black p-12 text-center shadow-[16px_16px_0px_0px_#000] animate-in zoom-in duration-300">
                   <Lock size={48} className="mx-auto mb-6 text-black" strokeWidth={3} />
@@ -267,17 +257,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         const submission = userSubmissions.find(s => s.mission_id === m.id);
                         const isDone = submission?.status === 'approved';
                         const isPending = submission?.status === 'pending';
+                        const brand = m.partner_brands;
 
                         return (
                           <div key={m.id} className={`bg-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_#000] group hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_#834bf1] transition-all flex flex-col ${isDone ? 'bg-emerald-50' : ''}`}>
                              <div className="flex justify-between items-start mb-6">
-                                <div className="w-12 h-12 bg-slate-100 border-[3px] border-black flex items-center justify-center p-2">
-                                   {m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Target size={24} />}
+                                <div className="w-14 h-14 bg-white border-[3px] border-black flex items-center justify-center p-2 shadow-[3px_3px_0px_0px_#000]">
+                                   {brand?.logo_url ? (
+                                     <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" />
+                                   ) : (
+                                     <Building2 size={24} className="text-[#834bf1]" />
+                                   )}
                                 </div>
-                                <div className="bg-black text-[#ffde59] px-3 py-1 font-black text-xs italic">+{m.reward_amount} RC</div>
+                                <div className="bg-black text-[#ffde59] px-3 py-1 font-black text-xs italic border-[2px] border-black">+{m.reward_amount} RC</div>
                              </div>
-                             <h3 className="text-xl font-black uppercase italic mb-4 font-display leading-tight">{m.title}</h3>
-                             <p className="text-[10px] font-bold text-black/50 leading-relaxed uppercase mb-8 line-clamp-3">{m.description}</p>
+                             
+                             <div className="mb-4">
+                               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#834bf1] mb-1">{brand?.name || 'Reelywood Labs'}</p>
+                               <h3 className="text-xl font-black uppercase italic font-display leading-tight">{m.title}</h3>
+                             </div>
+                             
+                             <p className="text-[10px] font-bold text-black/50 leading-relaxed uppercase mb-8 line-clamp-3 border-l-2 border-slate-100 pl-3">{m.description}</p>
                              
                              <div className="mt-auto">
                                 <button 
@@ -295,34 +295,56 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {rewards.length === 0 ? <p className="text-center opacity-20 font-black italic uppercase py-20">No active rewards</p> : 
-                      rewards.map((r) => (
-                        <div key={r.id} className="bg-white border-[5px] border-black p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-8 group hover:shadow-[12px_12px_0px_0px_#ffde59] transition-all">
-                           <div className="flex items-center gap-8">
-                              <div className="w-16 h-16 bg-[#ffde59] border-[4px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6 transition-all">
-                                <Gift size={28} strokeWidth={3} />
-                              </div>
-                              <div>
-                                 <h4 className="text-2xl font-black uppercase italic font-display">{r.title}</h4>
-                                 <p className="text-[10px] font-black uppercase text-[#834bf1] tracking-[0.3em]">{r.partner_brands?.name}</p>
-                              </div>
-                           </div>
-                           <div className="flex items-center gap-8">
-                              <div className="text-right">
-                                 <span className="text-3xl font-black italic font-display text-[#834bf1]">{r.cost}</span>
-                                 <span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span>
-                              </div>
-                              <button 
-                                onClick={() => handleRedeem(r)}
-                                disabled={isProcessing === r.id || !!revealedCodes[r.id]}
-                                className={`px-8 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all ${revealedCodes[r.id] ? 'bg-[#39ff14] text-black' : 'bg-black text-white hover:bg-[#834bf1]'}`}
-                              >
-                                {isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `HASH: ${revealedCodes[r.id]}` : 'EXECUTE REDEEM'}
-                              </button>
-                           </div>
-                        </div>
-                      ))
-                    }
+                    {rewards.length === 0 ? (
+                      <div className="py-24 text-center border-4 border-dashed border-black/10">
+                        <Gift size={48} className="mx-auto mb-4 opacity-10" />
+                        <p className="text-xs font-black italic uppercase opacity-20 tracking-widest">Voucher Node Empty</p>
+                      </div>
+                    ) : (
+                      rewards.map((r) => {
+                        const brand = r.partner_brands;
+                        return (
+                          <div key={r.id} className="bg-white border-[5px] border-black p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-8 group hover:shadow-[12px_12px_0px_0px_#ffde59] transition-all">
+                             <div className="flex items-center gap-8 flex-1">
+                                <div className="w-16 h-16 bg-white border-[4px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6 transition-all overflow-hidden p-2">
+                                  {brand?.logo_url ? (
+                                    <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" />
+                                  ) : (
+                                    <Gift size={28} className="text-[#ffde59]" strokeWidth={3} />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                   <div className="flex items-center gap-3 mb-1">
+                                     <h4 className="text-2xl font-black uppercase italic font-display truncate">{r.title}</h4>
+                                     <div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse"></div>
+                                   </div>
+                                   <div className="flex flex-col gap-1">
+                                      <p className="text-[10px] font-black uppercase text-[#834bf1] tracking-[0.3em]">{brand?.name || 'Reelywood'}</p>
+                                      {brand?.location_text && (
+                                        <p className="text-[8px] font-bold uppercase text-black/40 tracking-widest flex items-center gap-1">
+                                          <MapPin size={10}/> {brand.location_text}
+                                        </p>
+                                      )}
+                                   </div>
+                                </div>
+                             </div>
+                             <div className="flex items-center gap-8 shrink-0">
+                                <div className="text-right">
+                                   <span className="text-3xl font-black italic font-display text-[#834bf1]">{r.cost}</span>
+                                   <span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span>
+                                </div>
+                                <button 
+                                  onClick={() => handleRedeem(r)}
+                                  disabled={isProcessing === r.id || !!revealedCodes[r.id]}
+                                  className={`px-8 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all ${revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000]' : 'bg-black text-white hover:bg-[#834bf1]'}`}
+                                >
+                                  {isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `HASH: ${revealedCodes[r.id]}` : 'EXECUTE REDEEM'}
+                                </button>
+                             </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </div>
