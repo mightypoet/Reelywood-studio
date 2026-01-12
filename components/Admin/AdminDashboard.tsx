@@ -90,7 +90,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
-        supabase.from('submissions').select('*, profiles(display_name), missions(title)').order('created_at', { ascending: false })
+        supabase.from('submissions').select('*, profiles(display_name), missions(title, reward_amount, checkpoints)').order('created_at', { ascending: false })
       ]);
       
       if (u.data) setUsers(u.data);
@@ -509,7 +509,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     <h4 className="font-black text-lg uppercase leading-tight italic">{sub.profiles?.display_name}</h4>
                     <span className="text-[8px] bg-slate-100 px-2 py-1 font-bold border border-black uppercase tracking-widest italic">Mission Signal</span>
                   </div>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">Deployment: {sub.missions?.title}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">Deployment: {sub.missions?.title || sub.mission?.title}</p>
                   <button onClick={() => setSelectedSubmission(sub)} className="bg-yellow-400 w-full py-3 font-black text-xs border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all uppercase tracking-widest italic">Verify Evidence</button>
                </div>
              ))}

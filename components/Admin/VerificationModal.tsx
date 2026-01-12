@@ -1,7 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../../lib/clients';
-import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, ArrowRight, Coins } from 'lucide-react';
+import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, Coins } from 'lucide-react';
 
 interface VerificationModalProps {
   submission: any;
@@ -14,18 +13,22 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Extract amount from join: submissions.missions.reward_amount
+  // Trace and fix the data path:
+  // The submission object from AdminDashboard contains joined data.
+  // We check for both 'mission' and 'missions' plural to be safe with common Supabase return structures.
   const allocatedRC = useMemo(() => {
-    return submission?.missions?.reward_amount ?? 0;
+    const missionData = submission?.missions || submission?.mission;
+    return missionData?.reward_amount ?? 0;
   }, [submission]);
 
   const checkpoints = useMemo(() => {
-    return submission?.missions?.checkpoints && submission.missions.checkpoints.length >= 3 
-      ? submission.missions.checkpoints 
+    const missionData = submission?.missions || submission?.mission;
+    return missionData?.checkpoints && missionData.checkpoints.length >= 1 
+      ? missionData.checkpoints 
       : ["Verify Link Authority", "Quality Control Check", "Tag/Caption Audit"];
   }, [submission]);
   
-  const missionTitle = submission?.missions?.title || "UNSPECIFIED MISSION";
+  const missionTitle = submission?.missions?.title || submission?.mission?.title || "UNSPECIFIED MISSION";
   const agentName = submission?.profiles?.display_name || "AGENT";
 
   const toggleCheck = (index: number) => {
@@ -44,22 +47,17 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
     try {
       if (!supabase) throw new Error("Database terminal unavailable.");
 
-      /**
-       * TRIGGER SEQUENCE:
-       * Calls the revised SQL function that maps text-based firebase_uid
-       */
       const { data, error } = await supabase.rpc('grant_mission_reward', {
-         submission_id_param: submission.id,
-         user_id_param: submission.user_id, // This is the string UID
          amount_param: allocatedRC,
-         mission_title_param: missionTitle
+         mission_title_param: missionTitle,
+         submission_id_param: submission.id,
+         user_id_param: submission.user_id 
       });
 
       if (error) throw error;
-      
-      // Checking function's internal return logic
+
       if (data && data.success === false) {
-        throw new Error(data.message);
+        throw new Error(data.message || "Unknown Backend Error");
       }
 
       setIsSuccess(true);
@@ -127,7 +125,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
 
             <div className="space-y-4 mb-10">
                <p className="font-black text-[10px] uppercase tracking-[0.4em] text-black/30 italic mb-4">Verification Factors:</p>
-               {checkpoints.slice(0, 3).map((pt: string, i: number) => (
+               {checkpoints.map((pt: string, i: number) => (
                   <div key={i} 
                        onClick={() => toggleCheck(i)}
                        className={`p-5 border-[3px] cursor-pointer flex items-center gap-5 transition-all active:scale-[0.98] ${checks[i] ? 'bg-[#4ade80] border-black shadow-[6px_6px_0px_0px_#000]' : 'bg-white border-slate-200 hover:border-black'}`}>
