@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../../lib/clients';
-import { Check, X, ExternalLink, ShieldCheck, Loader2 } from 'lucide-react';
+import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, ArrowRight, Coins } from 'lucide-react';
 
 interface VerificationModalProps {
   submission: any;
@@ -11,13 +12,16 @@ interface VerificationModalProps {
 export const VerificationModal: React.FC<VerificationModalProps> = ({ submission, onClose, onRefresh }) => {
   const [checks, setChecks] = useState<boolean[]>([false, false, false]);
   const [loading, setLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  // Extract info from joined data
+  // Extract info from joined data - strictly adhering to the mission's allocated reward
   const checkpoints = submission.missions?.checkpoints && submission.missions.checkpoints.length >= 3 
     ? submission.missions.checkpoints 
     : ["Verify Link Authority", "Quality Control Check", "Tag/Caption Audit"];
   
-  const reward = submission.missions?.reward_amount || 0;
+  const allocatedRC = submission.missions?.reward_amount || 0;
+  const missionTitle = submission.missions?.title || "UNSPECIFIED MISSION";
+  const agentName = submission.profiles?.display_name || "AGENT";
 
   const toggleCheck = (index: number) => {
     const newChecks = [...checks];
@@ -25,10 +29,10 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
     setChecks(newChecks);
   };
 
-  const handleGrant = async () => {
-    // Validation: All 3 checkpoints must be verified
+  const handleExecuteVerification = async () => {
+    // SYSTEM RULE: All 3 checkpoints must be verified before distribution
     if (checks.some(c => !c)) {
-       alert("⚠️ PROTOCOL VIOLATION: You must verify all 3 factors before granting rewards.");
+       alert("⚠️ PROTOCOL VIOLATION: Quality Control factors must be fully verified before reward distribution.");
        return;
     }
 
@@ -36,19 +40,29 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
     try {
       if (!supabase) throw new Error("Database terminal unavailable.");
 
-      // Execute reward grant via secure RPC
-      const { error } = await supabase.rpc('grant_mission_reward', {
+      /**
+       * TRIGGER SEQUENCE:
+       * 1. Update submission status to 'approved'
+       * 2. Calculate and Allocate RC to Profile
+       * 3. Insert Ledger Transaction
+       */
+      const { data, error } = await supabase.rpc('grant_mission_reward', {
          submission_id_param: submission.id,
          user_id_param: submission.user_id,
-         amount_param: reward
+         amount_param: allocatedRC,
+         mission_title_param: missionTitle
       });
 
       if (error) throw error;
 
-      alert("🚀 SIGNAL VERIFIED: Reward Granted & User Notified.");
-      onRefresh(); 
-      onClose();   
+      setIsSuccess(true);
+      setTimeout(() => {
+        onRefresh(); 
+        onClose();   
+      }, 2000);
+      
     } catch (err: any) {
+      console.error("DISTRIBUTION_FAILURE:", err);
       alert("Terminal Critical Error: " + err.message);
     } finally {
       setLoading(false);
@@ -56,60 +70,91 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg border-[6px] border-black shadow-[16px_16px_0px_0px_#4ade80] p-8 md:p-12 relative overflow-hidden">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-lg border-[6px] border-black shadow-[24px_24px_0px_0px_#4ade80] p-8 md:p-12 relative overflow-hidden">
         
-        <button onClick={onClose} className="absolute top-4 right-4 z-10 bg-black text-white p-2 border-2 border-white hover:bg-rose-500 transition-colors shadow-[4px_4px_0px_0px_#000]">
-           <X size={20} strokeWidth={3} />
-        </button>
+        {isSuccess ? (
+          <div className="py-20 text-center space-y-8 animate-in zoom-in duration-500">
+            <div className="w-24 h-24 bg-[#4ade80] border-[4px] border-black shadow-[8px_8px_0px_0px_#000] mx-auto flex items-center justify-center -rotate-6">
+              <Coins size={48} className="text-black" strokeWidth={3} />
+            </div>
+            <div className="space-y-4">
+              <h2 className="text-4xl font-black italic uppercase font-display leading-none">Signal Verified</h2>
+              <p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
+                +{allocatedRC} RC Transferred to {agentName}
+              </p>
+            </div>
+            <div className="bg-black text-white p-4 border-[3px] border-white font-black text-[10px] uppercase tracking-widest animate-pulse">
+              SYNCING GLOBAL LEDGER...
+            </div>
+          </div>
+        ) : (
+          <>
+            <button onClick={onClose} className="absolute top-6 right-6 z-10 bg-black text-white p-2 border-2 border-white hover:bg-rose-500 transition-colors shadow-[4px_4px_0px_0px_#000]">
+               <X size={20} strokeWidth={3} />
+            </button>
 
-        <div className="space-y-2 mb-10">
-          <h2 className="text-3xl font-black italic uppercase font-display tracking-tighter text-black">Verify Signal</h2>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 italic flex items-center gap-2">
-            <ShieldCheck size={14} strokeWidth={3} /> Security Clearance Required
-          </p>
-        </div>
-
-        {/* EVIDENCE LINK */}
-        <div className="bg-slate-50 border-[3px] border-black p-6 mb-8">
-           <p className="text-[10px] font-black uppercase text-black/30 tracking-[0.2em] mb-3">Incoming Deliverable</p>
-           <div className="flex justify-between items-center gap-4">
-               <a href={submission.link} target="_blank" rel="noreferrer" className="truncate font-black text-sm text-blue-600 underline italic hover:text-blue-800 transition-colors">
-                  {submission.link}
-               </a>
-               <a href={submission.link} target="_blank" rel="noreferrer" className="bg-[#ffde59] border-[3px] border-black p-3 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all shrink-0 active:scale-95">
-                  <ExternalLink size={20} strokeWidth={3} />
-               </a>
-           </div>
-        </div>
-
-        {/* CHECKLIST */}
-        <div className="space-y-4 mb-10">
-           <p className="font-black text-[10px] uppercase tracking-[0.4em] text-black/30 italic mb-4">Quality Control Checklist:</p>
-           {checkpoints.slice(0, 3).map((pt: string, i: number) => (
-              <div key={i} 
-                   onClick={() => toggleCheck(i)}
-                   className={`p-5 border-[3px] cursor-pointer flex items-center gap-5 transition-all active:scale-[0.98] ${checks[i] ? 'bg-[#4ade80] border-black shadow-[4px_4px_0px_0px_#000]' : 'bg-white border-slate-200 hover:border-black'}`}>
-                 <div className={`w-8 h-8 border-[3px] border-black flex items-center justify-center shrink-0 ${checks[i] ? 'bg-black text-white' : 'bg-white'}`}>
-                    {checks[i] && <Check size={20} strokeWidth={4} />}
-                 </div>
-                 <span className="font-black text-xs uppercase tracking-tight leading-none">{pt}</span>
+            <div className="space-y-2 mb-10">
+              <div className="bg-[#834bf1] text-white px-3 py-1 border-[2px] border-black inline-block text-[8px] font-black uppercase tracking-widest mb-2">
+                Mission Validation Phase
               </div>
-           ))}
-        </div>
+              <h2 className="text-3xl font-black italic uppercase font-display tracking-tighter text-black leading-tight">Verify Deployment</h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 italic flex items-center gap-2">
+                <ShieldCheck size={14} strokeWidth={3} className="text-[#834bf1]" /> Admin Authority Required
+              </p>
+            </div>
 
-        {/* ACTION BUTTON */}
-        <button 
-           onClick={handleGrant}
-           disabled={loading}
-           className="w-full bg-black text-white py-6 font-black uppercase text-sm tracking-[0.4em] border-[4px] border-black hover:bg-[#ffde59] hover:text-black shadow-[8px_8px_0px_0px_#fff] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-50 active:scale-95"
-        >
-           {loading ? <Loader2 className="animate-spin mx-auto" /> : `Authorize ${reward} RC Reward`}
-        </button>
+            {/* EVIDENCE LINK */}
+            <div className="bg-slate-50 border-[3px] border-black p-6 mb-8 relative">
+               <div className="absolute -top-3 left-4 bg-black text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest border-2 border-white shadow-[3px_3px_0px_0px_#000]">
+                 Content Evidence
+               </div>
+               <div className="flex justify-between items-center gap-4 mt-2">
+                   <a href={submission.link} target="_blank" rel="noreferrer" className="truncate font-black text-sm text-[#834bf1] underline italic hover:text-black transition-colors">
+                      {submission.link}
+                   </a>
+                   <a href={submission.link} target="_blank" rel="noreferrer" className="bg-[#ffde59] border-[3px] border-black p-3 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all shrink-0 active:scale-95">
+                      <ExternalLink size={20} strokeWidth={3} />
+                   </a>
+               </div>
+            </div>
 
-        <div className="mt-8 text-center">
-           <p className="text-[8px] font-black uppercase tracking-[0.5em] text-black/20">Authorized Terminal Session • Dispatcher Sync</p>
-        </div>
+            {/* CHECKLIST */}
+            <div className="space-y-4 mb-10">
+               <p className="font-black text-[10px] uppercase tracking-[0.4em] text-black/30 italic mb-4">Verification Factors:</p>
+               {checkpoints.slice(0, 3).map((pt: string, i: number) => (
+                  <div key={i} 
+                       onClick={() => toggleCheck(i)}
+                       className={`p-5 border-[3px] cursor-pointer flex items-center gap-5 transition-all active:scale-[0.98] ${checks[i] ? 'bg-[#4ade80] border-black shadow-[6px_6px_0px_0px_#000]' : 'bg-white border-slate-200 hover:border-black'}`}>
+                     <div className={`w-8 h-8 border-[3px] border-black flex items-center justify-center shrink-0 ${checks[i] ? 'bg-black text-white' : 'bg-white'}`}>
+                        {checks[i] && <Check size={20} strokeWidth={4} />}
+                     </div>
+                     <span className="font-black text-xs uppercase tracking-tight leading-none">{pt}</span>
+                  </div>
+               ))}
+            </div>
+
+            {/* ACTION BUTTON - DYNAMIC REWARD DISPLAY */}
+            <button 
+               onClick={handleExecuteVerification}
+               disabled={loading}
+               className="w-full group bg-black text-white py-6 font-black uppercase text-sm tracking-[0.4em] border-[4px] border-black hover:bg-[#ffde59] hover:text-black shadow-[8px_8px_0px_0px_#834bf1] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-30 active:scale-95 flex items-center justify-center gap-4"
+            >
+               {loading ? <Loader2 className="animate-spin" /> : (
+                 <>
+                   <Zap size={20} className="group-hover:text-[#834bf1] fill-current" />
+                   <span>Authorize {allocatedRC} RC Reward</span>
+                 </>
+               )}
+            </button>
+
+            <div className="mt-8 text-center">
+               <p className="text-[8px] font-black uppercase tracking-[0.5em] text-black/20 italic">
+                 Security Sequence: Status(Approved) -> Get(AllocatedRC) -> Transfer(UserNode)
+               </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
