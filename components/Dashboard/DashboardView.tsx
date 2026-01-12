@@ -361,19 +361,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             const newMission = payload.new;
             
             // CHECK: Is this mission actually for me?
-            if (newMission.assigned_to?.includes('DRAFT')) return;
+            if (newMission && newMission.assigned_to?.includes('DRAFT')) return;
 
-            if (newMission.assigned_to && Array.isArray(newMission.assigned_to) && newMission.assigned_to.length > 0) {
+            if (newMission && newMission.assigned_to && Array.isArray(newMission.assigned_to) && newMission.assigned_to.length > 0) {
                if (!newMission.assigned_to.includes(user.uid)) {
                   console.log("Ignored notification for targeted mission:", newMission.title);
                   return;
                }
             }
 
-            console.log("⚡ New Mission Signal detected!");
+            console.log("⚡ Mission Table Change detected!");
             fetchUserData();
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
+            console.log("⚡ Reward Table Change detected!");
             fetchUserData();
           })
           .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${user.uid}` }, () => {
