@@ -28,7 +28,6 @@ interface DashboardViewProps {
   onBack: () => void;
 }
 
-// --- 1. THE PHYSICS GAME COMPONENT (Background) ---
 const ReelywoodSlingshot: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -139,7 +138,6 @@ const ReelywoodSlingshot: React.FC = () => {
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Grid
       ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
       for (let i = 0; i < width; i += 50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke(); }
@@ -210,7 +208,6 @@ const ReelywoodSlingshot: React.FC = () => {
         ctx.restore();
       });
 
-      // Bird
       ctx.save();
       ctx.translate(bird.x, bird.y);
       ctx.beginPath(); ctx.arc(0, 0, bird.radius, 0, Math.PI * 2); 
@@ -249,7 +246,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
   
-  // --- NOTIFICATION STATE ---
   const [isNotifPanelOpen, setIsNotifPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -270,11 +266,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     show: false, title: '', message: '', image: '', location: '' 
   });
 
-  const fetchUserData = () => {
-    if (currentUser) {
-      fetchDashboardData(currentUser);
-      fetchNotifications(currentUser);
-      fetchMySubmissions(currentUser);
+  const fetchUserData = async () => {
+    if (!currentUser || !supabase) return;
+
+    try {
+      const [profileRes, missionsRes, rewardsRes, transRes, submissionsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('firebase_uid', currentUser.uid).single(),
+        supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        supabase.from('transactions').select('*').eq('user_uid', currentUser.uid).order('created_at', { ascending: false }),
+        supabase.from('submissions').select('mission_id, status').eq('user_id', currentUser.uid)
+      ]);
+
+      if (profileRes.data) setProfile(profileRes.data);
+      
+      if (missionsRes.data) {
+        // FILTER: Only show missions meant for THIS user
+        const myMissions = missionsRes.data.filter((mission: any) => {
+          if (!mission.assigned_to) return true;
+          if (Array.isArray(mission.assigned_to) && mission.assigned_to.length === 0) return true;
+          if (Array.isArray(mission.assigned_to) && mission.assigned_to.includes(currentUser.uid)) return true;
+          return false;
+        });
+        setMissions(myMissions);
+      }
+
+      if (rewardsRes.data) {
+        // FILTER: Only show rewards meant for THIS user
+        const myRewards = rewardsRes.data.filter((reward: any) => {
+          if (!reward.assigned_to) return true;
+          if (Array.isArray(reward.assigned_to) && reward.assigned_to.length === 0) return true;
+          if (Array.isArray(reward.assigned_to) && reward.assigned_to.includes(currentUser.uid)) return true;
+          return false;
+        });
+        setRewards(myRewards);
+      }
+
+      if (transRes.data) setTransactions(transRes.data);
+      if (submissionsRes.data) setUserSubmissions(submissionsRes.data);
+      
+    } catch (error) {
+      console.error("Data Sync Error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -297,28 +331,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
-        fetchDashboardData(user);
+        fetchUserData();
         fetchNotifications(user);
-        fetchMySubmissions(user);
 
-        // --- INTELLIGENT AUTO-REFRESH (REALTIME LISTENER) ---
         if (!supabase) return; 
 
         const channel = supabase
           .channel('user-dashboard-realtime')
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'missions' }, () => {
-            console.log('⚡ New Mission Detected!');
-            fetchDashboardData(user);
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => {
+            fetchUserData();
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
-            fetchDashboardData(user);
+            fetchUserData();
           })
           .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${user.uid}` }, () => {
-            fetchDashboardData(user);
+            fetchUserData();
           })
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `user_uid=eq.${user.uid}` }, () => {
-            console.log('⚡ Balance Updated!');
-            fetchDashboardData(user);
+            fetchUserData();
           })
           .subscribe();
 
@@ -331,15 +361,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     });
     return () => unsubscribe();
   }, []);
-
-  const fetchMySubmissions = async (user: FirebaseUser) => {
-    if (!supabase) return;
-    const { data } = await supabase
-      .from('submissions')
-      .select('mission_id, status')
-      .eq('user_id', user.uid);
-    if (data) setUserSubmissions(data);
-  };
 
   useEffect(() => {
     if (!currentUser || !supabase) return;
@@ -356,8 +377,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           const notif = payload.new;
           
           if (notif.user_id === 'global' || notif.user_id === currentUser.uid) {
-            console.log('🔔 LIVE NOTIFICATION RECEIVED:', notif);
-            
             setToast({
               show: true,
               title: notif.title,
@@ -426,26 +445,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     }
   };
 
-  const fetchDashboardData = async (user: FirebaseUser) => {
-    if (!supabase) return;
-    try {
-      const [profileRes, missionsRes, rewardsRes, transRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('firebase_uid', user.uid).single(),
-        supabase.from('missions').select('*, partner_brands ( name, logo_url )').order('created_at', { ascending: false }),
-        supabase.from('rewards').select('*').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').eq('user_uid', user.uid).order('created_at', { ascending: false })
-      ]);
-      if (profileRes.data) setProfile(profileRes.data);
-      if (missionsRes.data) setMissions(missionsRes.data);
-      if (rewardsRes.data) setRewards(rewardsRes.data);
-      if (transRes.data) setTransactions(transRes.data);
-    } catch (error) {
-      console.error("Data Sync Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRedeem = async (reward: any) => {
     if (!profile || profile.reelcoins < reward.cost) {
       alert("⛔ INSUFFICIENT FUNDS");
@@ -461,7 +460,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       });
       if (error) throw error;
       setRevealedCodes(prev => ({ ...prev, [reward.id]: reward.code || 'REDEEMED' }));
-      if (currentUser) fetchDashboardData(currentUser);
+      if (currentUser) fetchUserData();
     } catch (err: any) {
       alert("Redemption Failed: " + err.message);
     } finally {
@@ -508,7 +507,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                <p className="text-[8px] font-black uppercase text-black/20 tracking-[0.4em]">Protected by Reelywood Protocol</p>
             </div>
           </div>
-          <div className="hidden md:block absolute -bottom-16 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 border-2 border-white font-black text-[8px] uppercase tracking-widest shadow-[4px_4px_0px_0px_#834bf1]">DRAG THE OWL TO PLAY</div>
         </div>
       </div>
     );
@@ -525,7 +523,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           user={currentUser} 
           onClose={() => {
             setSelectedMission(null);
-            fetchMySubmissions(currentUser);
+            fetchUserData();
           }} 
         />
       )}
@@ -589,7 +587,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     </button>
                   </div>
 
-                  <div className="max-h-96 overflow-y-auto bg-white scrollbar-hide p-4">
+                  <div className="max-h-96 overflow-y-auto bg-white p-4">
                     {notifications.length === 0 ? (
                       <div className="p-12 text-center opacity-30">
                         <Bell size={32} className="mx-auto mb-4" strokeWidth={3} />
@@ -821,13 +819,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               >
                 Acknowledge Intel
               </button>
-            </div>
-            <div className="bg-slate-50 border-t-2 border-black py-2 px-4 flex justify-between items-center">
-               <span className="text-[8px] font-black uppercase text-black/30 tracking-[0.3em]">Protocol Node v4.1</span>
-               <div className="flex gap-1">
-                  <div className="w-1 h-1 bg-emerald-500 rounded-full"></div>
-                  <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
-               </div>
             </div>
           </div>
         </div>
