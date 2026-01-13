@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
 import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, Coins } from 'lucide-react';
 
@@ -9,26 +10,27 @@ interface VerificationModalProps {
 }
 
 export const VerificationModal: React.FC<VerificationModalProps> = ({ submission, onClose, onRefresh }) => {
-  const [checks, setChecks] = useState<boolean[]>([false, false, false]);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   // Trace and fix the data path:
-  // The submission object from AdminDashboard contains joined data.
-  // We check for both 'mission' and 'missions' plural to be safe with common Supabase return structures.
-  const allocatedRC = useMemo(() => {
-    const missionData = submission?.missions || submission?.mission;
-    return missionData?.reward_amount ?? 0;
-  }, [submission]);
-
-  const checkpoints = useMemo(() => {
-    const missionData = submission?.missions || submission?.mission;
-    return missionData?.checkpoints && missionData.checkpoints.length >= 1 
-      ? missionData.checkpoints 
-      : ["Verify Link Authority", "Quality Control Check", "Tag/Caption Audit"];
-  }, [submission]);
+  const missionData = submission?.missions || submission?.mission;
   
-  const missionTitle = submission?.missions?.title || submission?.mission?.title || "UNSPECIFIED MISSION";
+  // Use dynamic factors from mission metadata
+  const checkpoints = useMemo(() => {
+    const factors = missionData?.verification_factors || missionData?.checkpoints;
+    if (Array.isArray(factors) && factors.length > 0) return factors;
+    return ["Verify Link Authority", "Quality Control Check", "Tag/Caption Audit"];
+  }, [missionData]);
+
+  const [checks, setChecks] = useState<boolean[]>([]);
+
+  useEffect(() => {
+    setChecks(new Array(checkpoints.length).fill(false));
+  }, [checkpoints]);
+
+  const allocatedRC = missionData?.reward_amount ?? 0;
+  const missionTitle = missionData?.title || "UNSPECIFIED MISSION";
   const agentName = submission?.profiles?.display_name || "AGENT";
 
   const toggleCheck = (index: number) => {

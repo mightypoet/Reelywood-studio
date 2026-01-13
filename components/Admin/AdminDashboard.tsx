@@ -8,7 +8,8 @@ import {
   Loader2, Activity, Terminal,
   Building2, ListChecks, Clock, X,
   Crosshair, CheckSquare, Box,
-  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck, Ticket, Calendar
+  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck, Ticket, Calendar,
+  Layout
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -54,8 +55,25 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [selectedProtocol, setSelectedProtocol] = useState<{id: string, type: 'mission' | 'voucher'} | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
-  const [missionForm, setMissionForm] = useState({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '', expires_at: '' });
-  const [voucherForm, setVoucherForm] = useState({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
+  const [missionForm, setMissionForm] = useState({ 
+    title: '', 
+    reward: '', 
+    brand_id: '', 
+    expires_at: '',
+    description: '',
+    factor1: '',
+    factor2: '',
+    factor3: ''
+  });
+  
+  const [voucherForm, setVoucherForm] = useState({ 
+    title: '', 
+    cost: '', 
+    brand_id: '', 
+    code: '', 
+    description: '', 
+    expires_at: '' 
+  });
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -75,9 +93,9 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+        supabase.from('transactions').select('*').eq('description', 'ilike', '%voucher%').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
-        supabase.from('submissions').select('*, profiles(display_name), missions(title, reward_amount, checkpoints, expires_at)').order('created_at', { ascending: false })
+        supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
       if (u.data) setUsers(u.data);
       if (m.data) setMissions(m.data);
@@ -129,6 +147,28 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     finally { setSubmitting(false); }
   };
 
+  const handleMissionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+    setSubmitting(true);
+    const vFactors = [missionForm.factor1, missionForm.factor2, missionForm.factor3].filter(f => f.trim() !== '');
+    try {
+      await supabase.from('missions').insert([{
+        title: missionForm.title,
+        reward_amount: parseInt(missionForm.reward),
+        brand_id: missionForm.brand_id,
+        description: missionForm.description,
+        verification_factors: vFactors,
+        assigned_to: ['DRAFT'],
+        expires_at: missionForm.expires_at || null
+      }]);
+      showToast('success', "MISSION SYNCED TO HUB");
+      setMissionForm({ title: '', reward: '', brand_id: '', expires_at: '', description: '', factor1: '', factor2: '', factor3: '' });
+      fetchAllData();
+    } catch (e: any) { showToast('error', e.message); } 
+    finally { setSubmitting(false); }
+  };
+
   const bg = darkMode ? 'bg-[#0a0a0a]' : 'bg-gray-50';
   const text = darkMode ? 'text-white' : 'text-black';
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
@@ -145,7 +185,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       )}
 
       {selectedSubmission && (
-        <VerificationModal submission={selectedSubmission} onClose={() => setSelectedSubmission(null)} onRefresh={fetchAllData} />
+        <VerificationModal 
+          submission={selectedSubmission} 
+          onClose={() => setSelectedSubmission(null)} 
+          onRefresh={fetchAllData} 
+        />
       )}
 
       <header className={`border-b-4 ${border} ${card} px-4 py-3 flex justify-between items-center sticky top-0 z-50`}>
@@ -290,37 +334,34 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         )}
 
         {activeTab === 'missions' && (
-          <div className="max-w-md mx-auto py-4">
-             <form onSubmit={async (e) => {
-               e.preventDefault();
-               if (!supabase) return;
-               setSubmitting(true);
-               try {
-                 await supabase.from('missions').insert([{
-                   title: missionForm.title,
-                   reward_amount: parseInt(missionForm.reward),
-                   brand_id: missionForm.brand_id,
-                   checkpoints: [missionForm.checkpoint1, missionForm.checkpoint2, missionForm.checkpoint3].filter(c => c),
-                   assigned_to: ['DRAFT'],
-                   expires_at: missionForm.expires_at || null
-                 }]);
-                 showToast('success', "DRAFT SAVED");
-                 setMissionForm({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '', expires_at: '' });
-                 fetchAllData();
-               } catch (e: any) { showToast('error', e.message); } 
-               finally { setSubmitting(false); }
-             }} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
-               <select className="w-full p-3 border-2 border-black font-bold text-black text-xs" required value={missionForm.brand_id} onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}>
-                  <option value="">-- ALLIANCE NODE --</option>
-                  {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-               </select>
-               <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="TITLE" required value={missionForm.title} onChange={e => setMissionForm({...missionForm, title: e.target.value})}/>
-               <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="REWARD (RC)" required value={missionForm.reward} onChange={e => setMissionForm({...missionForm, reward: e.target.value})}/>
-               <div className="space-y-2">
-                 <label className="text-[8px] font-black uppercase text-black/40 flex items-center gap-2"><Calendar size={10}/> Expiration Date</label>
+          <div className="max-w-xl mx-auto py-4">
+             <form onSubmit={handleMissionSubmit} className="space-y-4 bg-white p-6 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
+               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Zap size={16}/> New Mission Grid</h3>
+               <div className="grid grid-cols-2 gap-4">
+                 <select className="col-span-2 w-full p-3 border-2 border-black font-bold text-black text-xs" required value={missionForm.brand_id} onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}>
+                    <option value="">-- ALLIANCE NODE --</option>
+                    {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                 </select>
+                 <input className="col-span-2 w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="MISSION TITLE" required value={missionForm.title} onChange={e => setMissionForm({...missionForm, title: e.target.value})}/>
+                 <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="BOUNTY (RC)" required value={missionForm.reward} onChange={e => setMissionForm({...missionForm, reward: e.target.value})}/>
                  <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="datetime-local" value={missionForm.expires_at} onChange={e => setMissionForm({...missionForm, expires_at: e.target.value})}/>
                </div>
-               <button disabled={submitting} className="w-full py-3 bg-black text-white font-black uppercase text-[10px] active:scale-95">SYNC DRAFT</button>
+               <div className="space-y-2">
+                 <label className="text-[8px] font-black uppercase text-black/40">Mission Details</label>
+                 <textarea className="w-full p-3 border-2 border-black font-bold text-black text-xs h-32 resize-none" placeholder="FULL MISSION BRIEF..." required value={missionForm.description} onChange={e => setMissionForm({...missionForm, description: e.target.value})}/>
+               </div>
+               <div className="space-y-3 pt-2 border-t-2 border-black/5">
+                 <label className="text-[8px] font-black uppercase text-[#834bf1]">Verification Factors (Checklist)</label>
+                 <div className="space-y-2">
+                   {['factor1', 'factor2', 'factor3'].map((f, i) => (
+                     <div key={f} className="flex items-center gap-2">
+                       <span className="text-[8px] font-black text-black/20">0{i+1}</span>
+                       <input className="flex-1 p-2 border-2 border-black font-bold text-black text-xs" placeholder={`Key Factor ${i+1}`} value={(missionForm as any)[f]} onChange={e => setMissionForm({...missionForm, [f]: e.target.value})} required />
+                     </div>
+                   ))}
+                 </div>
+               </div>
+               <button disabled={submitting} className="w-full py-4 mt-4 bg-black text-white font-black uppercase text-[10px] active:scale-95 shadow-[4px_4px_0px_0px_#834bf1] hover:shadow-none transition-all">SYNC DRAFT</button>
              </form>
           </div>
         )}
@@ -337,6 +378,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   title: voucherForm.title,
                   cost: parseInt(voucherForm.cost),
                   code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+                  description: voucherForm.description,
                   assigned_to: ['DRAFT'],
                   expires_at: voucherForm.expires_at || null
                 }]);
@@ -346,23 +388,21 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               } catch (e: any) { showToast('error', e.message); }
               finally { setSubmitting(false); }
             }} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
+              <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Gift size={16}/> New Voucher Drop</h3>
               <select className="w-full p-3 border-2 border-black font-bold text-black text-xs" required value={voucherForm.brand_id} onChange={e => setVoucherForm({...voucherForm, brand_id: e.target.value})}>
                 <option value="">-- ALLIANCE NODE --</option>
                 {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
               <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="VOUCHER NAME" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
               <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
-              <div className="space-y-2">
-                 <label className="text-[8px] font-black uppercase text-black/40 flex items-center gap-2"><Calendar size={10}/> Expiration Date</label>
-                 <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="datetime-local" value={voucherForm.expires_at} onChange={e => setVoucherForm({...voucherForm, expires_at: e.target.value})}/>
-              </div>
+              <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="datetime-local" value={voucherForm.expires_at} onChange={e => setVoucherForm({...voucherForm, expires_at: e.target.value})}/>
+              <textarea className="w-full p-3 border-2 border-black font-bold text-black text-xs h-24 resize-none" placeholder="VOUCHER DESCRIPTION..." required value={voucherForm.description} onChange={e => setVoucherForm({...voucherForm, description: e.target.value})}/>
               <button disabled={submitting} className="w-full py-3 bg-black text-white font-black uppercase text-[10px] active:scale-95">SAVE VOUCHER</button>
             </form>
           </div>
         )}
 
         {activeTab === 'brands' && <BrandManager />}
-
       </div>
     </div>
   );

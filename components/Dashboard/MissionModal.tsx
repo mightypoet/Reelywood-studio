@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/clients';
-import { X, MapPin, Link as LinkIcon, CheckCircle2, ShieldCheck, Loader2, Building2, AlertCircle, Clock, ArrowRight } from 'lucide-react';
+import { X, MapPin, Link as LinkIcon, CheckCircle2, ShieldCheck, Loader2, Building2, AlertCircle, Clock, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MissionModalProps {
   mission: any;
@@ -14,6 +14,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
   const [loading, setLoading] = useState(false);
   const [existingSubmission, setExistingSubmission] = useState<any>(null);
   const [initialFetchLoading, setInitialFetchLoading] = useState(true);
+  const [showFullDesc, setShowFullDesc] = useState(false);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -39,9 +40,13 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
   }, [mission.id, user.uid]);
 
   const brand = mission.partner_brands;
-  const checkpoints = mission.checkpoints && mission.checkpoints.length > 0 
-    ? mission.checkpoints 
-    : ["Tag @Reelywood in caption", "Use brand hashtags", "Ensure high visual fidelity"];
+  
+  // Use dynamic factors from database, fallback to defaults if null/empty
+  const checkpoints = useMemo(() => {
+    const factors = mission.verification_factors || mission.checkpoints;
+    if (Array.isArray(factors) && factors.length > 0) return factors;
+    return ["Tag @Reelywood in caption", "Use brand hashtags", "Ensure high visual fidelity"];
+  }, [mission]);
 
   const handleSubmit = async () => {
     if (!link) return alert("Please paste your content link first.");
@@ -49,7 +54,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     setLoading(true);
     try {
       await supabase.from('submissions').insert([{
-        mission_id: mission.id, user_id: user.uid, link: link, status: 'pending', checklist_state: [false, false, false]
+        mission_id: mission.id, user_id: user.uid, link: link, status: 'pending', checklist_state: new Array(checkpoints.length).fill(false)
       }]);
       const { data } = await supabase.from('submissions').select('*').eq('mission_id', mission.id).eq('user_id', user.uid).single();
       setExistingSubmission(data);
@@ -63,6 +68,9 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
   const status = existingSubmission?.status;
   const isApproved = status === 'approved' || status === 'completed';
   const isPending = status === 'pending' || status === 'verifying';
+
+  const description = mission.description || 'Deliver high-fidelity visual strategy as per brand identity standards.';
+  const isLongDesc = description.length > 180;
 
   return (
     <div className="fixed inset-0 z-[500] flex items-end md:items-center justify-center bg-black/95 backdrop-blur-md p-0 md:p-4 animate-in fade-in duration-300">
@@ -115,9 +123,11 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                 <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[#834bf1]" size={32} /></div>
               ) : (
                 <div className="space-y-6">
+                  {/* DYNAMIC CHECKLIST */}
                   <div className={`border-[3px] p-5 relative shadow-[4px_4px_0px_0px] transition-all ${isApproved ? 'bg-emerald-50 border-emerald-500 shadow-emerald-100' : isPending ? 'bg-yellow-50 border-yellow-500 shadow-yellow-100' : 'bg-slate-50 border-black shadow-black'}`}>
+                    <p className="text-[8px] font-black uppercase text-black/30 mb-4 tracking-widest">Verification Logic:</p>
                     <ul className="space-y-4">
-                        {checkpoints.map((pt, i) => (
+                        {checkpoints.map((pt: any, i: number) => (
                           <li key={i} className="flex items-start gap-4">
                             <div className="w-7 h-7 bg-white border-[2px] border-black flex items-center justify-center font-black text-[10px] italic shrink-0">
                                 {i+1}
@@ -128,9 +138,20 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                     </ul>
                   </div>
 
-                  <p className="text-[11px] font-bold text-black/60 uppercase leading-relaxed border-l-4 border-[#834bf1] pl-4">
-                      {mission.description || 'Deliver high-fidelity visual strategy as per brand identity standards.'}
-                  </p>
+                  {/* DYNAMIC DESCRIPTION WITH TOGGLE */}
+                  <div className="space-y-3">
+                    <p className={`text-[11px] font-bold text-black/60 uppercase leading-relaxed border-l-4 border-[#834bf1] pl-4 ${!showFullDesc && isLongDesc ? 'line-clamp-3' : ''}`}>
+                        {description}
+                    </p>
+                    {isLongDesc && (
+                      <button 
+                        onClick={() => setShowFullDesc(!showFullDesc)}
+                        className="text-[9px] font-black uppercase text-[#834bf1] flex items-center gap-1 hover:underline ml-4"
+                      >
+                        {showFullDesc ? <><ChevronUp size={12}/> Show Less</> : <><ChevronDown size={12}/> Read Full Brief</>}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
            </div>
