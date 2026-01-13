@@ -127,7 +127,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }
     setSubmitting(true);
     try {
-      // Table selection based on protocol type
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'vouchers';
       const { error } = await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
       
