@@ -8,7 +8,7 @@ import {
   Loader2, Activity, Terminal,
   Building2, ListChecks, Clock, X,
   Crosshair, CheckSquare, Box,
-  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck, Ticket
+  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck, Ticket, Calendar
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -54,8 +54,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [selectedProtocol, setSelectedProtocol] = useState<{id: string, type: 'mission' | 'voucher'} | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
-  const [missionForm, setMissionForm] = useState({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
-  const [voucherForm, setVoucherForm] = useState({ title: '', cost: '', brand_id: '', code: '', description: '' });
+  const [missionForm, setMissionForm] = useState({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '', expires_at: '' });
+  const [voucherForm, setVoucherForm] = useState({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -77,7 +77,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
-        supabase.from('submissions').select('*, profiles(display_name), missions(title, reward_amount, checkpoints)').order('created_at', { ascending: false })
+        supabase.from('submissions').select('*, profiles(display_name), missions(title, reward_amount, checkpoints, expires_at)').order('created_at', { ascending: false })
       ]);
       if (u.data) setUsers(u.data);
       if (m.data) setMissions(m.data);
@@ -98,20 +98,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     claimed: transactions.filter(t => t.user_uid === uid && t.amount < 0).length,
     active: missions.filter(m => Array.isArray(m.assigned_to) && m.assigned_to.includes(uid)).length
   });
-
-  const handleDeleteProtocol = async (e: React.MouseEvent, id: string, type: 'mission' | 'voucher') => {
-    e.stopPropagation(); 
-    if (!supabase) return;
-    if (!confirm(`PURGE ${type.toUpperCase()}?`)) return;
-    setSubmitting(true);
-    try {
-        const table = type === 'mission' ? 'missions' : 'rewards';
-        await supabase.from(table).delete().eq('id', id);
-        showToast('success', `${type.toUpperCase()} DELETED`);
-        fetchAllData();
-    } catch (e: any) { showToast('error', e.message); } 
-    finally { setSubmitting(false); }
-  };
 
   const handleExecuteDeploy = async () => {
     if (!supabase || !selectedProtocol) return;
@@ -315,10 +301,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                    reward_amount: parseInt(missionForm.reward),
                    brand_id: missionForm.brand_id,
                    checkpoints: [missionForm.checkpoint1, missionForm.checkpoint2, missionForm.checkpoint3].filter(c => c),
-                   assigned_to: ['DRAFT'] 
+                   assigned_to: ['DRAFT'],
+                   expires_at: missionForm.expires_at || null
                  }]);
                  showToast('success', "DRAFT SAVED");
-                 setMissionForm({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
+                 setMissionForm({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '', expires_at: '' });
                  fetchAllData();
                } catch (e: any) { showToast('error', e.message); } 
                finally { setSubmitting(false); }
@@ -329,6 +316,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                </select>
                <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="TITLE" required value={missionForm.title} onChange={e => setMissionForm({...missionForm, title: e.target.value})}/>
                <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="REWARD (RC)" required value={missionForm.reward} onChange={e => setMissionForm({...missionForm, reward: e.target.value})}/>
+               <div className="space-y-2">
+                 <label className="text-[8px] font-black uppercase text-black/40 flex items-center gap-2"><Calendar size={10}/> Expiration Date</label>
+                 <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="datetime-local" value={missionForm.expires_at} onChange={e => setMissionForm({...missionForm, expires_at: e.target.value})}/>
+               </div>
                <button disabled={submitting} className="w-full py-3 bg-black text-white font-black uppercase text-[10px] active:scale-95">SYNC DRAFT</button>
              </form>
           </div>
@@ -346,10 +337,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   title: voucherForm.title,
                   cost: parseInt(voucherForm.cost),
                   code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
-                  assigned_to: ['DRAFT'] 
+                  assigned_to: ['DRAFT'],
+                  expires_at: voucherForm.expires_at || null
                 }]);
                 showToast('success', "VOUCHER DRAFTED");
-                setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '' });
+                setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
                 fetchAllData();
               } catch (e: any) { showToast('error', e.message); }
               finally { setSubmitting(false); }
@@ -360,6 +352,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               </select>
               <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="VOUCHER NAME" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
               <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
+              <div className="space-y-2">
+                 <label className="text-[8px] font-black uppercase text-black/40 flex items-center gap-2"><Calendar size={10}/> Expiration Date</label>
+                 <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="datetime-local" value={voucherForm.expires_at} onChange={e => setVoucherForm({...voucherForm, expires_at: e.target.value})}/>
+              </div>
               <button disabled={submitting} className="w-full py-3 bg-black text-white font-black uppercase text-[10px] active:scale-95">SAVE VOUCHER</button>
             </form>
           </div>

@@ -39,6 +39,47 @@ interface DashboardViewProps {
   onBack: () => void;
 }
 
+const CountdownTimer: React.FC<{ expiresAt: string | null }> = ({ expiresAt }) => {
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+  const [isUrgent, setIsUrgent] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (!expiresAt) return;
+
+    const calculate = () => {
+      const target = new Date(expiresAt).getTime();
+      const now = new Date().getTime();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft('EXPIRED');
+        setIsExpired(true);
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      setIsUrgent(diff < 24 * 60 * 60 * 1000);
+      setTimeLeft(`⏳ ${days > 0 ? days + 'd ' : ''}${hours}h ${minutes}m`);
+    };
+
+    calculate();
+    const interval = setInterval(calculate, 60000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  if (!timeLeft) return null;
+
+  return (
+    <div className={`px-2 py-0.5 border-[1.5px] border-black text-[7px] font-black uppercase tracking-widest bg-white shadow-[2px_2px_0px_0px_#000] ${isExpired ? 'text-rose-600' : isUrgent ? 'text-rose-600 animate-pulse' : 'text-black'}`}>
+      {timeLeft}
+    </div>
+  );
+};
+
 export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
@@ -139,6 +180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const handleRedeemClick = (reward: any) => {
     if (revealedCodes[reward.id]) return;
+    if (reward.expires_at && new Date(reward.expires_at).getTime() < new Date().getTime()) return;
     if (!profile || profile.reelcoins < reward.cost) {
       return alert("⛔ INSUFFICIENT RC BAL: " + reward.cost + " required.");
     }
@@ -311,6 +353,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         const isPending = submission?.status === 'pending' || submission?.status === 'verifying' || submission?.status === 'review';
                         const isRejected = submission?.status === 'rejected';
                         const brand = m.partner_brands;
+                        const isExpired = m.expires_at && new Date(m.expires_at).getTime() < new Date().getTime();
 
                         const cardStyles = isDone 
                           ? 'bg-emerald-50 border-emerald-400 shadow-emerald-100' 
@@ -321,22 +364,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                               : 'bg-white border-black shadow-black';
 
                         return (
-                          <div key={m.id} className={`border-[3px] md:border-[4px] p-5 md:p-8 shadow-[6px_6px_0px_0px] active:scale-[0.98] md:hover:-translate-y-1 transition-all flex flex-col ${cardStyles}`}>
+                          <div key={m.id} className={`border-[3px] md:border-[4px] p-5 md:p-8 shadow-[6px_6px_0px_0px] active:scale-[0.98] md:hover:-translate-y-1 transition-all flex flex-col relative ${cardStyles} ${isExpired ? 'opacity-50 pointer-events-none' : ''}`}>
+                             {isExpired && (
+                               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                                  <div className="bg-rose-600 text-white font-black text-2xl px-6 py-2 border-4 border-black rotate-[-12deg] shadow-[4px_4px_0px_0px_#000]">EXPIRED</div>
+                               </div>
+                             )}
                              <div className="flex justify-between items-start mb-4 md:mb-6">
                                 <div className="w-10 h-10 md:w-14 md:h-14 bg-white border-[2px] md:border-[3px] border-black flex items-center justify-center p-1.5 md:p-2 shadow-[2px_2px_0px_0px_#000]">
                                    {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Building2 size={18} className="text-[#834bf1]" />}
                                 </div>
-                                <div className={`px-2 py-0.5 md:px-3 md:py-1 font-black text-[8px] md:text-[10px] italic border-[2px] flex items-center gap-1 ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : isRejected ? 'bg-rose-500 text-white' : 'bg-black text-[#ffde59]'}`}>
-                                  {isDone ? 'DONE' : isPending ? 'VERIFY' : isRejected ? 'FAIL' : `+${m.reward_amount} RC`}
+                                <div className="flex flex-col items-end gap-2">
+                                  <div className={`px-2 py-0.5 md:px-3 md:py-1 font-black text-[8px] md:text-[10px] italic border-[2px] flex items-center gap-1 ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : isRejected ? 'bg-rose-500 text-white' : 'bg-black text-[#ffde59]'}`}>
+                                    {isDone ? 'DONE' : isPending ? 'VERIFY' : isRejected ? 'FAIL' : `+${m.reward_amount} RC`}
+                                  </div>
+                                  <CountdownTimer expiresAt={m.expires_at} />
                                 </div>
                              </div>
                              <h3 className="text-lg md:text-xl font-black uppercase italic font-display leading-tight mb-6 md:mb-8 truncate">{m.title}</h3>
                              <button 
                                 onClick={() => setSelectedMission(m)}
-                                disabled={isDone || isPending}
+                                disabled={isDone || isPending || isExpired}
                                 className="w-full py-3 md:py-4 border-[2.5px] md:border-[3px] border-black bg-black text-white font-black uppercase text-[9px] md:text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#834bf1] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50"
                               >
-                                {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEWING' : 'INIT MISSION'}
+                                {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEWING' : isExpired ? 'MISSION TERMINATED' : 'INIT MISSION'}
                               </button>
                           </div>
                         );
@@ -347,9 +398,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     {rewards.map((r) => {
                       const isRedeemed = !!revealedCodes[r.id];
                       const brand = r.partner_brands;
+                      const isExpired = r.expires_at && new Date(r.expires_at).getTime() < new Date().getTime();
                       
                       return (
-                        <div key={r.id} className={`bg-white border-[4px] border-black p-5 md:p-8 shadow-[6px_6px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 transition-all ${isRedeemed ? 'opacity-90 border-emerald-500 bg-emerald-50/30' : 'md:hover:shadow-[10px_10px_0px_0px_#ffde59] active:scale-[0.99]'}`}>
+                        <div key={r.id} className={`bg-white border-[4px] border-black p-5 md:p-8 shadow-[6px_6px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 transition-all relative ${isRedeemed ? 'opacity-90 border-emerald-500 bg-emerald-50/30' : 'md:hover:shadow-[10px_10px_0px_0px_#ffde59] active:scale-[0.99]'} ${isExpired && !isRedeemed ? 'opacity-50 pointer-events-none' : ''}`}>
+                           {isExpired && !isRedeemed && (
+                               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                                  <div className="bg-rose-600 text-white font-black text-2xl px-6 py-2 border-4 border-black rotate-[-12deg] shadow-[4px_4px_0px_0px_#000]">EXPIRED</div>
+                               </div>
+                           )}
                            <div className="flex items-center gap-4 md:gap-8 w-full md:flex-1">
                               <div className="relative shrink-0">
                                 <div className="w-12 h-12 md:w-16 md:h-16 bg-white border-[3px] md:border-[4px] border-black flex items-center justify-center shadow-[3px_3px_0px_0px_#000] overflow-hidden p-1.5">
@@ -361,7 +418,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                               </div>
                               <div className="min-w-0">
                                  <h4 className="text-lg md:text-2xl font-black uppercase italic font-display truncate">{r.title}</h4>
-                                 <p className="text-[8px] md:text-[10px] font-black uppercase text-[#834bf1] tracking-[0.2em]">{brand?.name || 'Reelywood'}</p>
+                                 <div className="flex items-center gap-3">
+                                   <p className="text-[8px] md:text-[10px] font-black uppercase text-[#834bf1] tracking-[0.2em]">{brand?.name || 'Reelywood'}</p>
+                                   {!isRedeemed && <CountdownTimer expiresAt={r.expires_at} />}
+                                 </div>
                               </div>
                            </div>
 
@@ -391,10 +451,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                   </div>
                                   <button 
                                     onClick={() => handleRedeemClick(r)}
-                                    disabled={isProcessing === r.id}
+                                    disabled={isProcessing === r.id || isExpired}
                                     className="px-6 py-3 md:px-8 md:py-4 border-[2.5px] md:border-[3px] border-black bg-black text-white font-black uppercase text-[8px] md:text-[10px] tracking-[0.3em] shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50"
                                   >
-                                    {isProcessing === r.id ? <Loader2 className="animate-spin h-3 w-3" /> : 'REDEEM'}
+                                    {isProcessing === r.id ? <Loader2 className="animate-spin h-3 w-3" /> : isExpired ? 'UNAVAILABLE' : 'REDEEM'}
                                   </button>
                                 </>
                               )}
