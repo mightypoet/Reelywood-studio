@@ -88,9 +88,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        // Task 3: Ensure vouchers are fetched with brand info
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
-        // CORRECTED TABLE NAME: Fetching from 'partner_brands' instead of 'brands'
+        // Task 1: Corrected table name to 'partner_brands'
         supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
@@ -178,9 +179,9 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
     setSubmitting(true);
     try {
+      // Task 2: Fix payload to match storage requirements
       const payload = {
-        brand_id: voucherForm.brand_id,
-        name: voucherForm.title,
+        brand_id: voucherForm.brand_id, 
         title: voucherForm.title,
         cost: parseInt(voucherForm.cost) || 0,
         description: voucherForm.description,
@@ -208,9 +209,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
+  // Task 3: Verify deployableItems mapping
   const deployableItems = [
     ...missions.map(m => ({ id: m.id, title: m.title, value: m.reward_amount, type: 'mission' })),
-    ...vouchers.map(v => ({ id: v.id, title: v.title || v.name, value: v.cost, type: 'voucher' }))
+    ...vouchers.map(v => ({ id: v.id, title: v.title, value: v.cost, type: 'voucher' }))
   ].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
 
   return (
