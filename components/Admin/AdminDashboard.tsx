@@ -90,8 +90,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
-        // CRITICAL FIX: Fetch real Brand IDs (UUIDs) and Names
-        supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
+        // CRITICAL FIX: Fetch real Brand IDs (UUIDs) and Names from 'brands' table
+        supabase.from('brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
       
@@ -180,7 +180,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setSubmitting(true);
     try {
       const payload = {
-        brand_id: voucherForm.brand_id, // This is the UUID from partner_brands
+        brand_id: voucherForm.brand_id, // This is the UUID from brands
         name: voucherForm.title,
         title: voucherForm.title,
         cost: parseInt(voucherForm.cost) || 0,
