@@ -97,7 +97,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       
       if (u.data) setUsers(u.data);
       if (m.data) setMissions(m.data);
-      if (v.data) setVouchers(v.data);
+      
+      if (v.data) {
+        console.log('SYNC: Fetched Vouchers:', v.data);
+        setVouchers(v.data);
+      }
+
       if (t.data) setTransactions(t.data);
       if (b.data) {
         console.log('SYNC: Alliance Nodes Fetched:', b.data);
@@ -197,7 +202,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       showToast('success', "VOUCHER TEMPLATE SAVED AS DRAFT");
       setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
       
-      // Task 3: Force refresh data immediately after success
       fetchAllData();
     } catch (e: any) { 
       console.error('SYNC_FATAL_ERROR:', e);
