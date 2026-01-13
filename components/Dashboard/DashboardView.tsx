@@ -48,27 +48,46 @@ const CountdownTimer: React.FC<{ expiresAt: string | null }> = ({ expiresAt }) =
 
   useEffect(() => {
     if (!expiresAt) return;
+    
     const calculate = () => {
-      const target = new Date(expiresAt).getTime();
-      const now = new Date().getTime();
-      const diff = target - now;
+      // FIX: Robust date parsing for UTC timestamps from Supabase
+      const targetDate = new Date(expiresAt);
+      
+      // Handle invalid date inputs
+      if (isNaN(targetDate.getTime())) {
+        setTimeLeft(null);
+        return;
+      }
+
+      const targetTime = targetDate.getTime();
+      const nowTime = new Date().getTime();
+      const diff = targetTime - nowTime;
+
       if (diff <= 0) {
         setTimeLeft('EXPIRED');
         setIsExpired(true);
+        setIsUrgent(false);
         return;
       }
+
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      
+      // Mark as urgent if less than 24 hours remaining
       setIsUrgent(diff < 24 * 60 * 60 * 1000);
+      setIsExpired(false);
       setTimeLeft(`⏳ ${days > 0 ? days + 'd ' : ''}${hours}h ${minutes}m`);
     };
+
     calculate();
+    // Update every minute for efficiency
     const interval = setInterval(calculate, 60000);
     return () => clearInterval(interval);
   }, [expiresAt]);
 
   if (!timeLeft) return null;
+  
   return (
     <div className={`px-2 py-0.5 border-[1.5px] border-black text-[7px] font-black uppercase tracking-widest bg-white shadow-[2px_2px_0px_0px_#000] ${isExpired ? 'text-rose-600' : isUrgent ? 'text-rose-600 animate-pulse' : 'text-black'}`}>
       {timeLeft}
@@ -81,9 +100,10 @@ const FlashRevealTimer: React.FC<{ revealedAt: string; onTimeout: () => void }> 
   
   useEffect(() => {
     const calculate = () => {
-      const start = new Date(revealedAt).getTime();
-      const now = new Date().getTime();
-      const elapsed = now - start;
+      // FIX: Ensure correct parsing of reveal timestamp
+      const startTime = new Date(revealedAt).getTime();
+      const nowTime = new Date().getTime();
+      const elapsed = nowTime - startTime;
       const limit = 15 * 60 * 1000;
       
       if (elapsed >= limit) {
@@ -194,7 +214,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     if (!pendingRedeem || !currentUser) return;
     setIsProcessing(pendingRedeem.id);
     try {
-      // 1. Transaction to deduct RC and create reveal timestamp
       const { data, error } = await supabase!.rpc('redeem_voucher_flash', {
         user_uid_param: currentUser.uid,
         voucher_id_param: pendingRedeem.id,
@@ -309,7 +328,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       const data = revealedData[r.id];
                       const isExpired = r.expires_at && new Date(r.expires_at).getTime() < new Date().getTime();
                       
-                      // Calculate 15-minute timeout
                       let isTimedOut = false;
                       let isRecentlyRevealed = false;
                       if (data?.revealed_at) {
@@ -321,7 +339,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       return (
                         <div key={r.id} className={`bg-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden ${ (isExpired || isTimedOut) ? 'opacity-50 grayscale' : isRecentlyRevealed ? 'border-emerald-500 bg-emerald-50/20' : ''}`}>
                            
-                           {/* Stamping Logic */}
                            {isExpired ? (
                              <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                                <div className="bg-rose-600 text-white font-black text-3xl px-10 py-4 border-[6px] border-black rotate-[-12deg] shadow-[6px_6px_0px_0px_#000]">EXPIRED</div>

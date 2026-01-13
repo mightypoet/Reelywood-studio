@@ -92,7 +92,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }), // In your DB vouchers are likely in 'rewards' table
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
@@ -126,9 +126,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }
     setSubmitting(true);
     try {
+      // Correctly identifying table based on protocol type
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'rewards';
-      // Fix: Ensure single object parameter for .update and .eq to avoid TS2554
-      await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
+      const { error } = await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
+      
+      if (error) throw error;
+      
       showToast('success', `DEPLOYED TO ${targetList ? targetList.length : 'ALL'}`);
       setSelectedCreatorIds([]);
       setSelectedProtocol(null);
@@ -174,6 +177,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const text = darkMode ? 'text-white' : 'text-black';
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
+
+  // Consolidating items for the Deploy Tab sidebar
+  const deployableItems = [
+    ...missions.map(m => ({ ...m, type: 'mission' })),
+    ...vouchers.map(v => ({ ...v, type: 'voucher' }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <div className={`min-h-[100svh] ${bg} ${text} font-mono pb-10`}>
@@ -272,18 +281,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <div className="lg:col-span-4 flex flex-col gap-3 h-[400px] border-t-2 lg:border-t-0 lg:border-l-2 border-black border-dashed pt-4 lg:pt-0 lg:pl-4">
               <h3 className="text-xs font-black uppercase flex items-center gap-2">CONSOLE</h3>
               <div className="flex-1 overflow-auto space-y-2 pr-1 custom-scrollbar">
-                {missions.map(m => (
-                  <div key={m.id} onClick={() => setSelectedProtocol({id: m.id, type: 'mission'})}
-                       className={`border-2 p-2 cursor-pointer active:scale-[0.98] transition-all relative ${selectedProtocol?.id === m.id && selectedProtocol?.type === 'mission' ? 'border-purple-500 bg-purple-500/10' : 'border-gray-200 bg-[#1a1a1a]'}`}>
-                    <div className="font-black text-[9px] uppercase truncate pr-4">{m.title}</div>
-                    <div className="text-[7px] text-gray-400">{m.reward_amount} RC</div>
-                  </div>
-                ))}
-                {vouchers.map(v => (
-                  <div key={v.id} onClick={() => setSelectedProtocol({id: v.id, type: 'voucher'})}
-                       className={`border-2 p-2 cursor-pointer active:scale-[0.98] transition-all relative ${selectedProtocol?.id === v.id && selectedProtocol?.type === 'voucher' ? 'border-blue-500 bg-blue-500/10' : 'border-gray-200 bg-[#1a1a1a]'}`}>
-                    <div className="font-black text-[9px] uppercase truncate pr-4">{v.title}</div>
-                    <div className="text-[7px] text-gray-400">{v.cost} RC</div>
+                {deployableItems.map(item => (
+                  <div key={`${item.type}-${item.id}`} onClick={() => setSelectedProtocol({id: item.id, type: item.type})}
+                       className={`border-2 p-2 cursor-pointer active:scale-[0.98] transition-all relative ${selectedProtocol?.id === item.id && selectedProtocol?.type === item.type ? (item.type === 'mission' ? 'border-purple-500 bg-purple-500/10' : 'border-blue-500 bg-blue-500/10') : 'border-gray-200 bg-[#1a1a1a]'}`}>
+                    <div className="flex justify-between items-center">
+                        <div className="font-black text-[9px] uppercase truncate pr-4">{item.title}</div>
+                        <div className="shrink-0">{item.type === 'mission' ? <Zap size={8} className="text-purple-400"/> : <Gift size={8} className="text-blue-400"/>}</div>
+                    </div>
+                    <div className="text-[7px] text-gray-400">{item.reward_amount || item.cost} RC</div>
                   </div>
                 ))}
               </div>
