@@ -90,8 +90,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
-        // CRITICAL FIX: Fetch real Brand IDs (UUIDs) and Names from 'brands' table
-        supabase.from('brands').select('id, name').order('name', { ascending: true }),
+        // CORRECTED TABLE NAME: Fetching from 'partner_brands' instead of 'brands'
+        supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
       
@@ -171,7 +171,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     e.preventDefault();
     if (!supabase) return;
 
-    // GUARDRAIL: Prevent Foreign Key Violations (Ensures brand_id is a UUID)
     if (!voucherForm.brand_id) {
       alert("⚠️ PROTOCOL ERROR: Please select a valid Alliance Node (Brand) from the database.");
       return;
@@ -180,7 +179,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setSubmitting(true);
     try {
       const payload = {
-        brand_id: voucherForm.brand_id, // This is the UUID from brands
+        brand_id: voucherForm.brand_id,
         name: voucherForm.title,
         title: voucherForm.title,
         cost: parseInt(voucherForm.cost) || 0,
@@ -366,7 +365,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_#000]">
               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2 font-display"><Gift size={16}/> VOUCHER GENERATOR</h3>
               
-              {/* REWRITTEN DROPDOWN: DYNAMIC FETCHING FROM DATABASE */}
               <div className="border-4 border-black p-3 mb-4 bg-white">
                 <label className="block font-black text-[10px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
                 <select
@@ -395,7 +393,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               </div>
 
               <button disabled={submitting} className="w-full py-5 bg-black text-white font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#ffde59] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center gap-3">
-                {submitting ? <Loader2 className="animate-spin"/> : <Save size={16}/>}
+                {submitting ? <Loader2 className="animate-spin"/> : <FileText size={16}/>}
                 <span>AUTHORIZE DRAFT</span>
               </button>
             </form>
@@ -407,5 +405,3 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     </div>
   );
 };
-
-const Save = ({ size }: { size: number }) => <FileText size={size} />;
