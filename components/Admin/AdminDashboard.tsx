@@ -126,7 +126,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }
     setSubmitting(true);
     try {
-      // Correct table targeting based on protocol type
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'rewards';
       const { error } = await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
       
@@ -157,20 +156,26 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setSubmitting(true);
     const vFactors = [missionForm.factor1, missionForm.factor2, missionForm.factor3].filter(f => f.trim() !== '');
     try {
-      await supabase.from('missions').insert([{
+      const payload = {
         title: missionForm.title,
         reward_amount: parseInt(missionForm.reward),
         brand_id: missionForm.brand_id,
         description: missionForm.description,
         verification_factors: vFactors,
         assigned_to: ['DRAFT'],
-        expires_at: missionForm.expires_at || null
-      }]);
+        expires_at: missionForm.expires_at ? new Date(missionForm.expires_at).toISOString() : null
+      };
+      console.log('Deploying Mission Payload:', payload);
+      const { error } = await supabase.from('missions').insert([payload]);
+      if (error) throw error;
+
       showToast('success', "MISSION SYNCED TO HUB");
       setMissionForm({ title: '', reward: '', brand_id: '', expires_at: '', description: '', factor1: '', factor2: '', factor3: '' });
       fetchAllData();
-    } catch (e: any) { showToast('error', e.message); } 
-    finally { setSubmitting(false); }
+    } catch (e: any) { 
+      console.error('Mission Insert Error:', e);
+      showToast('error', e.message); 
+    } finally { setSubmitting(false); }
   };
 
   const bg = darkMode ? 'bg-[#0a0a0a]' : 'bg-gray-50';
@@ -178,7 +183,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
-  // MERGE AND MAP DATA FOR CONSOLE
+  // COMBINED LIST FOR DEPLOY SIDEBAR
   const deployableItems = [
     ...missions.map(m => ({
       id: m.id,
@@ -390,22 +395,35 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <form onSubmit={async (e) => {
               e.preventDefault();
               if (!supabase) return;
+              if (!voucherForm.brand_id) {
+                showToast('error', 'Select a Brand node');
+                return;
+              }
+              
               setSubmitting(true);
               try {
-                await supabase.from('rewards').insert([{
+                const payload = {
                   brand_id: voucherForm.brand_id,
                   title: voucherForm.title,
                   cost: parseInt(voucherForm.cost),
                   code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
                   description: voucherForm.description,
                   assigned_to: ['DRAFT'],
-                  expires_at: voucherForm.expires_at || null
-                }]);
+                  expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null
+                };
+                
+                console.log('Deploying Voucher Payload:', payload);
+                
+                const { error } = await supabase.from('rewards').insert([payload]);
+                if (error) throw error;
+                
                 showToast('success', "VOUCHER DRAFTED");
                 setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
                 fetchAllData();
-              } catch (e: any) { showToast('error', e.message); }
-              finally { setSubmitting(false); }
+              } catch (e: any) { 
+                console.error('Voucher Insert Error:', e);
+                showToast('error', e.message); 
+              } finally { setSubmitting(false); }
             }} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Gift size={16}/> New Voucher Drop</h3>
               <select className="w-full p-3 border-2 border-black font-bold text-black text-xs" required value={voucherForm.brand_id} onChange={e => setVoucherForm({...voucherForm, brand_id: e.target.value})}>
