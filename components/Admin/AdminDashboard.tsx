@@ -177,6 +177,44 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     } finally { setSubmitting(false); }
   };
 
+  const handleVoucherSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    // TASK 3: Validation Guardrail
+    if (!voucherForm.brand_id) {
+      alert("Please select a valid Brand from the list.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // TASK 2: Construct strict payload matching DB schema
+      const payload = {
+        brand_id: voucherForm.brand_id,
+        title: voucherForm.title, // Mapped to 'title' column
+        name: voucherForm.title,  // Kept for redundancy/schema safety
+        cost: parseInt(voucherForm.cost) || 0,
+        description: voucherForm.description,
+        expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
+        status: 'draft',
+        code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
+      };
+      
+      console.log('Finalizing Voucher Submission:', payload);
+      
+      const { error } = await supabase.from('vouchers').insert([payload]);
+      if (error) throw error;
+      
+      showToast('success', "VOUCHER NODE SAVED AS DRAFT");
+      setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
+      fetchAllData();
+    } catch (e: any) { 
+      console.error('Voucher Sync Terminal Error:', e);
+      showToast('error', e.message); 
+    } finally { setSubmitting(false); }
+  };
+
   const bg = darkMode ? 'bg-[#0a0a0a]' : 'bg-gray-50';
   const text = darkMode ? 'text-white' : 'text-black';
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
@@ -191,7 +229,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     })),
     ...vouchers.map(v => ({
       id: v.id,
-      title: v.name || v.title,
+      title: v.title || v.name,
       value: v.cost,
       type: 'voucher'
     }))
@@ -318,7 +356,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
              <form onSubmit={handleMissionSubmit} className="space-y-4 bg-white p-6 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
                <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Zap size={16}/> New Mission Grid</h3>
                <div className="grid grid-cols-2 gap-4">
-                 <select className="col-span-2 w-full p-3 border-2 border-black font-bold text-black text-xs" required value={missionForm.brand_id} onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}>
+                 <select 
+                    className="col-span-2 w-full p-3 border-2 border-black font-bold text-black text-xs" 
+                    required 
+                    value={missionForm.brand_id} 
+                    onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}
+                  >
                     <option value="">-- ALLIANCE NODE --</option>
                     {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                  </select>
@@ -348,45 +391,25 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
         {activeTab === 'vouchers' && (
           <div className="max-w-md mx-auto py-4">
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (!supabase) return;
-              if (!voucherForm.brand_id) {
-                showToast('error', 'Select a Brand node');
-                return;
-              }
-              setSubmitting(true);
-              try {
-                // FIXED: Construction of a clean payload matching the 'vouchers' table schema
-                const payload = {
-                  brand_id: voucherForm.brand_id,
-                  name: voucherForm.title, // Map 'title' input to 'name' column
-                  cost: parseInt(voucherForm.cost) || 0, // Ensure integer
-                  description: voucherForm.description,
-                  expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null, // Handle date parsing and nulls
-                  status: 'draft',
-                  code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
-                };
-                
-                console.log('Finalizing Voucher Submission:', payload);
-                
-                const { error } = await supabase.from('vouchers').insert([payload]);
-                if (error) throw error;
-                
-                showToast('success', "VOUCHER NODE SAVED AS DRAFT");
-                setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
-                fetchAllData();
-              } catch (e: any) { 
-                console.error('Voucher Sync Terminal Error:', e);
-                showToast('error', e.message); 
-              } finally { setSubmitting(false); }
-            }} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
+            <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Gift size={16}/> New Voucher Drop</h3>
-              <select className="w-full p-3 border-2 border-black font-bold text-black text-xs" required value={voucherForm.brand_id} onChange={e => setVoucherForm({...voucherForm, brand_id: e.target.value})}>
+              
+              {/* TASK 1: specific Fix for the <select> Element */}
+              <select 
+                className="w-full p-3 border-2 border-black font-bold text-black text-xs" 
+                required 
+                value={voucherForm.brand_id || ''} 
+                onChange={e => setVoucherForm({...voucherForm, brand_id: e.target.value})}
+              >
                 <option value="">-- ALLIANCE NODE --</option>
-                {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                {brands.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
               </select>
-              <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="VOUCHER NAME" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
+              
+              <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="VOUCHER NAME" name="title" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
               <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
               <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="datetime-local" value={voucherForm.expires_at} onChange={e => setVoucherForm({...voucherForm, expires_at: e.target.value})}/>
               <textarea className="w-full p-3 border-2 border-black font-bold text-black text-xs h-24 resize-none" placeholder="VOUCHER DESCRIPTION..." required value={voucherForm.description} onChange={e => setVoucherForm({...voucherForm, description: e.target.value})}/>
