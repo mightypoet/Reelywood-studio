@@ -181,7 +181,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     e.preventDefault();
     if (!supabase) return;
 
-    // Guardrail: Ensure Brand UUID is captured
+    // TASK: Validation Guardrail
     if (!voucherForm.brand_id) {
       alert("Please select a valid Brand from the list.");
       return;
@@ -192,7 +192,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       // Construction of strict payload matching DB schema
       const payload = {
         brand_id: voucherForm.brand_id,
-        title: voucherForm.title, // Maps to 'title' column
+        title: voucherForm.title, // Maps to 'title' column to fix not-null violation
         name: voucherForm.title,  // Maps to 'name' column
         cost: parseInt(voucherForm.cost) || 0,
         description: voucherForm.description,
@@ -202,7 +202,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       };
       
       console.log('Submitting Brand ID:', voucherForm.brand_id);
-      console.log('Executing Voucher Save:', payload);
+      console.log('Executing Voucher Save Payload:', payload);
       
       const { error } = await supabase.from('vouchers').insert([payload]);
       if (error) throw error;
@@ -395,7 +395,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Gift size={16}/> New Voucher Drop</h3>
               
-              {/* Dynamic Brand Dropdown Implementation */}
+              {/* TASK: Dynamic Brand Dropdown Fix */}
               <select 
                 className="w-full p-3 border-2 border-black font-bold text-black text-xs" 
                 required 
