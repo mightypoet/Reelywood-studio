@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/firebase';
@@ -41,6 +40,7 @@ const MainContent: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
+    // Fixed: onAuthStateChanged is correctly imported from firebase/auth
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {

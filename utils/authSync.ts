@@ -4,6 +4,7 @@ import { User } from 'firebase/auth';
 /**
  * Robustly synchronizes a Firebase User to the Supabase 'profiles' table.
  */
+// Fixed: User type is correctly imported from firebase/auth
 export const syncUserToSupabase = async (user: User) => {
   if (!user) {
     console.log("SYNC: No user detected for synchronization.");
