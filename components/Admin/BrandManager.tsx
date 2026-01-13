@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
 import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2 } from 'lucide-react';
@@ -23,9 +22,8 @@ export const BrandManager = () => {
     if (!supabase) return;
     setFetchLoading(true);
     try {
-      // TASK 3 FIX: Reference 'brands' table
       const { data, error } = await supabase
-        .from('brands')
+        .from('partner_brands')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -49,18 +47,16 @@ export const BrandManager = () => {
     
     try {
       if (editingId) {
-        // TASK 3 FIX: Reference 'brands' table
         const { error } = await supabase
-          .from('brands')
+          .from('partner_brands')
           .update(formData)
           .eq('id', editingId);
         
         if (error) throw error;
         alert("🚀 Brand Protocols Synchronized!");
       } else {
-        // TASK 3 FIX: Reference 'brands' table
         const { error } = await supabase
-          .from('brands')
+          .from('partner_brands')
           .insert([formData]);
 
         if (error) throw error;
@@ -96,8 +92,7 @@ export const BrandManager = () => {
     if (!supabase || !window.confirm("⚠️ SYSTEM OVERRIDE: Are you sure? This will sever all links to this brand node.")) return;
     
     try {
-      // TASK 3 FIX: Reference 'brands' table
-      const { error } = await supabase.from('brands').delete().eq('id', id);
+      const { error } = await supabase.from('partner_brands').delete().eq('id', id);
       if (error) throw error;
       alert("Node Purged.");
       fetchBrands();

@@ -87,11 +87,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     try {
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('missions').select('*, brands(*)').order('created_at', { ascending: false }),
-        supabase.from('vouchers').select('*, brands(*)').order('created_at', { ascending: false }),
+        supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
-        // TASK 1 FIX: Use 'brands' table instead of 'partner_brands'
-        supabase.from('brands').select('id, name').order('name', { ascending: true }),
+        // CRITICAL FIX: Fetch real Brand IDs (UUIDs) and Names
+        supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
       
@@ -171,15 +171,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     e.preventDefault();
     if (!supabase) return;
 
+    // GUARDRAIL: Prevent Foreign Key Violations (Ensures brand_id is a UUID)
     if (!voucherForm.brand_id) {
-      alert("⚠️ PROTOCOL ERROR: Please select a valid Alliance Node (Brand).");
+      alert("⚠️ PROTOCOL ERROR: Please select a valid Alliance Node (Brand) from the database.");
       return;
     }
 
     setSubmitting(true);
     try {
       const payload = {
-        brand_id: voucherForm.brand_id, 
+        brand_id: voucherForm.brand_id, // This is the UUID from partner_brands
         name: voucherForm.title,
         title: voucherForm.title,
         cost: parseInt(voucherForm.cost) || 0,
@@ -189,8 +190,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
       };
       
-      // TASK 2: Debug logging
-      console.log('Deploying Voucher for Brand ID:', voucherForm.brand_id);
       console.log('SYNC: Transmitting Voucher Payload:', payload);
       
       const { error } = await supabase.from('vouchers').insert([payload]);
@@ -367,6 +366,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_#000]">
               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2 font-display"><Gift size={16}/> VOUCHER GENERATOR</h3>
               
+              {/* REWRITTEN DROPDOWN: DYNAMIC FETCHING FROM DATABASE */}
               <div className="border-4 border-black p-3 mb-4 bg-white">
                 <label className="block font-black text-[10px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
                 <select
