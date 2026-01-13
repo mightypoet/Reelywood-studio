@@ -29,7 +29,6 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
   const isMobileRef = useRef(false);
 
   useEffect(() => {
-    // Fixed: onAuthStateChanged is correctly imported from firebase/auth
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         onDashboardClick();

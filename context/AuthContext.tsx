@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   onAuthStateChanged, 
@@ -26,7 +27,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
      * Fires on app load and whenever the user signs in or out.
      * Synchronization is now handled at the App.tsx root level.
      */
-    // Fixed: Correct usage of onAuthStateChanged from firebase/auth
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -37,7 +37,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async () => {
     try {
-      // Fixed: Correct usage of signInWithPopup from firebase/auth
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("AUTH: Google Auth Error:", error);
@@ -47,7 +46,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      // Fixed: Correct usage of signOut from firebase/auth
       await signOut(auth);
     } catch (error) {
       console.error("AUTH: Logout Error:", error);
