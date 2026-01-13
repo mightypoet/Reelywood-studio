@@ -88,7 +88,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        // Task 1: Simplified fetch for vouchers to ensure they load regardless of brand relationship
+        supabase.from('vouchers').select('*').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
@@ -177,11 +178,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
     setSubmitting(true);
     try {
-      // ENSURE ROBUST PAYLOAD: Both 'title' and 'name' are explicitly mapped to prevent trigger failures
       const payload = {
         brand_id: voucherForm.brand_id, 
         title: voucherForm.title || 'New Reward', 
-        name: voucherForm.title || 'New Reward', // Mirroring title to name for safety
+        name: voucherForm.title || 'New Reward', 
         cost: parseInt(voucherForm.cost) || 0,
         description: voucherForm.description,
         expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
@@ -196,6 +196,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       
       showToast('success', "VOUCHER TEMPLATE SAVED AS DRAFT");
       setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
+      
+      // Task 3: Force refresh data immediately after success
       fetchAllData();
     } catch (e: any) { 
       console.error('SYNC_FATAL_ERROR:', e);
@@ -208,9 +210,20 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
+  // Task 2: Robust mapping with fallbacks for display titles
   const deployableItems = [
-    ...missions.map(m => ({ id: m.id, title: m.title, value: m.reward_amount, type: 'mission' })),
-    ...vouchers.map(v => ({ id: v.id, title: v.title, value: v.cost, type: 'voucher' }))
+    ...missions.map(m => ({ 
+      id: m.id, 
+      title: m.title || 'Untitled Mission', 
+      value: m.reward_amount, 
+      type: 'mission' 
+    })),
+    ...vouchers.map(v => ({ 
+      id: v.id, 
+      title: v.title || v.name || 'Untitled Voucher', 
+      value: v.cost, 
+      type: 'voucher' 
+    }))
   ].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
 
   return (
