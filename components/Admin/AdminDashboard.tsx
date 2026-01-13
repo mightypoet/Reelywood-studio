@@ -357,7 +357,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               }
               setSubmitting(true);
               try {
-                // FIXED: Removal of 'assigned_to' and mapping 'title' to 'name'
+                // Corrected payload targeting 'vouchers' table with dynamic brand lookup
                 const payload = {
                   brand_id: voucherForm.brand_id,
                   name: voucherForm.title,
