@@ -126,12 +126,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }
     setSubmitting(true);
     try {
+      // Correct table targeting based on protocol type
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'rewards';
       const { error } = await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
       
       if (error) throw error;
       
-      showToast('success', `DEPLOYED TO ${targetList ? targetList.length : 'ALL'}`);
+      showToast('success', `${selectedProtocol.type.toUpperCase()} DEPLOYED TO ${targetList ? targetList.length : 'ALL'}`);
       setSelectedCreatorIds([]);
       setSelectedProtocol(null);
       fetchAllData();
@@ -177,11 +178,21 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
-  // COMBINED LIST FOR DEPLOY SIDEBAR
+  // MERGE AND MAP DATA FOR CONSOLE
   const deployableItems = [
-    ...missions.map(m => ({ ...m, type: 'mission' })),
-    ...vouchers.map(v => ({ ...v, type: 'voucher' }))
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    ...missions.map(m => ({
+      id: m.id,
+      title: m.title,
+      value: m.reward_amount,
+      type: 'mission'
+    })),
+    ...vouchers.map(v => ({
+      id: v.id,
+      title: v.title,
+      value: v.cost,
+      type: 'voucher'
+    }))
+  ].sort((a, b) => a.title.localeCompare(b.title));
 
   return (
     <div className={`min-h-[100svh] ${bg} ${text} font-mono pb-10`}>
@@ -285,11 +296,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                        className={`border-2 p-2 cursor-pointer active:scale-[0.98] transition-all relative ${selectedProtocol?.id === item.id && selectedProtocol?.type === item.type ? (item.type === 'mission' ? 'border-purple-500 bg-purple-500/10' : 'border-blue-500 bg-blue-500/10') : 'border-gray-200 bg-[#1a1a1a]'}`}>
                     <div className="flex justify-between items-center">
                         <div className="font-black text-[9px] uppercase truncate pr-4">{item.title}</div>
-                        <div className="shrink-0">{item.type === 'mission' ? <Zap size={8} className="text-purple-400"/> : <Gift size={8} className="text-blue-400"/>}</div>
+                        <div className="shrink-0">{item.type === 'mission' ? <Zap size={10} className="text-[#834bf1]"/> : <Gift size={10} className="text-blue-500"/>}</div>
                     </div>
-                    <div className="text-[7px] text-gray-400">{item.reward_amount || item.cost} RC</div>
+                    <div className="text-[7px] text-gray-400">{item.value} RC</div>
                   </div>
                 ))}
+                {deployableItems.length === 0 && (
+                   <div className="text-center py-10 opacity-20 font-black text-[8px] uppercase tracking-widest">No Items to Deploy</div>
+                )}
               </div>
               <button onClick={handleExecuteDeploy} disabled={submitting || !selectedProtocol}
                 className="w-full py-3 bg-[#834bf1] text-white border-2 border-black font-black uppercase text-[9px] shadow-[3px_3px_0px_0px_#000] active:scale-95 transition-all disabled:opacity-50">
