@@ -92,6 +92,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        // Corrected table target: 'vouchers'
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
@@ -126,6 +127,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }
     setSubmitting(true);
     try {
+      // Table selection based on protocol type
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'vouchers';
       const { error } = await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
       
@@ -165,7 +167,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         assigned_to: ['DRAFT'],
         expires_at: missionForm.expires_at ? new Date(missionForm.expires_at).toISOString() : null
       };
-      console.log('Deploying Mission Payload:', payload);
       const { error } = await supabase.from('missions').insert([payload]);
       if (error) throw error;
 
@@ -173,7 +174,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       setMissionForm({ title: '', reward: '', brand_id: '', expires_at: '', description: '', factor1: '', factor2: '', factor3: '' });
       fetchAllData();
     } catch (e: any) { 
-      console.error('Mission Insert Error:', e);
+      console.error('Mission Sync Failure:', e);
       showToast('error', e.message); 
     } finally { setSubmitting(false); }
   };
@@ -305,9 +306,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     <div className="text-[7px] text-gray-400">{item.value} RC</div>
                   </div>
                 ))}
-                {deployableItems.length === 0 && (
-                   <div className="text-center py-10 opacity-20 font-black text-[8px] uppercase tracking-widest">No Items to Deploy</div>
-                )}
               </div>
               <button onClick={handleExecuteDeploy} disabled={submitting || !selectedProtocol}
                 className="w-full py-3 bg-[#834bf1] text-white border-2 border-black font-black uppercase text-[9px] shadow-[3px_3px_0px_0px_#000] active:scale-95 transition-all disabled:opacity-50">
@@ -315,45 +313,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               </button>
             </div>
           </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div className="bg-white text-black p-3 border-2 border-black shadow-[3px_3px_0px_0px_#000]">
-            <h3 className="font-black mb-4 text-xs uppercase italic">AGENT ROSTER</h3>
-            <div className="overflow-auto max-h-[400px]">
-              {users.map(u => (
-                <div key={u.id} className="border-b border-gray-100 py-3 flex justify-between items-center gap-2">
-                   <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-8 h-8 bg-black text-white flex items-center justify-center font-black text-xs shrink-0">{u.display_name?.charAt(0)}</div>
-                      <div className="min-w-0"><div className="font-bold uppercase text-[10px] truncate">{u.display_name}</div><div className="text-[7px] text-gray-400 font-mono truncate">{u.email}</div></div>
-                   </div>
-                   <div className="flex gap-2 shrink-0">
-                      {u.card_status === 'pending' ? (
-                        <div className="flex gap-1">
-                          <button onClick={() => handleUpdateStatus(u.firebase_uid, 'approved')} className="p-1.5 border border-black bg-emerald-500 text-white active:scale-90"><Check size={10} strokeWidth={4}/></button>
-                          <button onClick={() => handleUpdateStatus(u.firebase_uid, 'rejected')} className="p-1.5 border border-black bg-rose-500 text-white active:scale-90"><X size={10} strokeWidth={4}/></button>
-                        </div>
-                      ) : (
-                        <span className={`px-2 py-0.5 border border-black text-[7px] font-black uppercase ${u.card_status === 'approved' ? 'bg-emerald-400' : 'bg-rose-400'}`}>{u.card_status}</span>
-                      )}
-                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'submissions' && (
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-             {submissions.filter(s => s.status === 'pending').length === 0 && <div className="col-span-full py-10 text-center opacity-30 font-black uppercase text-[8px] tracking-[0.4em]">Queue Empty</div>}
-             {submissions.filter(s => s.status === 'pending').map(sub => (
-               <div key={sub.id} className="bg-white p-4 border-2 border-black shadow-[3px_3px_0px_0px_#000] text-black">
-                  <h4 className="font-black text-sm uppercase italic truncate mb-2">{sub.profiles?.display_name}</h4>
-                  <p className="text-[8px] text-gray-500 uppercase truncate mb-3">M: {sub.missions?.title}</p>
-                  <button onClick={() => setSelectedSubmission(sub)} className="bg-yellow-400 w-full py-2 font-black text-[9px] border-2 border-black shadow-[2px_2px_0px_0px_#000] active:scale-95 uppercase">VERIFY</button>
-               </div>
-             ))}
-           </div>
         )}
 
         {activeTab === 'missions' && (
@@ -398,9 +357,9 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 showToast('error', 'Select a Brand node');
                 return;
               }
-              
               setSubmitting(true);
               try {
+                // Corrected payload targeting 'vouchers' schema
                 const payload = {
                   brand_id: voucherForm.brand_id,
                   title: voucherForm.title,
@@ -412,7 +371,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   status: 'draft'
                 };
                 
-                console.log('Payload:', payload);
+                console.log('Synchronizing Voucher Payload:', payload);
                 
                 const { error } = await supabase.from('vouchers').insert([payload]);
                 if (error) throw error;
@@ -421,7 +380,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
                 fetchAllData();
               } catch (e: any) { 
-                console.error('Voucher Insert Error:', e);
+                console.error('Voucher Sync Failure:', e);
                 showToast('error', e.message); 
               } finally { setSubmitting(false); }
             }} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
