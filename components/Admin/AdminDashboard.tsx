@@ -9,7 +9,7 @@ import {
   Building2, ListChecks, Clock, X,
   Crosshair, CheckSquare, Box,
   Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck, Ticket, Calendar,
-  Layout
+  Layout, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -92,7 +92,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        // Corrected table target: 'vouchers'
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
@@ -192,7 +191,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     })),
     ...vouchers.map(v => ({
       id: v.id,
-      title: v.title,
+      title: v.name || v.title,
       value: v.cost,
       type: 'voucher'
     }))
@@ -358,14 +357,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               }
               setSubmitting(true);
               try {
-                // Corrected payload targeting 'vouchers' schema
+                // FIXED: Removal of 'assigned_to' and mapping 'title' to 'name'
                 const payload = {
                   brand_id: voucherForm.brand_id,
-                  title: voucherForm.title,
+                  name: voucherForm.title,
                   cost: parseInt(voucherForm.cost),
                   code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
                   description: voucherForm.description,
-                  assigned_to: ['DRAFT'],
                   expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
                   status: 'draft'
                 };
