@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
@@ -52,7 +53,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [selectedMission, setSelectedMission] = useState<any>(null);
   
-  // Custom Modal State
   const [pendingRedeem, setPendingRedeem] = useState<any>(null);
   const [urgentAlert, setUrgentAlert] = useState<any>(null);
 
@@ -102,11 +102,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setUrgentAlert(nRes.data[0]);
       }
 
-      // Restore revealed codes from transaction history
       if (txRes.data) {
         const revealed: Record<string, string> = {};
         txRes.data.forEach((tx: any) => {
-          // If we can match the transaction description to a voucher title
           const reward = rRes.data?.find(r => tx.description.includes(r.title));
           if (reward) revealed[reward.id] = reward.code || 'ACTIVE_DECRYPTED';
         });
@@ -122,7 +120,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   useEffect(() => {
     let pollInterval: number;
-
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
@@ -134,7 +131,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setLoading(false);
       }
     });
-
     return () => {
       unsubscribe();
       if (pollInterval) clearInterval(pollInterval);
@@ -142,7 +138,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   }, []);
 
   const handleRedeemClick = (reward: any) => {
-    if (revealedCodes[reward.id]) return; // Interaction Lock
+    if (revealedCodes[reward.id]) return;
     if (!profile || profile.reelcoins < reward.cost) {
       return alert("⛔ INSUFFICIENT RC BAL: " + reward.cost + " required.");
     }
@@ -157,7 +153,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const executeRedemption = async () => {
     if (!pendingRedeem || !currentUser) return;
-    
     setIsProcessing(pendingRedeem.id);
     try {
       const { error } = await supabase!.rpc('redeem_reward', {
@@ -185,32 +180,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-8">
-        <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
-        <p className="text-[12px] font-black uppercase tracking-[0.6em] text-black animate-pulse">Establishing Neural Link...</p>
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-8 p-6">
+        <Loader2 className="animate-spin text-[#834bf1]" size={48} strokeWidth={4} />
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-black animate-pulse text-center">Neural Link Active...</p>
       </div>
     );
   }
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#f0f0f0] flex items-center justify-center p-6">
-        <div className="bg-white border-[4px] border-black shadow-[12px_12px_0px_0px_#000] p-10 max-w-md w-full space-y-8">
+      <div className="min-h-[100svh] bg-[#f0f0f0] flex items-center justify-center p-4">
+        <div className="bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] p-6 md:p-10 max-w-md w-full space-y-8">
            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-[#834bf1] border-[3px] border-black mx-auto flex items-center justify-center shadow-[4px_4px_0px_0px_#000]">
-                <Fingerprint className="text-white" size={32} />
+              <div className="w-14 h-14 bg-[#834bf1] border-[3px] border-black mx-auto flex items-center justify-center shadow-[4px_4px_0px_0px_#000]">
+                <Fingerprint className="text-white" size={24} />
               </div>
-              <h1 className="text-3xl font-black italic uppercase font-display">Hub Access Required</h1>
-              <p className="text-[10px] font-black uppercase text-black/40 tracking-widest">Verify identity node to continue</p>
+              <h1 className="text-2xl md:text-3xl font-black italic uppercase font-display">Hub Access</h1>
+              <p className="text-[9px] font-black uppercase text-black/40 tracking-widest">Verify identity node</p>
            </div>
            <button 
              onClick={() => signInWithPopup(auth, googleProvider)}
-             className="w-full bg-white border-[4px] border-black py-5 font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3"
+             className="w-full bg-white border-[3px] border-black py-4 font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#834bf1] active:scale-95 transition-all flex items-center justify-center gap-3"
            >
              <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
-             <span>Continue with Google</span>
+             <span>Sign in</span>
            </button>
-           <button onClick={onBack} className="w-full text-[10px] font-black uppercase text-black/30 hover:text-black">Return to Studio</button>
+           <button onClick={onBack} className="w-full text-[9px] font-black uppercase text-black/30 hover:text-black">Exit Terminal</button>
         </div>
       </div>
     );
@@ -231,10 +226,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         />
       )}
 
-      <NewAlertModal 
-        notification={urgentAlert} 
-        onClose={dismissUrgentAlert} 
-      />
+      <NewAlertModal notification={urgentAlert} onClose={dismissUrgentAlert} />
 
       <RedeemConfirmationModal 
         isOpen={!!pendingRedeem}
@@ -244,77 +236,75 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         isProcessing={!!isProcessing}
       />
 
-      <header className="border-b-[6px] border-black bg-white sticky top-0 z-[50] px-6 py-4">
+      <header className="border-b-[4px] md:border-b-[6px] border-black bg-white sticky top-0 z-[50] px-4 py-3 md:px-6 md:py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <button onClick={onBack} className="p-2 border-[3px] border-black shadow-[3px_3px_0px_0px_#000] bg-white hover:bg-[#ffde59] transition-all">
-              <ArrowLeft size={20} strokeWidth={4} />
+          <div className="flex items-center space-x-3 md:space-x-6">
+            <button onClick={onBack} className="p-2 border-[2.5px] border-black shadow-[2px_2px_0px_0px_#000] bg-white active:scale-90 transition-all">
+              <ArrowLeft size={18} strokeWidth={4} />
             </button>
-            <h1 className="text-xl md:text-3xl font-black uppercase italic font-display">Creator <span className="text-[#834bf1]">Hub</span></h1>
+            <h1 className="text-lg md:text-3xl font-black uppercase italic font-display">Hub <span className="text-[#834bf1]">Alpha</span></h1>
           </div>
           
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-3 md:space-x-6">
             <NotificationBell userId={currentUser.uid} />
-
-            <div className="hidden md:flex flex-col items-end">
-               <span className="text-[10px] font-black uppercase opacity-40">Identity Node</span>
-               <span className="text-xs font-bold uppercase">{currentUser.email}</span>
-            </div>
-            <button onClick={() => auth.signOut()} className="bg-black text-white p-2 border-[3px] border-white shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-              <LogOut size={20} strokeWidth={3} />
+            <button onClick={() => auth.signOut()} className="bg-black text-white p-2 border-[2.5px] border-white shadow-[2px_2px_0px_0px_#000] active:scale-90 transition-all">
+              <LogOut size={18} strokeWidth={3} />
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-6 lg:p-12">
-        <div className="grid lg:grid-cols-12 gap-12">
-          <div className="lg:col-span-4 space-y-12">
-            <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000] relative overflow-hidden group">
-               <div className="absolute top-4 right-4 bg-[#ffde59] border-[3px] border-black px-3 py-1 font-black text-[9px] uppercase tracking-widest shadow-[3px_3px_0px_0px_#000]">
+      <main className="max-w-7xl mx-auto p-4 md:p-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-12">
+          
+          {/* STATS PANEL */}
+          <div className="lg:col-span-4 space-y-6 md:space-y-12">
+            <div className="bg-white border-[4px] border-black p-6 md:p-10 shadow-[6px_6px_0px_0px_#000] relative overflow-hidden group">
+               <div className="absolute top-3 right-3 bg-[#ffde59] border-[2px] border-black px-2 py-0.5 font-black text-[8px] uppercase tracking-widest shadow-[2px_2px_0px_0px_#000]">
                   {isApproved ? 'VERIFIED' : 'SYNCING'}
                </div>
-               <div className="w-32 h-32 border-[5px] border-black mx-auto mb-6 bg-slate-100 overflow-hidden shadow-[6px_6px_0px_0px_#834bf1]">
+               <div className="w-20 h-20 md:w-32 md:h-32 border-[4px] border-black mx-auto mb-4 bg-slate-100 overflow-hidden shadow-[4px_4px_0px_0px_#834bf1]">
                   <img src={currentUser.photoURL || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${currentUser.uid}`} alt="Agent" className="w-full h-full object-cover" />
                </div>
-               <div className="text-center space-y-2">
-                  <h2 className="text-3xl font-black uppercase italic font-display">{profile?.display_name || "Agent " + currentUser.uid.slice(0,4)}</h2>
-                  <p className="text-[#834bf1] font-black text-xs uppercase tracking-[0.2em] italic">@{profile?.handle || "unlinked"}</p>
+               <div className="text-center space-y-1">
+                  <h2 className="text-xl md:text-3xl font-black uppercase italic font-display truncate">{profile?.display_name || "Agent " + currentUser.uid.slice(0,4)}</h2>
+                  <p className="text-[#834bf1] font-black text-[10px] md:text-xs uppercase tracking-[0.2em] italic">@{profile?.handle || "unlinked"}</p>
                </div>
             </div>
 
-            <div className="bg-[#834bf1] border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000] text-white">
-               <div className="flex items-center gap-3 mb-6 opacity-60">
-                  <Wallet size={18} strokeWidth={3} />
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em]">Liquid Assets</span>
+            <div className="bg-[#834bf1] border-[4px] border-black p-6 md:p-10 shadow-[6px_6px_0px_0px_#000] text-white">
+               <div className="flex items-center gap-2 mb-4 opacity-60">
+                  <Wallet size={16} strokeWidth={3} />
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em]">Credits</span>
                </div>
-               <div className="flex items-baseline gap-4">
-                  <span className="text-7xl font-black italic font-display tracking-tighter">{profile?.reelcoins?.toLocaleString() || "0"}</span>
-                  <span className="text-2xl font-black text-[#ffde59]">RC</span>
+               <div className="flex items-baseline gap-3">
+                  <span className="text-4xl md:text-7xl font-black italic font-display tracking-tighter">{profile?.reelcoins?.toLocaleString() || "0"}</span>
+                  <span className="text-lg md:text-2xl font-black text-[#ffde59]">RC</span>
                </div>
             </div>
           </div>
 
-          <div className="lg:col-span-8 space-y-10">
-            <div className="flex border-[6px] border-black bg-white p-2 shadow-[10px_10px_0px_0px_#000]">
+          {/* CONTENT PANEL */}
+          <div className="lg:col-span-8 space-y-6 md:space-y-10">
+            <div className="flex border-[4px] md:border-[6px] border-black bg-white p-1 md:p-2 shadow-[6px_6px_0px_0px_#000]">
               <button 
                 onClick={() => setActiveTab('missions')} 
-                className={`flex-1 py-5 font-black uppercase text-sm italic tracking-[0.2em] transition-all ${activeTab === 'missions' ? 'bg-[#ffde59] border-[4px] border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100'}`}
+                className={`flex-1 py-3 md:py-5 font-black uppercase text-[10px] md:text-sm italic tracking-[0.1em] md:tracking-[0.2em] transition-all active:scale-95 ${activeTab === 'missions' ? 'bg-[#ffde59] border-[2px] md:border-[4px] border-black shadow-[2px_2px_0px_0px_#000] md:shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100'}`}
               >
-                Mission Grid
+                Missions
               </button>
               <button 
                 onClick={() => setActiveTab('rewards')} 
-                className={`flex-1 py-5 font-black uppercase text-sm italic tracking-[0.2em] transition-all ${activeTab === 'rewards' ? 'bg-[#834bf1] text-white border-[4px] border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100'}`}
+                className={`flex-1 py-3 md:py-5 font-black uppercase text-[10px] md:text-sm italic tracking-[0.1em] md:tracking-[0.2em] transition-all active:scale-95 ${activeTab === 'rewards' ? 'bg-[#834bf1] text-white border-[2px] md:border-[4px] border-black shadow-[2px_2px_0px_0px_#000] md:shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100'}`}
               >
-                Reward Node
+                Rewards
               </button>
             </div>
 
-            {isApproved && (
-              <div className="space-y-8 animate-in fade-in duration-500">
+            {isApproved ? (
+              <div className="space-y-6 animate-in fade-in duration-500">
                 {activeTab === 'missions' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                     {missions.map((m) => {
                         const submission = userSubmissions.find(s => s.mission_id === m.id);
                         const isDone = submission?.status === 'approved' || submission?.status === 'completed';
@@ -323,88 +313,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         const brand = m.partner_brands;
 
                         const cardStyles = isDone 
-                          ? 'bg-emerald-50 border-emerald-400 shadow-emerald-200' 
+                          ? 'bg-emerald-50 border-emerald-400 shadow-emerald-100' 
                           : isPending 
-                            ? 'bg-yellow-50 border-yellow-400 shadow-yellow-200' 
+                            ? 'bg-yellow-50 border-yellow-400 shadow-yellow-100' 
                             : isRejected
-                              ? 'bg-rose-50 border-rose-400 shadow-rose-200'
+                              ? 'bg-rose-50 border-rose-400 shadow-rose-100'
                               : 'bg-white border-black shadow-black';
 
                         return (
-                          <div key={m.id} className={`border-[4px] p-8 shadow-[8px_8px_0px_0px] group hover:-translate-y-1 transition-all flex flex-col ${cardStyles}`}>
-                             <div className="flex justify-between items-start mb-6">
-                                <div className="w-14 h-14 bg-white border-[3px] border-black flex items-center justify-center p-2 shadow-[3px_3px_0px_0px_#000]">
-                                   {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Building2 size={24} className="text-[#834bf1]" />}
+                          <div key={m.id} className={`border-[3px] md:border-[4px] p-5 md:p-8 shadow-[6px_6px_0px_0px] active:scale-[0.98] md:hover:-translate-y-1 transition-all flex flex-col ${cardStyles}`}>
+                             <div className="flex justify-between items-start mb-4 md:mb-6">
+                                <div className="w-10 h-10 md:w-14 md:h-14 bg-white border-[2px] md:border-[3px] border-black flex items-center justify-center p-1.5 md:p-2 shadow-[2px_2px_0px_0px_#000]">
+                                   {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Building2 size={18} className="text-[#834bf1]" />}
                                 </div>
-                                <div className={`px-3 py-1 font-black text-[10px] italic border-[2px] flex items-center gap-1.5 ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : isRejected ? 'bg-rose-500 text-white' : 'bg-black text-[#ffde59]'}`}>
-                                  {isDone ? 'COMPLETED' : isPending ? 'VERIFYING' : isRejected ? 'REJECTED' : `+${m.reward_amount} RC`}
+                                <div className={`px-2 py-0.5 md:px-3 md:py-1 font-black text-[8px] md:text-[10px] italic border-[2px] flex items-center gap-1 ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : isRejected ? 'bg-rose-500 text-white' : 'bg-black text-[#ffde59]'}`}>
+                                  {isDone ? 'DONE' : isPending ? 'VERIFY' : isRejected ? 'FAIL' : `+${m.reward_amount} RC`}
                                 </div>
                              </div>
-                             <h3 className="text-xl font-black uppercase italic font-display leading-tight mb-8">{m.title}</h3>
+                             <h3 className="text-lg md:text-xl font-black uppercase italic font-display leading-tight mb-6 md:mb-8 truncate">{m.title}</h3>
                              <button 
                                 onClick={() => setSelectedMission(m)}
                                 disabled={isDone || isPending}
-                                className="w-full py-4 border-[3px] border-black bg-black text-white font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px_#834bf1] disabled:opacity-50"
+                                className="w-full py-3 md:py-4 border-[2.5px] md:border-[3px] border-black bg-black text-white font-black uppercase text-[9px] md:text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#834bf1] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50"
                               >
-                                {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEW IN PROGRESS' : 'INITIALIZE MISSION'}
+                                {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEWING' : 'INIT MISSION'}
                               </button>
                           </div>
                         );
                       })}
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4 md:space-y-6">
                     {rewards.map((r) => {
                       const isRedeemed = !!revealedCodes[r.id];
                       const brand = r.partner_brands;
                       
                       return (
-                        <div key={r.id} className={`bg-white border-[5px] border-black p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-8 transition-all ${isRedeemed ? 'opacity-90 border-emerald-500 bg-emerald-50/30' : 'hover:shadow-[12px_12px_0px_0px_#ffde59]'}`}>
-                           <div className="flex items-center gap-8 flex-1">
-                              <div className="relative">
-                                <div className="w-16 h-16 bg-white border-[4px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] overflow-hidden p-2">
-                                  {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Gift size={28} className="text-[#ffde59]" strokeWidth={3} />}
+                        <div key={r.id} className={`bg-white border-[4px] border-black p-5 md:p-8 shadow-[6px_6px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 transition-all ${isRedeemed ? 'opacity-90 border-emerald-500 bg-emerald-50/30' : 'md:hover:shadow-[10px_10px_0px_0px_#ffde59] active:scale-[0.99]'}`}>
+                           <div className="flex items-center gap-4 md:gap-8 w-full md:flex-1">
+                              <div className="relative shrink-0">
+                                <div className="w-12 h-12 md:w-16 md:h-16 bg-white border-[3px] md:border-[4px] border-black flex items-center justify-center shadow-[3px_3px_0px_0px_#000] overflow-hidden p-1.5">
+                                  {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Gift size={20} className="text-[#ffde59]" strokeWidth={3} />}
                                 </div>
                                 {isRedeemed && (
-                                  <div className="absolute -top-3 -left-3 bg-emerald-500 text-white border-2 border-black px-2 py-0.5 text-[8px] font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_#000] rotate-[-12deg]">REDEEMED</div>
+                                  <div className="absolute -top-2 -left-2 bg-emerald-500 text-white border-2 border-black px-1.5 py-0.5 text-[6px] font-black uppercase tracking-widest shadow-[1px_1px_0px_0px_#000] rotate-[-12deg]">CLAIMED</div>
                                 )}
                               </div>
                               <div className="min-w-0">
-                                 <h4 className="text-2xl font-black uppercase italic font-display truncate">{r.title}</h4>
-                                 <p className="text-[10px] font-black uppercase text-[#834bf1] tracking-[0.3em]">{brand?.name || 'Reelywood'}</p>
+                                 <h4 className="text-lg md:text-2xl font-black uppercase italic font-display truncate">{r.title}</h4>
+                                 <p className="text-[8px] md:text-[10px] font-black uppercase text-[#834bf1] tracking-[0.2em]">{brand?.name || 'Reelywood'}</p>
                               </div>
                            </div>
 
-                           <div className="flex items-center gap-8 shrink-0">
+                           <div className="flex items-center justify-between md:justify-end gap-4 md:gap-8 w-full md:w-auto shrink-0 border-t md:border-t-0 border-black/5 pt-4 md:pt-0">
                               {isRedeemed ? (
-                                <div className="flex flex-col items-end gap-2 animate-in fade-in slide-in-from-right-4 duration-500">
-                                   <p className="text-[9px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-1">
-                                     <CheckCircle2 size={12}/> VOUCHER ACTIVE
+                                <div className="flex flex-col items-end gap-1.5 animate-in fade-in slide-in-from-right-2 duration-500 w-full md:w-auto">
+                                   <p className="text-[8px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-1">
+                                     <CheckCircle2 size={10}/> VOUCHER ACTIVE
                                    </p>
-                                   <div className="flex items-center gap-2">
-                                      <div className="bg-white border-[3px] border-black border-dashed px-6 py-3 font-mono font-black text-sm shadow-[4px_4px_0px_0px_rgba(16,185,129,0.3)]">
+                                   <div className="flex items-center gap-2 w-full md:w-auto">
+                                      <div className="flex-1 md:flex-none bg-white border-[2.5px] border-black border-dashed px-4 py-2 font-mono font-black text-xs md:text-sm shadow-[2px_2px_0px_0px_rgba(16,185,129,0.3)]">
                                          {revealedCodes[r.id]}
                                       </div>
                                       <button 
                                         onClick={() => handleCopyCode(revealedCodes[r.id], r.id)}
-                                        className="p-3 border-[3px] border-black bg-black text-white hover:bg-emerald-600 transition-colors"
+                                        className="p-2.5 border-[2.5px] border-black bg-black text-white active:scale-90 transition-all"
                                       >
-                                        {copyStatus === r.id ? <Check size={18} className="text-[#39ff14]"/> : <Copy size={18}/>}
+                                        {copyStatus === r.id ? <Check size={16} className="text-[#39ff14]"/> : <Copy size={16}/>}
                                       </button>
                                    </div>
                                 </div>
                               ) : (
                                 <>
-                                  <div className="text-right">
-                                     <span className="text-3xl font-black italic font-display text-[#834bf1]">{r.cost}</span>
-                                     <span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span>
+                                  <div className="text-left md:text-right">
+                                     <span className="text-2xl md:text-3xl font-black italic font-display text-[#834bf1]">{r.cost}</span>
+                                     <span className="text-[10px] font-black ml-1 md:ml-2 uppercase italic opacity-40">RC</span>
                                   </div>
                                   <button 
                                     onClick={() => handleRedeemClick(r)}
                                     disabled={isProcessing === r.id}
-                                    className="px-8 py-4 border-[3px] border-black bg-black text-white font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-50"
+                                    className="px-6 py-3 md:px-8 md:py-4 border-[2.5px] md:border-[3px] border-black bg-black text-white font-black uppercase text-[8px] md:text-[10px] tracking-[0.3em] shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50"
                                   >
-                                    {isProcessing === r.id ? <Loader2 className="animate-spin" /> : 'EXECUTE REDEEM'}
+                                    {isProcessing === r.id ? <Loader2 className="animate-spin h-3 w-3" /> : 'REDEEM'}
                                   </button>
                                 </>
                               )}
@@ -414,6 +404,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     })}
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="bg-[#ffde59] border-[4px] border-black p-8 md:p-12 text-center shadow-[6px_6px_0px_0px_#000] flex flex-col items-center justify-center space-y-4">
+                <Lock size={40} className="text-black/30" />
+                <h3 className="text-xl md:text-2xl font-black text-black uppercase italic font-display">Hub Encrypted</h3>
+                <p className="text-[10px] md:text-xs font-bold uppercase text-black/60 max-w-xs leading-relaxed">Identity node sync required for operation authorization.</p>
               </div>
             )}
           </div>
