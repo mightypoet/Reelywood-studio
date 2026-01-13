@@ -88,10 +88,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        // Task 3: Ensure vouchers are fetched with brand info
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
-        // Task 1: Corrected table name to 'partner_brands'
         supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
@@ -179,10 +177,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
     setSubmitting(true);
     try {
-      // Task 2: Fix payload to match storage requirements
+      // ENSURE ROBUST PAYLOAD: Both 'title' and 'name' are explicitly mapped to prevent trigger failures
       const payload = {
         brand_id: voucherForm.brand_id, 
-        title: voucherForm.title,
+        title: voucherForm.title || 'New Reward', 
+        name: voucherForm.title || 'New Reward', // Mirroring title to name for safety
         cost: parseInt(voucherForm.cost) || 0,
         description: voucherForm.description,
         expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
@@ -190,7 +189,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
       };
       
-      console.log('SYNC: Transmitting Voucher Payload:', payload);
+      console.log('SYNC: Transmitting Voucher Payload (Protocol Secure):', payload);
       
       const { error } = await supabase.from('vouchers').insert([payload]);
       if (error) throw error;
@@ -209,7 +208,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
-  // Task 3: Verify deployableItems mapping
   const deployableItems = [
     ...missions.map(m => ({ id: m.id, title: m.title, value: m.reward_amount, type: 'mission' })),
     ...vouchers.map(v => ({ id: v.id, title: v.title, value: v.cost, type: 'voucher' }))
