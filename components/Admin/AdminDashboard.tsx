@@ -48,7 +48,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [brands, setBrands] = useState<any[]>([]);
+  const [brandOptions, setBrandOptions] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
   
   const [selectedCreatorIds, setSelectedCreatorIds] = useState<string[]>([]);
@@ -94,7 +94,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
-        // Task: Fetch Real Data - Fetch ID and Name so we have the UUIDs
+        // Task 1: Fetch Real Data - Fetch ID and Name from partner_brands table
         supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
@@ -102,7 +102,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       if (m.data) setMissions(m.data);
       if (v.data) setVouchers(v.data);
       if (t.data) setTransactions(t.data);
-      if (b.data) setBrands(b.data);
+      if (b.data) setBrandOptions(b.data);
       if (s.data) setSubmissions(s.data);
     } catch (e) { console.error(e); }
   };
@@ -154,6 +154,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const handleMissionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
+    
+    // Task 3: Add a strict check
+    if (!missionForm.brand_id) {
+       alert("Please select a valid Alliance Node (Brand).");
+       return;
+    }
+
     setSubmitting(true);
     const vFactors = [missionForm.factor1, missionForm.factor2, missionForm.factor3].filter(f => f.trim() !== '');
     try {
@@ -166,6 +173,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         assigned_to: ['DRAFT'],
         expires_at: missionForm.expires_at ? new Date(missionForm.expires_at).toISOString() : null
       };
+      
+      // Task 3: Debugging
+      console.log('Saving Mission Payload:', payload);
+
       const { error } = await supabase.from('missions').insert([payload]);
       if (error) throw error;
 
@@ -182,17 +193,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     e.preventDefault();
     if (!supabase) return;
 
-    // Task: Add a Guardrail - check at the very top to prevent crashing
+    // Task 3: Add a strict check
     if (!voucherForm.brand_id) {
-      alert("Please select a valid Alliance Node first.");
-      return;
+       alert("Please select a valid Alliance Node (Brand).");
+       return;
     }
 
     setSubmitting(true);
     try {
-      // Debug log to ensure UUID is being used
-      console.log('Final Verification - Submitting Brand UUID:', voucherForm.brand_id);
-
       const payload = {
         brand_id: voucherForm.brand_id,
         title: voucherForm.title, 
@@ -204,6 +212,9 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
       };
       
+      // Task 3: Debugging
+      console.log('Saving Voucher Payload:', payload);
+
       const { error } = await supabase.from('vouchers').insert([payload]);
       if (error) throw error;
       
@@ -357,6 +368,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
              <form onSubmit={handleMissionSubmit} className="space-y-4 bg-white p-6 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
                <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Zap size={16}/> New Mission Grid</h3>
                <div className="grid grid-cols-2 gap-4">
+                 {/* Task 2: Rewrite the Dropdown UI and Bind State */}
                  <div className="col-span-2 border-4 border-black p-2 bg-white">
                   <label className="block font-bold text-[10px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
                   <select 
@@ -366,7 +378,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}
                   >
                     <option value="">-- SELECT NODE --</option>
-                    {brands.map(brand => (
+                    {/* Task 2: Map over brandOptions */}
+                    {brandOptions.map(brand => (
                       <option key={brand.id} value={brand.id}>{brand.name}</option>
                     ))}
                   </select>
@@ -400,7 +413,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Gift size={16}/> New Voucher Drop</h3>
               
-              {/* Task: Rewrite the Dropdown UI to use Real UUIDs */}
+              {/* Task 2: Rewrite the Dropdown UI and Bind State */}
               <div className="border-4 border-black p-2 mb-4 bg-white">
                 <label className="block font-bold text-[10px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
                 <select
@@ -410,8 +423,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   onChange={(e) => setVoucherForm({ ...voucherForm, brand_id: e.target.value })}
                 >
                   <option value="">-- SELECT NODE --</option>
-                  {brands.map((brand) => (
-                    // This sets the VALUE to the UUID, but displays the NAME
+                  {/* Task 2: Map over brandOptions */}
+                  {brandOptions.map((brand) => (
                     <option key={brand.id} value={brand.id}>
                       {brand.name}
                     </option>
