@@ -94,7 +94,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
-        supabase.from('partner_brands').select('*').order('name', { ascending: true }),
+        supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
       if (u.data) setUsers(u.data);
@@ -181,7 +181,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     e.preventDefault();
     if (!supabase) return;
 
-    // TASK 3: Validation Guardrail
+    // Guardrail: Ensure Brand UUID is captured
     if (!voucherForm.brand_id) {
       alert("Please select a valid Brand from the list.");
       return;
@@ -189,11 +189,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
     setSubmitting(true);
     try {
-      // TASK 2: Construct strict payload matching DB schema
+      // Construction of strict payload matching DB schema
       const payload = {
         brand_id: voucherForm.brand_id,
-        title: voucherForm.title, // Mapped to 'title' column
-        name: voucherForm.title,  // Kept for redundancy/schema safety
+        title: voucherForm.title, // Maps to 'title' column
+        name: voucherForm.title,  // Maps to 'name' column
         cost: parseInt(voucherForm.cost) || 0,
         description: voucherForm.description,
         expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
@@ -201,7 +201,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
       };
       
-      console.log('Finalizing Voucher Submission:', payload);
+      console.log('Submitting Brand ID:', voucherForm.brand_id);
+      console.log('Executing Voucher Save:', payload);
       
       const { error } = await supabase.from('vouchers').insert([payload]);
       if (error) throw error;
@@ -210,7 +211,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
       fetchAllData();
     } catch (e: any) { 
-      console.error('Voucher Sync Terminal Error:', e);
+      console.error('Voucher Sync Fatal Error:', e);
       showToast('error', e.message); 
     } finally { setSubmitting(false); }
   };
@@ -394,17 +395,17 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Gift size={16}/> New Voucher Drop</h3>
               
-              {/* TASK 1: specific Fix for the <select> Element */}
+              {/* Dynamic Brand Dropdown Implementation */}
               <select 
                 className="w-full p-3 border-2 border-black font-bold text-black text-xs" 
                 required 
                 value={voucherForm.brand_id || ''} 
                 onChange={e => setVoucherForm({...voucherForm, brand_id: e.target.value})}
               >
-                <option value="">-- ALLIANCE NODE --</option>
-                {brands.map(b => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
+                <option value="">-- SELECT ALLIANCE NODE --</option>
+                {brands.map(brand => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
                   </option>
                 ))}
               </select>
