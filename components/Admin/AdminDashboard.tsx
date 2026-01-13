@@ -127,6 +127,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setSubmitting(true);
     try {
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'rewards';
+      // FIX: Ensure parameters are passed as a single object to satisfy SDK typing
       await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
       showToast('success', `DEPLOYED TO ${targetList ? targetList.length : 'ALL'}`);
       setSelectedCreatorIds([]);
@@ -140,6 +141,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     if (!supabase) return;
     setSubmitting(true);
     try {
+      // FIX: Standard update call is .update({col: val}).eq('id', target)
       await supabase.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
       showToast('success', `STATUS: ${status.toUpperCase()}`);
       fetchAllData();
