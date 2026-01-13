@@ -195,7 +195,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       value: v.cost,
       type: 'voucher'
     }))
-  ].sort((a, b) => a.title.localeCompare(b.title));
+  ].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
 
   return (
     <div className={`min-h-[100svh] ${bg} ${text} font-mono pb-10`}>
@@ -357,27 +357,27 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               }
               setSubmitting(true);
               try {
-                // Corrected payload targeting 'vouchers' table with dynamic brand lookup
+                // FIXED: Construction of a clean payload matching the 'vouchers' table schema
                 const payload = {
                   brand_id: voucherForm.brand_id,
-                  name: voucherForm.title,
-                  cost: parseInt(voucherForm.cost),
-                  code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+                  name: voucherForm.title, // Map 'title' input to 'name' column
+                  cost: parseInt(voucherForm.cost) || 0, // Ensure integer
                   description: voucherForm.description,
-                  expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
-                  status: 'draft'
+                  expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null, // Handle date parsing and nulls
+                  status: 'draft',
+                  code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
                 };
                 
-                console.log('Synchronizing Voucher Payload:', payload);
+                console.log('Finalizing Voucher Submission:', payload);
                 
                 const { error } = await supabase.from('vouchers').insert([payload]);
                 if (error) throw error;
                 
-                showToast('success', "VOUCHER DRAFTED");
+                showToast('success', "VOUCHER NODE SAVED AS DRAFT");
                 setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
                 fetchAllData();
               } catch (e: any) { 
-                console.error('Voucher Sync Failure:', e);
+                console.error('Voucher Sync Terminal Error:', e);
                 showToast('error', e.message); 
               } finally { setSubmitting(false); }
             }} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
