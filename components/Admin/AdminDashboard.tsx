@@ -34,16 +34,11 @@ const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad1020
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'deploy' | 'missions' | 'vouchers' | 'users' | 'ledger' | 'brands' | 'submissions'>('deploy');
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-       const saved = localStorage.getItem('admin-theme');
-       return saved === 'dark' || saved === null;
-    }
-    return true;
-  });
+  const [darkMode, setDarkMode] = useState<boolean>(true);
   const [notify, setNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Core Data State
   const [users, setUsers] = useState<Profile[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -55,6 +50,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [selectedProtocol, setSelectedProtocol] = useState<{id: string, type: 'mission' | 'voucher'} | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
+  // Form State
   const [missionForm, setMissionForm] = useState({ 
     title: '', 
     reward: '', 
@@ -82,7 +78,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         return;
     }
     fetchAllData();
-    const pollId = window.setInterval(() => { fetchAllData(); }, 5000);
+    const pollId = window.setInterval(() => { fetchAllData(); }, 8000);
     return () => { if (pollId) clearInterval(pollId); };
   }, []);
 
@@ -94,17 +90,21 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
-        // Task 1: Fetch Real Data - Fetch ID and Name from partner_brands table
+        // CRITICAL FIX: Fetch real Brand IDs (UUIDs) and Names
         supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
+      
       if (u.data) setUsers(u.data);
       if (m.data) setMissions(m.data);
       if (v.data) setVouchers(v.data);
       if (t.data) setTransactions(t.data);
-      if (b.data) setBrandOptions(b.data);
+      if (b.data) {
+        console.log('SYNC: Alliance Nodes Fetched:', b.data);
+        setBrandOptions(b.data);
+      }
       if (s.data) setSubmissions(s.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("TERMINAL_FETCH_ERROR:", e); }
   };
 
   const showToast = (type: 'success' | 'error', msg: string) => {
@@ -129,9 +129,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     try {
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'vouchers';
       const { error } = await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
-      
       if (error) throw error;
-      
       showToast('success', `${selectedProtocol.type.toUpperCase()} DEPLOYED TO ${targetList ? targetList.length : 'ALL'}`);
       setSelectedCreatorIds([]);
       setSelectedProtocol(null);
@@ -140,26 +138,10 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     finally { setSubmitting(false); }
   };
 
-  const handleUpdateStatus = async (uid: string, status: string) => {
-    if (!supabase) return;
-    setSubmitting(true);
-    try {
-      await supabase.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
-      showToast('success', `STATUS: ${status.toUpperCase()}`);
-      fetchAllData();
-    } catch (e: any) { showToast('error', e.message); } 
-    finally { setSubmitting(false); }
-  };
-
   const handleMissionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
-    
-    // Task 3: Add a strict check
-    if (!missionForm.brand_id) {
-       alert("Please select a valid Alliance Node (Brand).");
-       return;
-    }
+    if (!missionForm.brand_id) return alert("Select an Alliance Node (Brand) first.");
 
     setSubmitting(true);
     const vFactors = [missionForm.factor1, missionForm.factor2, missionForm.factor3].filter(f => f.trim() !== '');
@@ -174,37 +156,33 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         expires_at: missionForm.expires_at ? new Date(missionForm.expires_at).toISOString() : null
       };
       
-      // Task 3: Debugging
-      console.log('Saving Mission Payload:', payload);
-
+      console.log('SYNC: Saving Mission Draft:', payload);
       const { error } = await supabase.from('missions').insert([payload]);
       if (error) throw error;
 
       showToast('success', "MISSION SYNCED TO HUB");
       setMissionForm({ title: '', reward: '', brand_id: '', expires_at: '', description: '', factor1: '', factor2: '', factor3: '' });
       fetchAllData();
-    } catch (e: any) { 
-      console.error('Mission Sync Failure:', e);
-      showToast('error', e.message); 
-    } finally { setSubmitting(false); }
+    } catch (e: any) { showToast('error', e.message); } 
+    finally { setSubmitting(false); }
   };
 
   const handleVoucherSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
 
-    // Task 3: Add a strict check
+    // GUARDRAIL: Prevent Foreign Key Violations (Ensures brand_id is a UUID)
     if (!voucherForm.brand_id) {
-       alert("Please select a valid Alliance Node (Brand).");
-       return;
+      alert("⚠️ PROTOCOL ERROR: Please select a valid Alliance Node (Brand) from the database.");
+      return;
     }
 
     setSubmitting(true);
     try {
       const payload = {
-        brand_id: voucherForm.brand_id,
-        title: voucherForm.title, 
-        name: voucherForm.title,  
+        brand_id: voucherForm.brand_id, // This is the UUID from partner_brands
+        name: voucherForm.title,
+        title: voucherForm.title,
         cost: parseInt(voucherForm.cost) || 0,
         description: voucherForm.description,
         expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
@@ -212,17 +190,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
       };
       
-      // Task 3: Debugging
-      console.log('Saving Voucher Payload:', payload);
-
+      console.log('SYNC: Transmitting Voucher Payload:', payload);
+      
       const { error } = await supabase.from('vouchers').insert([payload]);
       if (error) throw error;
       
-      showToast('success', "VOUCHER NODE SAVED AS DRAFT");
+      showToast('success', "VOUCHER TEMPLATE SAVED AS DRAFT");
       setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
       fetchAllData();
     } catch (e: any) { 
-      console.error('Voucher Sync Fatal Error:', e);
+      console.error('SYNC_FATAL_ERROR:', e);
       showToast('error', e.message); 
     } finally { setSubmitting(false); }
   };
@@ -233,22 +210,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const border = darkMode ? 'border-white' : 'border-black';
 
   const deployableItems = [
-    ...missions.map(m => ({
-      id: m.id,
-      title: m.title,
-      value: m.reward_amount,
-      type: 'mission'
-    })),
-    ...vouchers.map(v => ({
-      id: v.id,
-      title: v.title || v.name,
-      value: v.cost,
-      type: 'voucher'
-    }))
+    ...missions.map(m => ({ id: m.id, title: m.title, value: m.reward_amount, type: 'mission' })),
+    ...vouchers.map(v => ({ id: v.id, title: v.title || v.name, value: v.cost, type: 'voucher' }))
   ].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
 
   return (
-    <div className={`min-h-[100svh] ${bg} ${text} font-mono pb-10`}>
+    <div className={`min-h-[100svh] ${bg} ${text} font-lexend pb-10`}>
       {notify && (
         <div className="fixed top-4 left-4 right-4 z-[200] animate-in slide-in-from-top-4">
           <div className={`flex items-center gap-3 px-4 py-3 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] ${notify.type === 'success' ? 'bg-[#39ff14] text-black' : 'bg-rose-500 text-white'}`}>
@@ -258,20 +225,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       )}
 
       {selectedSubmission && (
-        <VerificationModal 
-          submission={selectedSubmission} 
-          onClose={() => setSelectedSubmission(null)} 
-          onRefresh={fetchAllData} 
-        />
+        <VerificationModal submission={selectedSubmission} onClose={() => setSelectedSubmission(null)} onRefresh={fetchAllData} />
       )}
 
       <header className={`border-b-4 ${border} ${card} px-4 py-3 flex justify-between items-center sticky top-0 z-50`}>
-        <div className="flex items-center gap-2"><Terminal size={18}/><h1 className="text-sm font-black italic">ADMIN</h1></div>
+        <div className="flex items-center gap-2"><Terminal size={18}/><h1 className="text-sm font-black italic font-display">ADMIN PORTAL</h1></div>
         <div className="flex gap-2">
            <button onClick={() => setDarkMode(!darkMode)} className={`p-2 border-2 ${border} ${darkMode ? 'bg-yellow-400 text-black' : 'bg-black text-white'} active:scale-90 transition-all`}>
             {darkMode ? <Sun size={14} /> : <Moon size={14} />}
           </button>
-          <button onClick={onLogout} className="bg-rose-600 text-white px-3 py-1 text-[10px] font-black uppercase border-2 border-black active:scale-90">Exit</button>
+          <button onClick={onLogout} className="bg-rose-600 text-white px-3 py-1 text-[10px] font-black uppercase border-2 border-black active:scale-90">Terminate</button>
         </div>
       </header>
 
@@ -284,7 +247,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         ].map((s, i) => (
           <div key={i} className={`${card} border-2 ${border} p-3 shadow-[3px_3px_0px_0px_#000]`}>
             <p className="text-[7px] font-black uppercase opacity-40 truncate">{s.l}</p>
-            <div className="flex justify-between items-end"><h3 className="text-xl font-black italic">{s.v}</h3><s.i size={14} className="opacity-20"/></div>
+            <div className="flex justify-between items-end"><h3 className="text-xl font-black italic font-display">{s.v}</h3><s.i size={14} className="opacity-20"/></div>
           </div>
         ))}
       </div>
@@ -342,7 +305,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             </div>
 
             <div className="lg:col-span-4 flex flex-col gap-3 h-[400px] border-t-2 lg:border-t-0 lg:border-l-2 border-black border-dashed pt-4 lg:pt-0 lg:pl-4">
-              <h3 className="text-xs font-black uppercase flex items-center gap-2">CONSOLE</h3>
+              <h3 className="text-xs font-black uppercase flex items-center gap-2">DEPLOYMENT CONSOLE</h3>
               <div className="flex-1 overflow-auto space-y-2 pr-1 custom-scrollbar">
                 {deployableItems.map(item => (
                   <div key={`${item.type}-${item.id}`} onClick={() => setSelectedProtocol({id: item.id, type: item.type as any})}
@@ -357,7 +320,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               </div>
               <button onClick={handleExecuteDeploy} disabled={submitting || !selectedProtocol}
                 className="w-full py-3 bg-[#834bf1] text-white border-2 border-black font-black uppercase text-[9px] shadow-[3px_3px_0px_0px_#000] active:scale-95 transition-all disabled:opacity-50">
-                EXECUTE DEPLOY
+                EXECUTE DEPLOYMENT
               </button>
             </div>
           </div>
@@ -366,19 +329,17 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         {activeTab === 'missions' && (
           <div className="max-w-xl mx-auto py-4">
              <form onSubmit={handleMissionSubmit} className="space-y-4 bg-white p-6 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
-               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Zap size={16}/> New Mission Grid</h3>
+               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2 font-display"><Zap size={16}/> MISSION CREATOR</h3>
                <div className="grid grid-cols-2 gap-4">
-                 {/* Task 2: Rewrite the Dropdown UI and Bind State */}
-                 <div className="col-span-2 border-4 border-black p-2 bg-white">
-                  <label className="block font-bold text-[10px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
+                 <div className="col-span-2 border-[3px] border-black p-2 bg-white">
+                  <label className="block font-black text-[9px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
                   <select 
-                    className="w-full bg-transparent outline-none font-bold uppercase text-black text-xs" 
+                    className="w-full bg-transparent outline-none font-black uppercase text-black text-xs" 
                     required 
                     value={missionForm.brand_id} 
                     onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}
                   >
                     <option value="">-- SELECT NODE --</option>
-                    {/* Task 2: Map over brandOptions */}
                     {brandOptions.map(brand => (
                       <option key={brand.id} value={brand.id}>{brand.name}</option>
                     ))}
@@ -388,42 +349,33 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                  <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="BOUNTY (RC)" required value={missionForm.reward} onChange={e => setMissionForm({...missionForm, reward: e.target.value})}/>
                  <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="datetime-local" value={missionForm.expires_at} onChange={e => setMissionForm({...missionForm, expires_at: e.target.value})}/>
                </div>
+               <textarea className="w-full p-3 border-2 border-black font-bold text-black text-xs h-32 resize-none" placeholder="FULL MISSION BRIEF..." required value={missionForm.description} onChange={e => setMissionForm({...missionForm, description: e.target.value})}/>
                <div className="space-y-2">
-                 <label className="text-[8px] font-black uppercase text-black/40">Mission Details</label>
-                 <textarea className="w-full p-3 border-2 border-black font-bold text-black text-xs h-32 resize-none" placeholder="FULL MISSION BRIEF..." required value={missionForm.description} onChange={e => setMissionForm({...missionForm, description: e.target.value})}/>
+                 <label className="text-[8px] font-black uppercase text-[#834bf1]">VERIFICATION CHECKPOINTS</label>
+                 {['factor1', 'factor2', 'factor3'].map((f, i) => (
+                   <input key={f} className="w-full p-2 border-2 border-black font-bold text-black text-[10px]" placeholder={`QC Factor ${i+1}`} value={(missionForm as any)[f]} onChange={e => setMissionForm({...missionForm, [f]: e.target.value})} />
+                 ))}
                </div>
-               <div className="space-y-3 pt-2 border-t-2 border-black/5">
-                 <label className="text-[8px] font-black uppercase text-[#834bf1]">Verification Factors (Checklist)</label>
-                 <div className="space-y-2">
-                   {['factor1', 'factor2', 'factor3'].map((f, i) => (
-                     <div key={f} className="flex items-center gap-2">
-                       <span className="text-[8px] font-black text-black/20">0{i+1}</span>
-                       <input className="flex-1 p-2 border-2 border-black font-bold text-black text-xs" placeholder={`Key Factor ${i+1}`} value={(missionForm as any)[f]} onChange={e => setMissionForm({...missionForm, [f]: e.target.value})} required />
-                     </div>
-                   ))}
-                 </div>
-               </div>
-               <button disabled={submitting} className="w-full py-4 mt-4 bg-black text-white font-black uppercase text-[10px] active:scale-95 shadow-[4px_4px_0px_0px_#834bf1] hover:shadow-none transition-all">SYNC DRAFT</button>
+               <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase text-[10px] active:scale-95 shadow-[4px_4px_0px_0px_#834bf1]">SAVE AS DRAFT</button>
              </form>
           </div>
         )}
 
         {activeTab === 'vouchers' && (
           <div className="max-w-md mx-auto py-4">
-            <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
-              <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Gift size={16}/> New Voucher Drop</h3>
+            <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_#000]">
+              <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2 font-display"><Gift size={16}/> VOUCHER GENERATOR</h3>
               
-              {/* Task 2: Rewrite the Dropdown UI and Bind State */}
-              <div className="border-4 border-black p-2 mb-4 bg-white">
-                <label className="block font-bold text-[10px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
+              {/* REWRITTEN DROPDOWN: DYNAMIC FETCHING FROM DATABASE */}
+              <div className="border-4 border-black p-3 mb-4 bg-white">
+                <label className="block font-black text-[10px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
                 <select
-                  className="w-full bg-transparent outline-none font-bold uppercase text-black text-xs"
+                  className="w-full bg-transparent outline-none font-black uppercase text-black text-xs"
                   required
                   value={voucherForm.brand_id} 
                   onChange={(e) => setVoucherForm({ ...voucherForm, brand_id: e.target.value })}
                 >
-                  <option value="">-- SELECT NODE --</option>
-                  {/* Task 2: Map over brandOptions */}
+                  <option value="">-- SELECT ALLIANCE NODE --</option>
                   {brandOptions.map((brand) => (
                     <option key={brand.id} value={brand.id}>
                       {brand.name}
@@ -432,11 +384,20 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 </select>
               </div>
               
-              <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="VOUCHER NAME" name="title" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
-              <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
-              <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="datetime-local" value={voucherForm.expires_at} onChange={e => setVoucherForm({...voucherForm, expires_at: e.target.value})}/>
-              <textarea className="w-full p-3 border-2 border-black font-bold text-black text-xs h-24 resize-none" placeholder="VOUCHER DESCRIPTION..." required value={voucherForm.description} onChange={e => setVoucherForm({...voucherForm, description: e.target.value})}/>
-              <button disabled={submitting} className="w-full py-3 bg-black text-white font-black uppercase text-[10px] active:scale-95">SAVE VOUCHER</button>
+              <div className="space-y-4">
+                <input className="w-full p-4 border-[3px] border-black font-black uppercase text-black text-xs" placeholder="VOUCHER NAME (e.g. 50% OFF)" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
+                <input className="w-full p-4 border-[3px] border-black font-black uppercase text-black text-xs" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black uppercase text-black/40 italic ml-1">Transmission Expiry</label>
+                  <input className="w-full p-4 border-[3px] border-black font-black text-black text-xs" type="datetime-local" value={voucherForm.expires_at} onChange={e => setVoucherForm({...voucherForm, expires_at: e.target.value})}/>
+                </div>
+                <textarea className="w-full p-4 border-[3px] border-black font-black uppercase text-black text-xs h-24 resize-none" placeholder="VOUCHER DESCRIPTION / TERMS..." required value={voucherForm.description} onChange={e => setVoucherForm({...voucherForm, description: e.target.value})}/>
+              </div>
+
+              <button disabled={submitting} className="w-full py-5 bg-black text-white font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#ffde59] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center gap-3">
+                {submitting ? <Loader2 className="animate-spin"/> : <Save size={16}/>}
+                <span>AUTHORIZE DRAFT</span>
+              </button>
             </form>
           </div>
         )}
@@ -446,3 +407,5 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     </div>
   );
 };
+
+const Save = ({ size }: { size: number }) => <FileText size={size} />;
