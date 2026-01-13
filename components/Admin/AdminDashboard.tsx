@@ -92,7 +92,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
@@ -126,7 +126,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }
     setSubmitting(true);
     try {
-      const table = selectedProtocol.type === 'mission' ? 'missions' : 'rewards';
+      const table = selectedProtocol.type === 'mission' ? 'missions' : 'vouchers';
       const { error } = await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
       
       if (error) throw error;
@@ -183,7 +183,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
-  // COMBINED LIST FOR DEPLOY SIDEBAR
   const deployableItems = [
     ...missions.map(m => ({
       id: m.id,
@@ -409,12 +408,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
                   description: voucherForm.description,
                   assigned_to: ['DRAFT'],
-                  expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null
+                  expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
+                  status: 'draft'
                 };
                 
-                console.log('Deploying Voucher Payload:', payload);
+                console.log('Payload:', payload);
                 
-                const { error } = await supabase.from('rewards').insert([payload]);
+                const { error } = await supabase.from('vouchers').insert([payload]);
                 if (error) throw error;
                 
                 showToast('success', "VOUCHER DRAFTED");
