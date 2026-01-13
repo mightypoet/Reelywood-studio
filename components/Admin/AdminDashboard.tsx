@@ -94,6 +94,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
+        // Fetch real data: id and name from brands table (partner_brands)
         supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
@@ -181,7 +182,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     e.preventDefault();
     if (!supabase) return;
 
-    // TASK: Validation Guardrail
+    // Guardrail: check at the start of handleSave
     if (!voucherForm.brand_id) {
       alert("Please select a valid Brand from the list.");
       return;
@@ -189,20 +190,19 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
     setSubmitting(true);
     try {
-      // Construction of strict payload matching DB schema
+      // Debug: Log brand ID before saving
+      console.log('Submitting Brand ID:', voucherForm.brand_id);
+
       const payload = {
         brand_id: voucherForm.brand_id,
-        title: voucherForm.title, // Maps to 'title' column to fix not-null violation
-        name: voucherForm.title,  // Maps to 'name' column
+        title: voucherForm.title, 
+        name: voucherForm.title,  
         cost: parseInt(voucherForm.cost) || 0,
         description: voucherForm.description,
         expires_at: voucherForm.expires_at ? new Date(voucherForm.expires_at).toISOString() : null,
         status: 'draft',
         code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
       };
-      
-      console.log('Submitting Brand ID:', voucherForm.brand_id);
-      console.log('Executing Voucher Save Payload:', payload);
       
       const { error } = await supabase.from('vouchers').insert([payload]);
       if (error) throw error;
@@ -211,7 +211,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
       fetchAllData();
     } catch (e: any) { 
-      console.error('Voucher Sync Fatal Error:', e);
+      console.error('Voucher Sync Error:', e);
       showToast('error', e.message); 
     } finally { setSubmitting(false); }
   };
@@ -357,14 +357,20 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
              <form onSubmit={handleMissionSubmit} className="space-y-4 bg-white p-6 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
                <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Zap size={16}/> New Mission Grid</h3>
                <div className="grid grid-cols-2 gap-4">
+                 {/* Bind state: select value bound to missionForm.brand_id */}
                  <select 
-                    className="col-span-2 w-full p-3 border-2 border-black font-bold text-black text-xs" 
-                    required 
-                    value={missionForm.brand_id} 
-                    onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}
-                  >
-                    <option value="">-- ALLIANCE NODE --</option>
-                    {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                   className="col-span-2 w-full p-3 border-2 border-black font-bold text-black text-xs" 
+                   required 
+                   value={missionForm.brand_id} 
+                   onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}
+                 >
+                    <option value="">-- Select Alliance Node --</option>
+                    {/* Populate Dropdown: dynamic map over brands state */}
+                    {brands.map(brand => (
+                      <option key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </option>
+                    ))}
                  </select>
                  <input className="col-span-2 w-full p-3 border-2 border-black font-bold text-black text-xs" placeholder="MISSION TITLE" required value={missionForm.title} onChange={e => setMissionForm({...missionForm, title: e.target.value})}/>
                  <input className="w-full p-3 border-2 border-black font-bold text-black text-xs" type="number" placeholder="BOUNTY (RC)" required value={missionForm.reward} onChange={e => setMissionForm({...missionForm, reward: e.target.value})}/>
@@ -395,14 +401,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <form onSubmit={handleVoucherSubmit} className="space-y-4 bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
               <h3 className="font-black text-black text-sm uppercase mb-4 italic flex items-center gap-2"><Gift size={16}/> New Voucher Drop</h3>
               
-              {/* TASK: Dynamic Brand Dropdown Fix */}
+              {/* Fix the Dropdown HTML: Bind to voucherForm.brand_id and Map over brands */}
               <select 
-                className="w-full p-3 border-2 border-black font-bold text-black text-xs" 
+                className="w-full p-3 bg-white border-4 border-black font-bold text-black text-xs uppercase" 
                 required 
-                value={voucherForm.brand_id || ''} 
+                value={voucherForm.brand_id} 
                 onChange={e => setVoucherForm({...voucherForm, brand_id: e.target.value})}
               >
-                <option value="">-- SELECT ALLIANCE NODE --</option>
+                <option value="">-- Select Alliance Node --</option>
                 {brands.map(brand => (
                   <option key={brand.id} value={brand.id}>
                     {brand.name}
