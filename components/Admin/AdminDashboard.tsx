@@ -88,7 +88,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        // Task 1: Simplified fetch for vouchers, using correct table 'vouchers' and removing JOIN that might hide rows
+        // Task 1: Simplified fetch for vouchers to ensure they load regardless of brand relationship
         supabase.from('vouchers').select('*').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
@@ -161,6 +161,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         expires_at: missionForm.expires_at ? new Date(missionForm.expires_at).toISOString() : null
       };
       
+      console.log('SYNC: Saving Mission Draft:', payload);
       const { error } = await supabase.from('missions').insert([payload]);
       if (error) throw error;
 
@@ -176,7 +177,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     if (!supabase) return;
 
     if (!voucherForm.brand_id) {
-      alert("⚠️ PROTOCOL ERROR: Please select a valid Alliance Node (Brand).");
+      alert("⚠️ PROTOCOL ERROR: Please select a valid Alliance Node (Brand) from the database.");
       return;
     }
 
@@ -193,13 +194,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
       };
       
+      console.log('SYNC: Transmitting Voucher Payload (Protocol Secure):', payload);
+      
       const { error } = await supabase.from('vouchers').insert([payload]);
       if (error) throw error;
       
       showToast('success', "VOUCHER TEMPLATE SAVED AS DRAFT");
       setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
       
-      // Force refresh data
       fetchAllData();
     } catch (e: any) { 
       console.error('SYNC_FATAL_ERROR:', e);
@@ -212,7 +214,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
-  // Task 2: Robust mapping for the Deployment Sidebar
+  // Task 2: Robust mapping with fallbacks for display titles
   const deployableItems = [
     ...missions.map(m => ({ 
       id: m.id, 

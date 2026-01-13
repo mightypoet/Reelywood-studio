@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, LogOut, Sun, Moon, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -78,29 +79,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
               </button>
             )}
 
-            {/* Auth Action: Profile Image or Login Button */}
-            {user ? (
-              <button 
-                onClick={onDashboardClick}
-                title="Go to Dashboard"
-                className="w-10 h-10 border-[3px] border-black bg-white overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all group"
-              >
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                    <UserIcon size={20} className="text-black" />
-                  </div>
-                )}
-              </button>
-            ) : (
-              <button 
-                onClick={onAuthClick}
-                className="bg-white text-black px-3 sm:px-4 h-10 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[10px] font-black uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
-              >
-                Login
-              </button>
-            )}
+            {/* Auth Action Hidden per request */}
+            <div className="hidden">
+              {user ? (
+                <button 
+                  onClick={onDashboardClick}
+                  title="Go to Dashboard"
+                  className="w-10 h-10 border-[3px] border-black bg-white overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all group"
+                >
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                      <UserIcon size={20} className="text-black" />
+                    </div>
+                  )}
+                </button>
+              ) : (
+                <button 
+                  onClick={onAuthClick}
+                  className="bg-white text-black px-3 sm:px-4 h-10 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[10px] font-black uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+                >
+                  Login
+                </button>
+              )}
+            </div>
 
             {/* Theme Toggle */}
             <button 
