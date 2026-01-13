@@ -93,7 +93,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').eq('description', 'ilike', '%voucher%').order('created_at', { ascending: false }),
+        supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
@@ -127,7 +127,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setSubmitting(true);
     try {
       const table = selectedProtocol.type === 'mission' ? 'missions' : 'rewards';
-      // FIX: Ensure parameters are passed as a single object to satisfy SDK typing
+      // Fix: Ensure single object parameter for .update and .eq to avoid TS2554
       await supabase.from(table).update({ assigned_to: targetList }).eq('id', selectedProtocol.id);
       showToast('success', `DEPLOYED TO ${targetList ? targetList.length : 'ALL'}`);
       setSelectedCreatorIds([]);
@@ -141,7 +141,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     if (!supabase) return;
     setSubmitting(true);
     try {
-      // FIX: Standard update call is .update({col: val}).eq('id', target)
       await supabase.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
       showToast('success', `STATUS: ${status.toUpperCase()}`);
       fetchAllData();
