@@ -86,7 +86,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase!.removeChannel(channel); };
   }, []);
 
   const playSignalSound = () => {
@@ -119,17 +119,20 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   };
 
   const fetchSubmissionsOnly = async () => {
-    const { data } = await supabase!.from('submissions').select('*, profiles(*), missions(*)').order('created_at', { ascending: false });
+    if (!supabase) return;
+    const { data } = await supabase.from('submissions').select('*, profiles(*), missions(*)').order('created_at', { ascending: false });
     if (data) { setSubmissions(data); updateAlerts(data, vouchers); }
   };
 
   const fetchUsersOnly = async () => {
-    const { data } = await supabase!.from('profiles').select('*').order('created_at', { ascending: false });
+    if (!supabase) return;
+    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (data) setUsers(data);
   };
 
   const fetchBrandsOnly = async () => {
-      const { data } = await supabase!.from('partner_brands').select('*');
+      if (!supabase) return;
+      const { data } = await supabase.from('partner_brands').select('*');
       if (data) setBrands(data);
   };
 

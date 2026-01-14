@@ -21,7 +21,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     // 1. Initial Fetch
     const checkStatus = async () => {
       try {
-        const { data } = await supabase.from('submissions')
+        const { data } = await supabase!.from('submissions')
           .select('*').eq('mission_id', mission.id).eq('user_id', user.uid).maybeSingle();
         if (data) { 
           setExistingSubmission(data); 
@@ -33,7 +33,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     checkStatus();
 
     // 2. Real-Time Listener for THIS specific mission submission
-    const channel = supabase.channel(`mission-status-${mission.id}-${user.uid}`)
+    const channel = supabase!.channel(`mission-status-${mission.id}-${user.uid}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'submissions', filter: `mission_id=eq.${mission.id}` }, 
         (payload) => {
@@ -45,7 +45,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase!.removeChannel(channel); };
   }, [mission.id, user.uid]);
 
   const brand = mission.partner_brands;
@@ -57,7 +57,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     
     setLoading(true);
     try {
-      const { error } = await supabase.from('submissions').insert([{
+      const { error } = await supabase!.from('submissions').insert([{
         mission_id: mission.id,
         user_id: user.uid,
         link: link,
@@ -111,7 +111,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
         <div className="w-full md:w-7/12 p-10 md:p-14 bg-white flex flex-col">
            <div className="flex justify-between items-start mb-12">
               <div className="space-y-1">
-                 <h3 className="text-3xl font-black uppercase italic font-display tracking-tight">Mission Briefing</h3>
+                 <h3 className="text-3xl font-black uppercase italic font-display tracking-tight text-black">Mission Briefing</h3>
                  <p className="text-[10px] font-black uppercase text-black/30 tracking-[0.4em]">AUTHORIZED NODE: {user.uid.slice(0,12)}</p>
               </div>
               <div className="bg-black text-white p-6 border-[4px] border-black shadow-[6px_6px_0px_0px_#834bf1] text-center min-w-[130px]">
@@ -130,8 +130,8 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                   <ul className="space-y-4">
                      {checkpoints.map((pt:string, i:number) => (
                        <li key={i} className="flex items-center gap-6">
-                         <span className="w-10 h-10 bg-white border-[3px] border-black flex items-center justify-center font-black text-sm italic shadow-[3px_3px_0px_0px_#000]">{i+1}</span>
-                         <span className="text-xs font-black uppercase opacity-70 tracking-tight leading-none">{pt}</span>
+                         <span className="w-10 h-10 bg-white border-[3px] border-black flex items-center justify-center font-black text-sm italic shadow-[3px_3px_0px_0px_#000] text-black">{i+1}</span>
+                         <span className="text-xs font-black uppercase opacity-70 tracking-tight leading-none text-black">{pt}</span>
                        </li>
                      ))}
                   </ul>
@@ -149,13 +149,13 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                   {!isSubmitted ? (
                     <div className="space-y-6">
                        <div className="space-y-3">
-                          <label className="text-[10px] font-black uppercase opacity-40 italic tracking-widest">Input Proof of Work (Link)</label>
+                          <label className="text-[10px) font-black uppercase opacity-40 italic tracking-widest text-black">Input Proof of Work (Link)</label>
                           <div className="flex border-[4px] border-black bg-white overflow-hidden focus-within:shadow-[6px_6px_0px_0px_#834bf1] transition-all">
                              <div className="bg-slate-50 p-5 border-r-[4px] border-black text-black/40">
                                 <LinkIcon size={24} strokeWidth={3} />
                              </div>
                              <input 
-                               className="w-full p-5 font-black text-sm outline-none placeholder:opacity-20"
+                               className="w-full p-5 font-black text-sm outline-none placeholder:opacity-20 text-black"
                                placeholder="https://instagram.com/reel/..."
                                value={link} onChange={e => setLink(e.target.value)} disabled={loading}
                              />
@@ -171,16 +171,16 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                     </div>
                   ) : (
                     <div className={`border-[4px] border-black p-10 text-center animate-in zoom-in duration-500 shadow-[10px_10px_0px_0px_#000] ${isApproved ? 'bg-[#39ff14]' : 'bg-yellow-400'}`}>
-                       {isApproved ? <CheckCircle2 size={56} className="mx-auto mb-6" strokeWidth={3}/> : <Loader2 className="animate-spin mx-auto mb-6" size={56} strokeWidth={3}/>}
-                       <h4 className="text-3xl font-black uppercase italic font-display leading-none mb-4">
+                       {isApproved ? <CheckCircle2 size={56} className="mx-auto mb-6 text-black" strokeWidth={3}/> : <Loader2 className="animate-spin mx-auto mb-6 text-black" size={56} strokeWidth={3}/>}
+                       <h4 className="text-3xl font-black uppercase italic font-display leading-none mb-4 text-black">
                          {isApproved ? 'SIGNAL VERIFIED' : 'TRANSMISSION SYNCING'}
                        </h4>
-                       <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-80">
+                       <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-80 text-black">
                          {isApproved ? 'Asset ledger updated: Rewards credited' : 'Manual verification queue initialized'}
                        </p>
-                       <div className="mt-8 pt-4 border-t-2 border-black/10 flex items-center justify-center gap-3">
-                          <LinkIcon size={14} strokeWidth={3} className="opacity-40"/>
-                          <span className="text-[10px] font-black underline truncate max-w-xs opacity-60 tracking-tighter">{link}</span>
+                       <div className="mt-8 pt-4 border-t-2 border-black/10 flex items-center justify-center gap-3 text-black">
+                          <LinkIcon size={14} strokeWidth={3} className="opacity-40 text-black"/>
+                          <span className="text-[10px] font-black underline truncate max-w-xs opacity-60 tracking-tighter text-black">{link}</span>
                        </div>
                     </div>
                   )}
