@@ -26,8 +26,7 @@ import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { AcademyView } from './components/AcademyView';
 import { DashboardView } from './components/Dashboard/DashboardView';
 import { AIAssistant } from './components/AIAssistant';
-
-const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
+import { CaseStudies } from './components/CaseStudies';
 
 const MainContent: React.FC = () => {
   const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'academy' | 'dashboard'>('home');
@@ -115,6 +114,7 @@ const MainContent: React.FC = () => {
       <main>
         <Hero onAuthClick={() => setView('auth')} onDashboardClick={() => setView('dashboard')} />
         <Trust />
+        <CaseStudies />
         <About onAcademyClick={() => setView('academy')} />
         <UVP />
         <BrandDNA />

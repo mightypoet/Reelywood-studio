@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, LogOut, Sun, Moon, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -15,10 +16,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
 
   const navLinks = [
     { name: 'Home', href: '#home' },
+    { name: 'Portfolio', href: '#portfolio' },
     { name: 'Creators', href: '#creators' },
     { name: 'Pricing', href: '#pricing' },
-    { name: 'Explore', href: '#explore' },
-    { name: 'Contact', href: '#contact' },
+    { name: 'Labs', href: '#explore' },
   ];
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -47,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
             <div className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-black bg-white overflow-hidden flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform hover:scale-105">
                <img src={LOGO_IMAGE} alt="Reelywood Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="font-black text-xs sm:text-sm tracking-tight uppercase text-black font-display italic">
+            <span className="font-black text-xs sm:text-sm tracking-tight uppercase text-black font-display italic text-stroke">
               REELYWOOD
             </span>
           </div>
@@ -60,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
                   key={link.name} 
                   href={link.href} 
                   onClick={(e) => handleLinkClick(e, link.href)}
-                  className="text-[9px] font-black uppercase tracking-widest text-black hover:text-[#834bf1] transition-colors"
+                  className="text-[9px] font-black uppercase tracking-[0.2em] text-black hover:text-[#834bf1] transition-colors"
                 >
                   {link.name}
                 </a>
@@ -112,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
 
             {/* Menu Button */}
             <button 
-              className="w-10 h-10 flex items-center justify-center border-[3px] border-black bg-[#ffde59] text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all" 
+              className="w-10 h-10 flex items-center justify-center border-[3px] border-black bg-[#ffde59] text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all lg:hidden" 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -122,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="mt-4 pt-4 border-t-[3px] border-black flex flex-col space-y-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="mt-4 pt-4 border-t-[3px] border-black flex flex-col space-y-4 animate-in slide-in-from-top-2 duration-200 lg:hidden">
             {navLinks.map((link) => (
               <a 
                 key={link.name}

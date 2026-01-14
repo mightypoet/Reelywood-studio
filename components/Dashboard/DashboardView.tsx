@@ -1,36 +1,12 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
 import { signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { 
-  LogOut, 
-  User, 
-  Wallet, 
-  CheckCircle2, 
-  ArrowLeft,
-  Loader2,
-  Lock,
-  X,
-  Bell,
-  Fingerprint,
-  Clock,
-  Zap,
-  Sparkles,
-  Gift,
-  Target,
-  Info,
-  MapPin,
-  TrendingUp,
-  Maximize2,
-  RefreshCw,
-  Building2,
-  Link as LinkIcon,
-  AlertTriangle,
-  Copy,
-  Check,
-  ChevronDown,
-  ChevronUp
+  LogOut, Fingerprint, Loader2, Lock, ArrowLeft,
+  Bell, Zap, Gift, Copy, Check, ChevronDown, ChevronUp,
+  Building2, ExternalLink
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { RedeemConfirmationModal } from './RedeemConfirmationModal';
@@ -41,191 +17,177 @@ interface DashboardViewProps {
   onBack: () => void;
 }
 
+// --- HELPER COMPONENTS ---
+
 const CountdownTimer: React.FC<{ expiresAt: string | null }> = ({ expiresAt }) => {
-  const [timeLeft, setTimeLeft] = useState<string | null>(null);
-  const [isUrgent, setIsUrgent] = useState(false);
-  const [isExpired, setIsExpired] = useState(false);
+  const [display, setDisplay] = useState<string | null>(null);
+  const [expired, setExpired] = useState(false);
 
   useEffect(() => {
     if (!expiresAt) return;
-    const calculate = () => {
-      const target = new Date(expiresAt).getTime();
-      const now = new Date().getTime();
-      const diff = target - now;
+    const tick = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
       if (diff <= 0) {
-        setTimeLeft('EXPIRED');
-        setIsExpired(true);
-        return;
+        setExpired(true);
+        setDisplay("EXPIRED");
+      } else {
+        const d = Math.floor(diff / (86400000));
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        setDisplay(`${d > 0 ? d + 'd ' : ''}${h}h ${m}m`);
       }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      setIsUrgent(diff < 24 * 60 * 60 * 1000);
-      setTimeLeft(`⏳ ${days > 0 ? days + 'd ' : ''}${hours}h ${minutes}m`);
     };
-    calculate();
-    const interval = setInterval(calculate, 60000);
-    return () => clearInterval(interval);
+    tick();
+    const timer = setInterval(tick, 60000);
+    return () => clearInterval(timer);
   }, [expiresAt]);
 
-  if (!timeLeft) return null;
+  if (!display) return null;
   return (
-    <div className={`px-2 py-0.5 border-[1.5px] border-black text-[7px] font-black uppercase tracking-widest bg-white shadow-[2px_2px_0px_0px_#000] ${isExpired ? 'text-rose-600' : isUrgent ? 'text-rose-600 animate-pulse' : 'text-black'}`}>
-      {timeLeft}
-    </div>
+    <span className={`px-2 py-0.5 border-[1.5px] border-black text-[8px] font-black uppercase tracking-widest bg-white shadow-[2px_2px_0px_0px_#000] ${expired ? 'text-rose-600' : 'text-black'}`}>
+      {expired ? 'EXPIRED' : `⏳ ${display}`}
+    </span>
   );
 };
 
-const FlashRevealTimer: React.FC<{ revealedAt: string; onTimeout: () => void }> = ({ revealedAt, onTimeout }) => {
-  const [displayTime, setDisplayTime] = useState('');
-  
-  useEffect(() => {
-    const calculate = () => {
-      const start = new Date(revealedAt).getTime();
-      const now = new Date().getTime();
-      const elapsed = now - start;
-      const limit = 15 * 60 * 1000;
-      
-      if (elapsed >= limit) {
-        onTimeout();
-        return;
-      }
-      
-      const remaining = limit - elapsed;
-      const minutes = Math.floor(remaining / 60000);
-      const seconds = Math.floor((remaining % 60000) / 1000);
-      setDisplayTime(`VALID: ${minutes}m ${seconds}s`);
-    };
-    
-    calculate();
-    const interval = setInterval(calculate, 1000);
-    return () => clearInterval(interval);
-  }, [revealedAt, onTimeout]);
-
-  return (
-    <div className="bg-emerald-500 text-white border-[2px] border-black px-3 py-1 font-black text-[8px] uppercase tracking-widest animate-pulse shadow-[2px_2px_0px_0px_#000]">
-      {displayTime}
-    </div>
-  );
-};
+// --- MAIN COMPONENT ---
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  
+  // Data State
   const [missions, setMissions] = useState<any[]>([]);
-  const [rewards, setRewards] = useState<any[]>([]);
-  const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
-  const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [vouchers, setVouchers] = useState<any[]>([]); 
+  const [submissions, setSubmissions] = useState<any[]>([]);
   const [revealedData, setRevealedData] = useState<Record<string, { code: string; revealed_at: string }>>({});
-  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  
+  // UI State
+  const [activeTab, setActiveTab] = useState<'missions' | 'vouchers'>('missions');
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [pendingRedeem, setPendingRedeem] = useState<any>(null);
   const [urgentAlert, setUrgentAlert] = useState<any>(null);
-  const [expandedDesc, setExpandedDesc] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
-  const fetchOperationalGrid = async (user: FirebaseUser, isInitial = false) => {
+  // --- DATA FETCHING ---
+  const fetchData = async (currentUser: FirebaseUser) => {
     if (!supabase) return;
     try {
-      const { data: profileData, error: pError } = await supabase.from('profiles').select('*').eq('firebase_uid', user.uid).single();
-      if (pError && pError.code !== 'PGRST116') throw pError;
+      // 1. Profile
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('firebase_uid', currentUser.uid).single();
       setProfile(profileData);
 
-      const { data: allMissions } = await supabase.from('missions').select('*, partner_brands(*)');
+      // 2. Missions
+      const { data: allMissions } = await supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false });
       if (allMissions) {
-        const filtered = allMissions.filter(m => {
-          if (m.assigned_to?.includes('DRAFT')) return false;
-          const isGlobal = !m.assigned_to || m.assigned_to.length === 0;
-          const isAssigned = m.assigned_to?.includes(user.uid) || m.assigned_to?.includes(profileData?.id);
-          return isGlobal || isAssigned;
+        const relevantMissions = allMissions.filter(m => {
+          const assigned = m.assigned_to;
+          const isGlobal = !assigned || assigned.length === 0 || (assigned.length === 1 && assigned[0] === 'DRAFT');
+          const isAssignedToMe = Array.isArray(assigned) && assigned.includes(currentUser.uid);
+          if (assigned && assigned.includes('DRAFT')) return false;
+          return isGlobal || isAssignedToMe;
         });
-        setMissions(filtered);
+        setMissions(relevantMissions);
       }
 
-      const [rRes, sRes, nRes, uvRes] = await Promise.all([
-        supabase.from('rewards').select('*, partner_brands(*)'),
-        supabase.from('submissions').select('*').eq('user_id', user.uid),
-        isInitial ? supabase.from('notifications').select('*').eq('user_id', user.uid).eq('is_read', false).in('type', ['MISSION_DEPLOYED', 'VOUCHER_ADDED']).order('created_at', { ascending: false }).limit(1) : Promise.resolve({ data: null }),
-        supabase.from('user_vouchers').select('voucher_id, revealed_at, voucher_code').eq('user_uid', user.uid)
-      ]);
-
-      if (rRes.data) setRewards(rRes.data);
-      if (sRes.data) setUserSubmissions(sRes.data);
-      if (nRes.data && nRes.data.length > 0) setUrgentAlert(nRes.data[0]);
-
-      if (uvRes.data) {
-        const rev: Record<string, { code: string; revealed_at: string }> = {};
-        uvRes.data.forEach(uv => {
-          rev[uv.voucher_id] = { code: uv.voucher_code, revealed_at: uv.revealed_at };
+      // 3. Vouchers
+      const { data: allVouchers } = await supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false });
+      if (allVouchers) {
+        const relevantVouchers = allVouchers.filter(v => {
+           const assigned = v.assigned_to;
+           const isGlobal = !assigned || assigned.length === 0;
+           const isAssignedToMe = Array.isArray(assigned) && assigned.includes(currentUser.uid);
+           return isGlobal || isAssignedToMe;
         });
-        setRevealedData(rev);
+        setVouchers(relevantVouchers);
       }
-    } catch (err) { console.error("GRID_SYNC_FAILURE:", err); }
-    finally { if (isInitial) setLoading(false); }
+
+      // 4. User Data (Submissions & Redeemed Vouchers)
+      const { data: subs } = await supabase.from('submissions').select('*').eq('user_id', currentUser.uid);
+      if (subs) setSubmissions(subs);
+
+      const { data: revealed } = await supabase.from('user_vouchers').select('*').eq('user_uid', currentUser.uid);
+      if (revealed) {
+        const revMap: any = {};
+        revealed.forEach((r: any) => {
+          revMap[r.voucher_id] = { code: r.voucher_code, revealed_at: r.revealed_at };
+        });
+        setRevealedData(revMap);
+      }
+
+    } catch (e) {
+      console.error("DATA_SYNC_ERROR", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    let pollInterval: number;
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setCurrentUser(user);
-        fetchOperationalGrid(user, true);
-        pollInterval = window.setInterval(() => fetchOperationalGrid(user, false), 8000);
-      } else { setLoading(false); }
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        setUser(u);
+        fetchData(u);
+      } else {
+        setLoading(false);
+      }
     });
-    return () => { unsubscribe(); if (pollInterval) clearInterval(pollInterval); };
+    return () => unsub();
   }, []);
 
-  const handleRedeemClick = (reward: any) => {
-    if (revealedData[reward.id]) return;
-    if (reward.expires_at && new Date(reward.expires_at).getTime() < new Date().getTime()) return;
-    if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL: " + reward.cost + " required.");
-    setPendingRedeem(reward);
+  const handleRedeem = async () => {
+    if (!pendingRedeem || !user || !profile) return;
+    setIsProcessing(pendingRedeem.id);
+    
+    try {
+      if (profile.reelcoins < pendingRedeem.cost) throw new Error("Insufficient Balance");
+
+      const { error: balError } = await supabase!.from('profiles').update({ reelcoins: profile.reelcoins - pendingRedeem.cost }).eq('id', profile.id);
+      if (balError) throw balError;
+
+      const { error: uvError } = await supabase!.from('user_vouchers').insert([{
+        user_uid: user.uid,
+        voucher_id: pendingRedeem.id,
+        voucher_code: pendingRedeem.code,
+        revealed_at: new Date().toISOString()
+      }]);
+      if (uvError) throw uvError;
+
+      await supabase!.from('transactions').insert([{
+         user_uid: user.uid,
+         amount: -pendingRedeem.cost,
+         type: 'redemption',
+         description: `Redeemed: ${pendingRedeem.title}`
+      }]);
+
+      await fetchData(user);
+      setPendingRedeem(null);
+    } catch (e: any) {
+      alert("Redemption Failed: " + e.message);
+    } finally {
+      setIsProcessing(null);
+    }
   };
 
-  const handleCopyCode = (code: string, id: string) => {
-    navigator.clipboard.writeText(code);
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
     setCopyStatus(id);
     setTimeout(() => setCopyStatus(null), 2000);
   };
 
-  const executeRedemption = async () => {
-    if (!pendingRedeem || !currentUser) return;
-    setIsProcessing(pendingRedeem.id);
-    try {
-      // 1. Transaction to deduct RC and create reveal timestamp
-      const { data, error } = await supabase!.rpc('redeem_voucher_flash', {
-        user_uid_param: currentUser.uid,
-        voucher_id_param: pendingRedeem.id,
-        cost_param: pendingRedeem.cost,
-        code_param: pendingRedeem.code
-      });
-      if (error) throw error;
-      await fetchOperationalGrid(currentUser);
-      setPendingRedeem(null);
-    } catch (err: any) { alert("Redemption Protocol Failure: " + err.message); }
-    finally { setIsProcessing(null); }
-  };
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-[#834bf1]" size={40}/></div>;
 
-  if (loading) return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-8 p-6">
-      <Loader2 className="animate-spin text-[#834bf1]" size={48} strokeWidth={4} />
-      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-black animate-pulse text-center">Neural Link Active...</p>
-    </div>
-  );
-
-  if (!currentUser) return (
-    <div className="min-h-[100svh] bg-[#f0f0f0] flex items-center justify-center p-4">
-      <div className="bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] p-6 md:p-10 max-w-md w-full space-y-8">
-         <div className="text-center space-y-4">
-            <div className="w-14 h-14 bg-[#834bf1] border-[3px] border-black mx-auto flex items-center justify-center shadow-[4px_4px_0px_0px_#000]">
-              <Fingerprint className="text-white" size={24} />
-            </div>
-            <h1 className="text-2xl md:text-3xl font-black italic uppercase font-display">Hub Access</h1>
+  if (!user) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="bg-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_#000] text-center max-w-sm w-full">
+         <div className="w-16 h-16 bg-[#834bf1] border-[3px] border-black mx-auto mb-6 flex items-center justify-center shadow-[4px_4px_0px_0px_#000]">
+            <Fingerprint className="text-white" size={32} />
          </div>
-         <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full bg-white border-[3px] border-black py-4 font-black uppercase text-xs shadow-[4px_4px_0px_0px_#834bf1] active:scale-95 transition-all flex items-center justify-center gap-3">Sign in with Google</button>
-         <button onClick={onBack} className="w-full text-[9px] font-black uppercase text-black/30 hover:text-black">Exit Terminal</button>
+         <h1 className="text-3xl font-black uppercase italic font-display mb-8">Hub Access</h1>
+         <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full py-4 bg-white border-[3px] border-black font-black uppercase text-xs tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
+           Sign in with Google
+         </button>
       </div>
     </div>
   );
@@ -233,166 +195,120 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const isApproved = profile?.card_status === 'approved';
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] text-black font-lexend">
-      {selectedMission && <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser); }} />}
-      <NewAlertModal notification={urgentAlert} onClose={async () => { if (urgentAlert && supabase) await supabase.from('notifications').update({ is_read: true }).eq('id', urgentAlert.id); setUrgentAlert(null); }} />
-      <RedeemConfirmationModal isOpen={!!pendingRedeem} onClose={() => setPendingRedeem(null)} onConfirm={executeRedemption} reward={pendingRedeem} isProcessing={!!isProcessing} />
+    <div className="min-h-screen bg-[#f8f8f8] text-black pb-20">
+      {selectedMission && <MissionModal mission={selectedMission} user={user} onClose={() => { setSelectedMission(null); fetchData(user); }} />}
+      <RedeemConfirmationModal isOpen={!!pendingRedeem} onClose={() => setPendingRedeem(null)} onConfirm={handleRedeem} reward={pendingRedeem} isProcessing={!!isProcessing} />
 
-      <header className="border-b-[4px] border-black bg-white sticky top-0 z-[50] px-4 py-3 md:px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <button onClick={onBack} className="p-2 border-[2.5px] border-black shadow-[2px_2px_0px_0px_#000] bg-white active:scale-90 transition-all"><ArrowLeft size={18} strokeWidth={4} /></button>
-            <h1 className="text-lg md:text-3xl font-black uppercase italic font-display">Hub <span className="text-[#834bf1]">Alpha</span></h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <NotificationBell userId={currentUser.uid} />
-            <button onClick={() => auth.signOut()} className="bg-black text-white p-2 border-[2.5px] border-white active:scale-90"><LogOut size={18} strokeWidth={3} /></button>
-          </div>
+      <header className="sticky top-0 z-50 bg-white border-b-[4px] border-black px-4 py-3 md:px-8 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-2 border-2 border-black bg-white active:scale-95"><ArrowLeft size={18} strokeWidth={3}/></button>
+          <h1 className="text-xl font-black uppercase italic font-display">Hub <span className="text-[#834bf1]">Alpha</span></h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <NotificationBell userId={user.uid} />
+          <img src={user.photoURL || ''} className="w-10 h-10 border-2 border-black object-cover bg-gray-200" />
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4 md:p-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-12">
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white border-[4px] border-black p-8 shadow-[6px_6px_0px_0px_#000] relative overflow-hidden text-center">
-               <div className="w-24 h-24 border-[4px] border-black mx-auto mb-4 overflow-hidden shadow-[4px_4px_0px_0px_#834bf1]">
-                  <img src={currentUser.photoURL || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${currentUser.uid}`} className="w-full h-full object-cover" />
-               </div>
-               <h2 className="text-2xl font-black uppercase italic font-display truncate">{profile?.display_name || "Agent"}</h2>
-               <p className="text-[#834bf1] font-black text-[10px] uppercase tracking-[0.2em] italic">@{profile?.handle || "unlinked"}</p>
-            </div>
-            <div className="bg-[#834bf1] border-[4px] border-black p-8 shadow-[6px_6px_0px_0px_#000] text-white">
-               <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Credits</span>
-               <div className="flex items-baseline gap-3 mt-2">
-                  <span className="text-5xl font-black italic font-display tracking-tighter">{profile?.reelcoins?.toLocaleString() || "0"}</span>
-                  <span className="text-xl font-black text-[#ffde59]">RC</span>
-               </div>
-            </div>
+      <main className="max-w-7xl mx-auto p-4 md:p-8 grid lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-4 space-y-6">
+           <div className="bg-white border-[4px] border-black p-8 text-center shadow-[8px_8px_0px_0px_#000]">
+              <div className="w-24 h-24 border-[4px] border-black mx-auto mb-4 overflow-hidden shadow-[4px_4px_0px_0px_#834bf1]">
+                <img src={user.photoURL || ''} className="w-full h-full object-cover" />
+              </div>
+              <h2 className="text-2xl font-black uppercase italic font-display truncate">{profile?.display_name}</h2>
+              <div className={`mt-2 inline-block px-3 py-1 border-[2px] border-black text-[9px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-400' : 'bg-yellow-400'}`}>
+                {isApproved ? 'Verified Agent' : 'Pending Verification'}
+              </div>
+           </div>
+           
+           <div className="bg-[#834bf1] text-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_#000]">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Assets</div>
+              <div className="text-6xl font-black italic font-display tracking-tighter">
+                {profile?.reelcoins || 0} <span className="text-2xl text-[#ffde59]">RC</span>
+              </div>
+           </div>
+        </div>
+
+        <div className="lg:col-span-8 space-y-8">
+          <div className="flex border-[4px] border-black bg-white p-1 shadow-[8px_8px_0px_0px_#000]">
+             <button onClick={() => setActiveTab('missions')} className={`flex-1 py-4 font-black uppercase text-xs tracking-widest transition-all ${activeTab === 'missions' ? 'bg-[#ffde59] border-2 border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40'}`}>Missions</button>
+             <button onClick={() => setActiveTab('vouchers')} className={`flex-1 py-4 font-black uppercase text-xs tracking-widest transition-all ${activeTab === 'vouchers' ? 'bg-[#834bf1] text-white border-2 border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40'}`}>Vouchers</button>
           </div>
 
-          <div className="lg:col-span-8 space-y-6">
-            <div className="flex border-[4px] border-black bg-white p-1 shadow-[6px_6px_0px_0px_#000]">
-              <button onClick={() => setActiveTab('missions')} className={`flex-1 py-4 font-black uppercase text-xs italic tracking-widest transition-all ${activeTab === 'missions' ? 'bg-[#ffde59] border-2 border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40'}`}>Missions</button>
-              <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-4 font-black uppercase text-xs italic tracking-widest transition-all ${activeTab === 'rewards' ? 'bg-[#834bf1] text-white border-2 border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40'}`}>Vouchers</button>
+          {!isApproved ? (
+            <div className="bg-yellow-400 border-[4px] border-black p-12 text-center shadow-[12px_12px_0px_0px_#000]">
+               <Lock size={48} className="mx-auto mb-4 opacity-20"/>
+               <h3 className="text-2xl font-black uppercase italic font-display">Hub Encrypted</h3>
+               <p className="text-xs font-bold mt-2">Verification node sync required for authorization.</p>
             </div>
-
-            {isApproved ? (
-              <div className="space-y-6">
-                {activeTab === 'missions' ? (
-                  <div className="grid md:grid-cols-2 gap-8">
-                    {missions.map((m) => {
-                      const submission = userSubmissions.find(s => s.mission_id === m.id);
-                      const isDone = submission?.status === 'approved' || submission?.status === 'completed';
-                      const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
-                      const isExpired = m.expires_at && new Date(m.expires_at).getTime() < new Date().getTime();
-                      return (
-                        <div key={m.id} className={`bg-white border-[4px] border-black p-8 shadow-[6px_6px_0px_0px_#000] flex flex-col relative ${isExpired ? 'opacity-50 pointer-events-none' : ''}`}>
-                           {isExpired && <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><div className="bg-rose-600 text-white font-black text-2xl px-6 py-2 border-4 border-black rotate-[-12deg] shadow-[4px_4px_0px_0px_#000]">EXPIRED</div></div>}
-                           <div className="flex justify-between items-start mb-6">
-                              <div className="w-14 h-14 bg-white border-[3px] border-black flex items-center justify-center p-2 shadow-[2px_2px_0px_0px_#000]">{m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Building2 size={24} />}</div>
-                              <div className="flex flex-col items-end gap-2">
-                                <div className={`px-2 py-1 font-black text-[9px] border-2 border-black ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : 'bg-black text-[#ffde59]'}`}>{isDone ? 'DONE' : isPending ? 'VERIFY' : `+${m.reward_amount} RC`}</div>
-                                <CountdownTimer expiresAt={m.expires_at} />
-                              </div>
+          ) : (
+             <div className="space-y-6">
+               {activeTab === 'missions' && (
+                 missions.length === 0 ? <div className="p-12 text-center border-2 border-dashed border-black/10 font-black uppercase opacity-20">No active signals</div> :
+                 missions.map(m => {
+                   const sub = submissions.find(s => s.mission_id === m.id);
+                   const status = sub?.status;
+                   return (
+                     <div key={m.id} className="bg-white border-[4px] border-black p-6 shadow-[6px_6px_0px_0px_#000]">
+                        <div className="flex justify-between items-start mb-6">
+                           <div className="flex items-center gap-4">
+                             <div className="w-12 h-12 border-[3px] border-black p-1 flex items-center justify-center">
+                                {m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain"/> : <Building2 size={20}/>}
+                             </div>
+                             <div>
+                                <h3 className="text-lg font-black uppercase italic leading-none">{m.title}</h3>
+                                <p className="text-[9px] font-bold text-[#834bf1] uppercase tracking-widest mt-1">{m.partner_brands?.name}</p>
+                             </div>
                            </div>
-                           <h3 className="text-xl font-black uppercase italic font-display mb-4 truncate">{m.title}</h3>
-                           <button onClick={() => setSelectedMission(m)} disabled={isDone || isPending || isExpired} className="w-full py-4 border-[3px] border-black bg-black text-white font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px_#834bf1] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50">
-                              {isDone ? 'COMPLETED' : isPending ? 'REVIEWING' : 'INIT MISSION'}
-                           </button>
+                           <div className="text-right">
+                              <div className="text-xl font-black italic">+{m.reward_amount} RC</div>
+                              <CountdownTimer expiresAt={m.expires_at} />
+                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {rewards.map((r) => {
-                      const data = revealedData[r.id];
-                      const isExpired = r.expires_at && new Date(r.expires_at).getTime() < new Date().getTime();
-                      
-                      // Calculate 15-minute timeout
-                      let isTimedOut = false;
-                      let isRecentlyRevealed = false;
-                      if (data?.revealed_at) {
-                        const elapsed = new Date().getTime() - new Date(data.revealed_at).getTime();
-                        isTimedOut = elapsed > 15 * 60 * 1000;
-                        isRecentlyRevealed = !isTimedOut;
-                      }
+                        <button onClick={() => setSelectedMission(m)} disabled={status === 'approved' || status === 'pending'} className={`w-full py-4 border-[3px] border-black font-black uppercase text-xs ${status === 'approved' ? 'bg-emerald-400' : status === 'pending' ? 'bg-yellow-400' : 'bg-black text-white shadow-[4px_4px_0px_0px_#834bf1] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none'}`}>
+                           {status === 'approved' ? 'COMPLETED' : status === 'pending' ? 'VERIFYING' : 'INIT MISSION'}
+                        </button>
+                     </div>
+                   );
+                 })
+               )}
 
-                      return (
-                        <div key={r.id} className={`bg-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden ${ (isExpired || isTimedOut) ? 'opacity-50 grayscale' : isRecentlyRevealed ? 'border-emerald-500 bg-emerald-50/20' : ''}`}>
-                           
-                           {/* Stamping Logic */}
-                           {isExpired ? (
-                             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                               <div className="bg-rose-600 text-white font-black text-3xl px-10 py-4 border-[6px] border-black rotate-[-12deg] shadow-[6px_6px_0px_0px_#000]">EXPIRED</div>
-                             </div>
-                           ) : isTimedOut ? (
-                             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                               <div className="bg-black text-[#ffde59] font-black text-3xl px-10 py-4 border-[6px] border-white rotate-[12deg] shadow-[6px_6px_0px_0px_#000]">USED</div>
-                             </div>
-                           ) : null}
-
-                           <div className="flex items-center gap-6 w-full md:flex-1">
-                              <div className="w-20 h-20 bg-white border-[3px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] p-2">
-                                 {r.partner_brands?.logo_url ? <img src={r.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Gift size={32} />}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                 <h4 className="text-2xl font-black uppercase italic font-display truncate">{r.title}</h4>
-                                 <div className="flex flex-wrap items-center gap-3 mt-1">
-                                   <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-widest">{r.partner_brands?.name || 'Reelywood'}</p>
-                                   {!data && <CountdownTimer expiresAt={r.expires_at} />}
-                                   {isRecentlyRevealed && <FlashRevealTimer revealedAt={data.revealed_at} onTimeout={() => fetchOperationalGrid(currentUser)} />}
-                                 </div>
-                                 <div className="mt-4">
-                                   <p className={`text-[10px] font-bold uppercase text-black/50 leading-relaxed ${expandedDesc === r.id ? '' : 'line-clamp-1'}`}>{r.description}</p>
-                                   {r.description?.length > 50 && (
-                                     <button onClick={() => setExpandedDesc(expandedDesc === r.id ? null : r.id)} className="text-[8px] font-black uppercase text-[#834bf1] mt-1 flex items-center gap-1">
-                                       {expandedDesc === r.id ? <><ChevronUp size={10}/> Hide</> : <><ChevronDown size={10}/> Full Details</>}
-                                     </button>
-                                   )}
-                                 </div>
-                              </div>
+               {activeTab === 'vouchers' && (
+                 vouchers.length === 0 ? <div className="p-12 text-center border-2 border-dashed border-black/10 font-black uppercase opacity-20">No rewards available</div> :
+                 vouchers.map(v => {
+                   const reveal = revealedData[v.id];
+                   const isExpired = v.expires_at && new Date(v.expires_at).getTime() < Date.now();
+                   return (
+                     <div key={v.id} className="bg-white border-[4px] border-black p-6 shadow-[6px_6px_0px_0px_#000]">
+                        <div className="flex items-center gap-6">
+                           <div className="w-16 h-16 border-[3px] border-black flex items-center justify-center p-2 shadow-[3px_3px_0px_0px_#000]">
+                              {v.partner_brands?.logo_url ? <img src={v.partner_brands.logo_url} className="w-full h-full object-contain"/> : <Gift size={24}/>}
                            </div>
-
-                           <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto pt-6 md:pt-0 border-t md:border-t-0 border-black/5">
-                              {isRecentlyRevealed ? (
-                                <div className="flex flex-col items-end gap-2 w-full">
-                                   <div className="flex items-center gap-2 w-full md:w-auto">
-                                      <div className="flex-1 md:flex-none bg-white border-[3px] border-black border-dashed px-5 py-3 font-mono font-black text-sm shadow-[3px_3px_0px_0px_#10b981]">
-                                         {data.code}
-                                      </div>
-                                      <button onClick={() => handleCopyCode(data.code, r.id)} className="p-3.5 border-[3px] border-black bg-black text-white active:scale-90 transition-all">
-                                        {copyStatus === r.id ? <Check size={20} className="text-[#39ff14]"/> : <Copy size={20}/>}
-                                      </button>
-                                   </div>
-                                   <p className="text-[7px] font-black text-emerald-600 uppercase tracking-widest">Active Reveal Mode</p>
+                           <div className="flex-1">
+                              <div className="flex justify-between items-start mb-1">
+                                 <h3 className="text-xl font-black uppercase italic truncate pr-4">{v.title}</h3>
+                                 <span className="text-xl font-black text-[#834bf1]">{v.cost} RC</span>
+                              </div>
+                              <p className="text-[10px] font-bold text-black/50 uppercase line-clamp-1 mb-4">{v.description}</p>
+                              {reveal ? (
+                                <div className="flex items-center gap-2">
+                                   <div className="flex-1 bg-emerald-400 border-[2px] border-black p-2 font-mono font-black text-center tracking-widest uppercase">{reveal.code}</div>
+                                   <button onClick={() => copyToClipboard(reveal.code, v.id)} className="p-2 border-[2px] border-black bg-white active:scale-90">{copyStatus === v.id ? <Check size={16}/> : <Copy size={16}/>}</button>
                                 </div>
                               ) : (
-                                <>
-                                  <div className="text-right">
-                                     <span className="text-3xl font-black italic font-display text-[#834bf1]">{r.cost}</span>
-                                     <span className="text-[10px] font-black ml-1 uppercase opacity-40">RC</span>
-                                  </div>
-                                  <button onClick={() => handleRedeemClick(r)} disabled={isProcessing === r.id || isExpired || isTimedOut} className="px-10 py-4 border-[3px] border-black bg-black text-white font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#ffde59] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all disabled:opacity-50">
-                                    {isProcessing === r.id ? <Loader2 className="animate-spin h-4 w-4" /> : (isExpired || isTimedOut) ? 'TERMINATED' : 'REDEEM'}
-                                  </button>
-                                </>
+                                <button onClick={() => setPendingRedeem(v)} disabled={isExpired} className="w-full py-3 bg-black text-white font-black uppercase text-[10px] border-[2px] border-black shadow-[4px_4px_0px_0px_#ffde59] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
+                                   {isExpired ? 'EXPIRED' : 'REDEEM'}
+                                </button>
                               )}
                            </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-[#ffde59] border-[4px] border-black p-12 text-center shadow-[12px_12px_0px_0px_#000] flex flex-col items-center gap-4">
-                <Lock size={48} className="text-black/30" />
-                <h3 className="text-3xl font-black italic uppercase font-display">Hub Encrypted</h3>
-                <p className="text-xs font-bold uppercase tracking-widest text-black/60 max-w-sm">Verification node sync required for authorization.</p>
-              </div>
-            )}
-          </div>
+                     </div>
+                   );
+                 })
+               )}
+             </div>
+          )}
         </div>
       </main>
     </div>
