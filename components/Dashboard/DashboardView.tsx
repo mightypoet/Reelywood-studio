@@ -23,14 +23,9 @@ import {
   TrendingUp,
   Maximize2,
   RefreshCw,
-  Building2,
-  Link as LinkIcon,
-  AlertTriangle
+  Building2
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
-import { RedeemConfirmationModal } from './RedeemConfirmationModal';
-import { NotificationBell } from './NotificationBell';
-import { NewAlertModal } from './NewAlertModal';
 
 interface DashboardViewProps {
   onBack: () => void;
@@ -48,12 +43,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
-  
-  // Custom Modal State
-  const [pendingRedeem, setPendingRedeem] = useState<any>(null);
-  const [urgentAlert, setUrgentAlert] = useState<any>(null);
 
-  const fetchOperationalGrid = async (user: FirebaseUser, isInitial = false) => {
+  const fetchOperationalGrid = async (user: FirebaseUser) => {
     if (!supabase) return;
 
     try {
@@ -80,86 +71,52 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setMissions(filtered);
       }
 
-      const [rRes, sRes, nRes] = await Promise.all([
+      const [rRes, sRes] = await Promise.all([
         supabase.from('rewards').select('*, partner_brands(*)'),
-        supabase.from('submissions').select('*').eq('user_id', user.uid),
-        // Only fetch urgent deployment alerts on initial load
-        isInitial ? supabase.from('notifications')
-          .select('*')
-          .eq('user_id', user.uid)
-          .eq('is_read', false)
-          .in('type', ['MISSION_DEPLOYED', 'VOUCHER_ADDED'])
-          .order('created_at', { ascending: false })
-          .limit(1) : Promise.resolve({ data: null })
+        supabase.from('submissions').select('mission_id, status').eq('user_id', user.uid)
       ]);
 
       if (rRes.data) setRewards(rRes.data);
       if (sRes.data) setUserSubmissions(sRes.data);
-      if (nRes.data && nRes.data.length > 0) {
-        setUrgentAlert(nRes.data[0]);
-      }
 
     } catch (err) {
       console.error("GRID_SYNC_FAILURE:", err);
     } finally {
-      if (isInitial) setLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    let pollInterval: number;
-
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        fetchOperationalGrid(user, true);
-        pollInterval = window.setInterval(() => {
-          fetchOperationalGrid(user, false);
-        }, 8000);
+        fetchOperationalGrid(user);
       } else {
         setLoading(false);
       }
     });
-
-    return () => {
-      unsubscribe();
-      if (pollInterval) clearInterval(pollInterval);
-    };
+    return () => unsubscribe();
   }, []);
 
-  const handleRedeemClick = (reward: any) => {
-    if (!profile || profile.reelcoins < reward.cost) {
-      return alert("⛔ INSUFFICIENT RC BAL: " + reward.cost + " required.");
-    }
-    setPendingRedeem(reward);
-  };
-
-  const executeRedemption = async () => {
-    if (!pendingRedeem || !currentUser) return;
+  const handleRedeem = async (reward: any) => {
+    if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
+    if (!confirm(`Redeem "${reward.title}" from ${reward.partner_brands?.name || 'Reelywood'}?`)) return;
     
-    setIsProcessing(pendingRedeem.id);
+    setIsProcessing(reward.id);
     try {
       const { error } = await supabase!.rpc('redeem_reward', {
         user_uid: currentUser?.uid,
-        cost: pendingRedeem.cost,
-        item_title: pendingRedeem.title
+        cost: reward.cost,
+        item_title: reward.title
       });
       if (error) throw error;
-      setRevealedCodes(prev => ({ ...prev, [pendingRedeem.id]: pendingRedeem.code || 'DECRYPTED_HASH' }));
-      fetchOperationalGrid(currentUser);
-      setPendingRedeem(null);
+      setRevealedCodes(prev => ({ ...prev, [reward.id]: reward.code || 'DECRYPTED_HASH' }));
+      if (currentUser) fetchOperationalGrid(currentUser);
     } catch (err: any) {
       alert("Redemption Protocol Failure: " + err.message);
     } finally {
       setIsProcessing(null);
     }
-  };
-
-  const dismissUrgentAlert = async () => {
-    if (urgentAlert && supabase) {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', urgentAlert.id);
-    }
-    setUrgentAlert(null);
   };
 
   if (loading) {
@@ -210,21 +167,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         />
       )}
 
-      {/* Landing Priority Notification */}
-      <NewAlertModal 
-        notification={urgentAlert} 
-        onClose={dismissUrgentAlert} 
-      />
-
-      {/* Redemption Confirmation Modal */}
-      <RedeemConfirmationModal 
-        isOpen={!!pendingRedeem}
-        onClose={() => setPendingRedeem(null)}
-        onConfirm={executeRedemption}
-        reward={pendingRedeem}
-        isProcessing={!!isProcessing}
-      />
-
       <header className="border-b-[6px] border-black bg-white sticky top-0 z-[50] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
@@ -234,10 +176,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <h1 className="text-xl md:text-3xl font-black uppercase italic font-display">Creator <span className="text-[#834bf1]">Hub</span></h1>
           </div>
           
-          <div className="flex items-center space-x-6">
-            {/* Notification Bell Component */}
-            <NotificationBell userId={currentUser.uid} />
-
+          <div className="flex items-center space-x-4">
             <div className="hidden md:flex flex-col items-end">
                <span className="text-[10px] font-black uppercase opacity-40">Identity Node</span>
                <span className="text-xs font-bold uppercase">{currentUser.email}</span>
@@ -316,25 +255,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       missions.map((m) => {
                         const submission = userSubmissions.find(s => s.mission_id === m.id);
                         const isDone = submission?.status === 'approved' || submission?.status === 'completed';
-                        const isPending = submission?.status === 'pending' || submission?.status === 'verifying' || submission?.status === 'review';
-                        const isRejected = submission?.status === 'rejected';
+                        const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
                         const brand = m.partner_brands;
 
+                        // Conditional UI Styling based on status
                         const cardStyles = isDone 
                           ? 'bg-emerald-50 border-emerald-400 shadow-emerald-200' 
                           : isPending 
                             ? 'bg-yellow-50 border-yellow-400 shadow-yellow-200' 
-                            : isRejected
-                              ? 'bg-rose-50 border-rose-400 shadow-rose-200'
-                              : 'bg-white border-black shadow-black';
+                            : 'bg-white border-black shadow-black';
 
                         const buttonStyles = isDone 
                           ? 'bg-emerald-500 text-white border-emerald-600' 
                           : isPending 
                             ? 'bg-yellow-400 text-black border-yellow-500' 
-                            : isRejected
-                              ? 'bg-rose-500 text-white border-rose-600'
-                              : 'bg-[#834bf1] text-white hover:bg-black';
+                            : 'bg-[#834bf1] text-white hover:bg-black';
 
                         return (
                           <div key={m.id} className={`border-[4px] p-8 shadow-[8px_8px_0px_0px] group hover:-translate-y-1 transition-all flex flex-col ${cardStyles}`}>
@@ -346,35 +281,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                      <Building2 size={24} className="text-[#834bf1]" />
                                    )}
                                 </div>
-                                <div className={`px-3 py-1 font-black text-[10px] italic border-[2px] shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] flex items-center gap-1.5 ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : isRejected ? 'bg-rose-500 text-white' : 'bg-black text-[#ffde59]'}`}>
-                                  {isDone && <CheckCircle2 size={12}/>}
-                                  {isPending && <Clock size={12}/>}
-                                  {isRejected && <AlertTriangle size={12}/>}
-                                  {isDone ? 'COMPLETED' : isPending ? 'VERIFYING' : isRejected ? 'REJECTED' : `+${m.reward_amount} RC`}
+                                <div className={`px-3 py-1 font-black text-xs italic border-[2px] ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : 'bg-black text-[#ffde59]'}`}>
+                                  {isDone ? 'VERIFIED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
                                 </div>
                              </div>
                              
                              <div className="mb-4">
-                               <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isDone ? 'text-emerald-600' : isPending ? 'text-yellow-600' : isRejected ? 'text-rose-600' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood Labs'}</p>
+                               <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isDone ? 'text-emerald-600' : isPending ? 'text-yellow-600' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood Labs'}</p>
                                <h3 className="text-xl font-black uppercase italic font-display leading-tight">{m.title}</h3>
                              </div>
                              
                              <p className="text-[10px] font-bold text-black/50 leading-relaxed uppercase mb-8 line-clamp-3 border-l-2 border-slate-100 pl-3">{m.description}</p>
                              
-                             {submission && (
-                               <div className="mb-8 p-3 bg-white/40 border-2 border-black/10 flex items-center gap-3">
-                                 <LinkIcon size={14} className="opacity-40" />
-                                 <p className="text-[9px] font-bold uppercase truncate max-w-[150px] opacity-40">{submission.link}</p>
-                               </div>
-                             )}
-
                              <div className="mt-auto">
                                 <button 
                                   onClick={() => setSelectedMission(m)}
                                   disabled={isDone || isPending}
                                   className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all ${buttonStyles}`}
                                 >
-                                  {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEW IN PROGRESS' : isRejected ? 'RE-ATTEMPT SUBMISSION' : 'INITIALIZE MISSION'}
+                                  {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEW IN PROGRESS' : 'INITIALIZE MISSION'}
                                 </button>
                              </div>
                           </div>
@@ -423,7 +348,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                    <span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span>
                                 </div>
                                 <button 
-                                  onClick={() => handleRedeemClick(r)}
+                                  onClick={() => handleRedeem(r)}
                                   disabled={isProcessing === r.id || !!revealedCodes[r.id]}
                                   className={`px-8 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all ${revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000]' : 'bg-black text-white hover:bg-[#834bf1]'}`}
                                 >

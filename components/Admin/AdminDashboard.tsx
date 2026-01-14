@@ -1,16 +1,18 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
+import { auth } from '../../lib/firebase';
 import { 
-  Users, Zap, Gift, Trash2, Activity, Terminal, 
-  Building2, ListChecks, X, Instagram, Send, 
-  CheckSquare, Moon, Sun, Loader2, Search,
-  MapPin, Check, Bell, Fingerprint, TrendingUp,
-  MessageSquare, ShieldAlert, ArrowRight, LayoutDashboard,
-  Database, RefreshCcw, MoreVertical, CheckCircle2
+  Users, Zap, Gift, Search, 
+  Check, Moon, Sun, Trash2,
+  Loader2, Activity, Terminal,
+  Building2, ListChecks, Clock, X,
+  Crosshair, CheckSquare, Box,
+  Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck, Ticket
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
 
+// --- TYPES ---
 export interface Profile {
   id: string;
   firebase_uid: string;
@@ -27,367 +29,529 @@ export interface Profile {
   created_at: string;
 }
 
+const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
+
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'home' | 'queue' | 'deploy' | 'agents' | 'brands'>('home');
-  const [darkMode, setDarkMode] = useState<boolean>(true);
-  const [notify, setNotify] = useState<{ type: 'success' | 'error' | 'info', msg: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'deploy' | 'missions' | 'vouchers' | 'users' | 'ledger' | 'brands' | 'submissions'>('deploy');
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+       const saved = localStorage.getItem('admin-theme');
+       return saved === 'dark' || saved === null;
+    }
+    return true;
+  });
+  const [notify, setNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Core Data State
+  // Data Stores
   const [users, setUsers] = useState<Profile[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
-  const [userVouchers, setUserVouchers] = useState<any[]>([]);
   
-  // Selection/Detail State
+  // DEPLOYMENT STATE
   const [selectedCreatorIds, setSelectedCreatorIds] = useState<string[]>([]);
   const [selectedProtocol, setSelectedProtocol] = useState<{id: string, type: 'mission' | 'voucher'} | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
-  const [inspectedAgent, setInspectedAgent] = useState<Profile | null>(null);
+
+  // Forms
+  const [missionForm, setMissionForm] = useState({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
+  const [voucherForm, setVoucherForm] = useState({ title: '', cost: '', brand_id: '', code: '', description: '' });
 
   useEffect(() => {
+    const user = auth.currentUser;
+    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
+        onLogout();
+        return;
+    }
+
     fetchAllData();
-    // Real-time Simulation: Auto-refresh every 10 seconds for metrics
-    const pollId = window.setInterval(fetchAllData, 10000); 
-    return () => clearInterval(pollId);
+
+    if (!supabase) return;
+
+    const channel = supabase.channel('admin-live')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchAllData())
+        .subscribe();
+
+    return () => { 
+        if (supabase) supabase.removeChannel(channel); 
+    };
   }, []);
 
   const fetchAllData = async () => {
     if (!supabase) return;
     try {
-      const [uRes, mRes, vRes, bRes, sRes, uvRes] = await Promise.all([
+      const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        supabase.from('rewards').select('*, partner_brands(*)').order('created_at', { ascending: false }),
+        supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
-        supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false }),
-        supabase.from('user_vouchers').select('*')
+        supabase.from('submissions').select('*, profiles(display_name), missions(title, reward_amount, checkpoints)').order('created_at', { ascending: false })
       ]);
-
-      if (uRes.data) setUsers(uRes.data);
-      if (mRes.data) setMissions(mRes.data);
-      if (vRes.data) setVouchers(vRes.data);
-      if (bRes.data) setBrands(bRes.data);
-      if (sRes.data) setSubmissions(sRes.data);
-      if (uvRes.data) setUserVouchers(uvRes.data);
-
-    } catch (e) { 
-      console.error("TERMINAL_FETCH_ERROR:", e); 
-    }
+      
+      if (u.data) setUsers(u.data);
+      if (m.data) setMissions(m.data);
+      if (v.data) setVouchers(v.data);
+      if (t.data) setTransactions(t.data);
+      if (b.data) setBrands(b.data);
+      if (s.data) setSubmissions(s.data);
+    } catch (e) { console.error(e); }
   };
 
-  const showToast = (type: 'success' | 'error' | 'info', msg: string) => {
+  const showToast = (type: 'success' | 'error', msg: string) => {
     setNotify({ type, msg });
     setTimeout(() => setNotify(null), 4000);
   };
 
-  const handleExecuteDeploy = async () => {
-    if (!supabase || !selectedProtocol) return;
+  const getAgentStats = (uid: string) => {
+    return {
+      completed: submissions.filter(s => s.user_id === uid && s.status === 'approved').length,
+      claimed: transactions.filter(t => t.user_uid === uid && t.amount < 0).length,
+      active: missions.filter(m => Array.isArray(m.assigned_to) && m.assigned_to.includes(uid)).length
+    };
+  };
+
+  const handleDeleteProtocol = async (e: React.MouseEvent, id: string, type: 'mission' | 'voucher') => {
+    e.stopPropagation(); 
+    if (!supabase) return;
+    if (!confirm(`⚠️ PERMANENTLY DELETE THIS ${type.toUpperCase()}?\nThis will remove it from all user dashboards.`)) return;
+
     setSubmitting(true);
     try {
-      const table = selectedProtocol.type === 'mission' ? 'missions' : 'vouchers';
-      const { error } = await supabase.from(table).update({ 
-        assigned_to: selectedCreatorIds,
-        status: 'active' 
-      }).eq('id', selectedProtocol.id);
+        const table = type === 'mission' ? 'missions' : 'rewards';
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) throw error;
+        
+        showToast('success', `${type.toUpperCase()} PURGED FROM GRID`);
+        if (selectedProtocol?.id === id) setSelectedProtocol(null);
+        fetchAllData();
+    } catch (e: any) {
+        showToast('error', e.message);
+    } finally {
+        setSubmitting(false);
+    }
+  };
+
+  const handleExecuteDeploy = async () => {
+    if (!supabase) return;
+    if (!selectedProtocol) return showToast('error', "SELECT A MISSION OR VOUCHER FIRST");
+    
+    let targetList: string[] | null = selectedCreatorIds;
+    if (selectedCreatorIds.length === 0) {
+       if (!confirm("⚠️ NO CREATORS SELECTED.\n\nDeploy this globally to ALL active nodes?")) return;
+       targetList = null; 
+    }
+
+    setSubmitting(true);
+    try {
+      const table = selectedProtocol.type === 'mission' ? 'missions' : 'rewards';
+      const { error } = await supabase
+        .from(table)
+        .update({ assigned_to: targetList })
+        .eq('id', selectedProtocol.id);
+
       if (error) throw error;
-      showToast('success', `DEPLOYMENT SUCCESSFUL: ${selectedCreatorIds.length || 'GLOBAL'}`);
+      showToast('success', `PROTOCOL DEPLOYED TO ${targetList ? targetList.length : 'ALL'} NODES`);
+      
       setSelectedCreatorIds([]);
       setSelectedProtocol(null);
+      fetchAllData();
+    } catch (e: any) {
+      showToast('error', e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const createDraftMission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+    if (!missionForm.title || !missionForm.reward || !missionForm.brand_id) return showToast('error', "MISSING IDENTITY FIELDS");
+    
+    setSubmitting(true);
+    try {
+      const brand = brands.find(b => b.id === missionForm.brand_id);
+      await supabase.from('missions').insert([{
+        title: missionForm.title,
+        description: brand?.description || 'No specific mission brief provided.',
+        reward_amount: parseInt(missionForm.reward),
+        brand_id: missionForm.brand_id,
+        location: brand?.location_text || 'Global Sync',
+        image_url: brand?.cover_image_url || '',
+        checkpoints: [missionForm.checkpoint1, missionForm.checkpoint2, missionForm.checkpoint3].filter(c => c),
+        assigned_to: ['DRAFT'] 
+      }]);
+      showToast('success', "MISSION DRAFTED. LAUNCH VIA DEPLOY TAB.");
+      setMissionForm({ title: '', reward: '', brand_id: '', checkpoint1: '', checkpoint2: '', checkpoint3: '' });
+      fetchAllData();
+    } catch (e: any) { showToast('error', e.message); } 
+    finally { setSubmitting(false); }
+  };
+
+  const createDraftVoucher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+    if (!voucherForm.title || !voucherForm.brand_id || !voucherForm.cost) return showToast('error', "MISSING VOUCHER DATA");
+    
+    setSubmitting(true);
+    try {
+      const brand = brands.find(b => b.id === voucherForm.brand_id);
+      await supabase.from('rewards').insert([{
+        brand_id: voucherForm.brand_id,
+        title: voucherForm.title,
+        cost: parseInt(voucherForm.cost),
+        code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+        description: voucherForm.description || brand?.description || 'Exclusive partner voucher.',
+        assigned_to: ['DRAFT'] 
+      }]);
+      showToast('success', "VOUCHER DRAFTED. LAUNCH VIA DEPLOY TAB.");
+      setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '' });
       fetchAllData();
     } catch (e: any) { showToast('error', e.message); }
     finally { setSubmitting(false); }
   };
 
-  // Metrics Tickers
-  const liveStats = useMemo(() => ({
-    activeAgents: users.length,
-    pendingMissions: submissions.filter(s => s.status === 'pending').length,
-    vaultLiability: users.reduce((acc, u) => acc + (u.reelcoins || 0), 0),
-    campaignYield: brands.length
-  }), [users, submissions, brands]);
+  const handleUpdateStatus = async (uid: string, status: string) => {
+    if (!supabase) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('profiles').update({ card_status: status }).eq('firebase_uid', uid);
+      if (error) throw error;
+      showToast('success', `NODE STATUS UPDATED: ${status.toUpperCase()}`);
+      fetchAllData();
+    } catch (error: any) {
+      showToast('error', error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-  const bg = darkMode ? 'bg-[#0a0a0a]' : 'bg-gray-50';
+  const bg = darkMode ? 'bg-[#0a0a0a]' : 'bg-gray-100';
   const text = darkMode ? 'text-white' : 'text-black';
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
   return (
-    <div className={`min-h-screen ${bg} ${text} font-mono pb-24 md:pb-0`}>
-      {/* Real-time Toast System */}
+    <div className={`min-h-screen ${bg} ${text} font-mono pb-20`}>
       {notify && (
-        <div className="fixed top-4 left-4 right-4 z-[200] animate-in slide-in-from-top-4">
-          <div className={`flex items-center gap-3 px-6 py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_#000] ${notify.type === 'success' ? 'bg-[#39ff14] text-black' : notify.type === 'error' ? 'bg-rose-500 text-white' : 'bg-blue-500 text-white'}`}>
-            <Terminal size={18} />
-            <span className="font-black text-xs uppercase tracking-widest">{notify.msg}</span>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4">
+          <div className={`flex items-center gap-4 px-6 py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_#000] ${notify.type === 'success' ? 'bg-[#39ff14] text-black' : 'bg-rose-500 text-white'}`}>
+            {notify.type === 'success' ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
+            <span className="font-bold text-xs uppercase tracking-widest">{notify.msg}</span>
           </div>
         </div>
       )}
 
       {selectedSubmission && (
-        <VerificationModal submission={selectedSubmission} onClose={() => setSelectedSubmission(null)} onRefresh={fetchAllData} />
+        <VerificationModal 
+          submission={selectedSubmission} 
+          onClose={() => setSelectedSubmission(null)} 
+          onRefresh={fetchAllData} 
+        />
       )}
 
-      {/* TOP HEADER - Mobile Optimized */}
-      <header className={`border-b-4 ${border} ${card} px-6 py-4 flex justify-between items-center sticky top-0 z-[100]`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-black text-[#ffde59] border-2 border-white flex items-center justify-center shadow-[3px_3px_0px_0px_#834bf1]">
-            <Fingerprint size={24} />
-          </div>
-          <div>
-            <h1 className="text-sm font-black uppercase tracking-tighter leading-none italic">RW_TERMINAL</h1>
-            <div className="flex items-center gap-1.5 mt-1">
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-[8px] font-black opacity-40 uppercase tracking-widest leading-none">NODE_01_LIVE</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setDarkMode(!darkMode)} className={`p-2.5 border-2 ${border} ${darkMode ? 'bg-yellow-400 text-black' : 'bg-black text-white'} active:scale-90 transition-all shadow-[2px_2px_0px_0px_#000]`}>
-            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+      <header className={`border-b-4 ${border} ${card} px-6 py-4 flex justify-between sticky top-0 z-50`}>
+        <div className="flex items-center gap-4"><Terminal size={24}/><h1 className="text-xl font-black italic">TERMINAL <span className="text-gray-500 text-sm not-italic ml-2">v2.1 Master</span></h1></div>
+        <div className="flex gap-4">
+           <button onClick={() => {
+              const newVal = !darkMode;
+              setDarkMode(newVal);
+              localStorage.setItem('admin-theme', newVal ? 'dark' : 'light');
+           }} className={`p-2 border-2 ${border} ${darkMode ? 'bg-yellow-400 text-black' : 'bg-black text-white'}`}>
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button onClick={onLogout} className="bg-rose-600 text-white px-4 py-2 text-[10px] font-black uppercase border-2 border-black active:scale-90 shadow-[3px_3px_0px_0px_#000]">Exit</button>
+          <button onClick={onLogout} className="bg-rose-600 text-white px-4 py-1 text-xs font-black uppercase border-2 border-black">Exit</button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6">
+        {[
+          { l: 'AGENTS', v: users.length, i: Users },
+          { l: 'MISSIONS', v: missions.length, i: Zap },
+          { l: 'VOUCHERS', v: vouchers.length, i: Gift },
+          { l: 'TX VOL', v: transactions.length, i: Activity }
+        ].map((s, i) => (
+          <div key={i} className={`${card} border-2 ${border} p-4 shadow-[4px_4px_0px_0px_#000]`}>
+            <p className="text-[9px] font-black uppercase opacity-40">{s.l}</p>
+            <div className="flex justify-between items-end"><h3 className="text-3xl font-black italic">{s.v}</h3><s.i className="opacity-20"/></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="px-6 flex overflow-x-auto gap-1">
+        {[
+          { id: 'deploy', label: 'DEPLOY', icon: Send },
+          { id: 'missions', label: 'NEW MISSION', icon: Zap },
+          { id: 'vouchers', label: 'NEW VOUCHER', icon: Gift },
+          { id: 'users', label: 'AGENTS', icon: Users },
+          { id: 'submissions', label: 'QUEUED', icon: ListChecks },
+          { id: 'ledger', label: 'LEDGER', icon: FileText },
+          { id: 'brands', label: 'ALLIANCE', icon: Building2 },
+        ].map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id as any)} 
+            className={`flex items-center gap-2 px-6 py-4 border-t-4 border-x-4 ${border} font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === t.id ? `${card} -mb-[4px] z-10` : 'bg-gray-800 text-white/50 border-transparent'}`}>
+            <t.icon size={14} /> {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className={`mx-6 border-4 ${border} ${card} min-h-[600px] p-6 shadow-[8px_8px_0px_0px_#000]`}>
         
-        {/* VIEW: HOME / GOD MODE HUD */}
-        {activeTab === 'home' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { l: 'ACTIVE AGENTS', v: liveStats.activeAgents, i: Users, c: 'text-[#834bf1]' },
-                { l: 'REVIEW QUEUE', v: liveStats.pendingMissions, i: Activity, c: 'text-rose-500' },
-                { l: 'VAULT LIABLTY', v: liveStats.vaultLiability, i: Database, c: 'text-emerald-500' },
-                { l: 'ALLIANCE NODES', v: liveStats.campaignYield, i: Building2, c: 'text-[#ffde59]' }
-              ].map((s, i) => (
-                <div key={i} className={`${card} border-[3px] ${border} p-5 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between h-32`}>
-                  <p className="text-[8px] font-black uppercase opacity-40 tracking-[0.2em]">{s.l}</p>
-                  <div className="flex justify-between items-end">
-                    <h3 className={`text-3xl font-black italic tracking-tighter ${s.c}`}>{s.v.toLocaleString()}</h3>
-                    <s.i size={20} className="opacity-20" />
-                  </div>
-                </div>
-              ))}
+        {activeTab === 'deploy' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+            <div className="lg:col-span-8 flex flex-col gap-4 h-[700px]">
+              <div className="flex justify-between items-center bg-gray-100 p-3 border-2 border-black">
+                <h3 className="text-lg font-black text-black italic uppercase flex items-center gap-2"><Users size={18}/> CREATOR INTELLIGENCE</h3>
+                <span className="text-xs font-bold bg-blue-500 text-white px-3 py-1 border border-black shadow-[2px_2px_0px_0px_#000]">SELECTED: {selectedCreatorIds.length}</span>
+              </div>
+              <div className="flex-1 overflow-auto border-4 border-black bg-white shadow-[4px_4px_0px_0px_#000]">
+                <table className="w-full text-left text-black">
+                  <thead className="bg-black text-white text-[9px] uppercase font-black sticky top-0 z-10">
+                    <tr>
+                      <th className="p-3 w-10 text-center"><CheckSquare size={14}/></th>
+                      <th className="p-3">Identity (Name/ID)</th>
+                      <th className="p-3">Profile Stats</th>
+                      <th className="p-3">Performance Data</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-[10px] font-bold">
+                    {users.map(u => {
+                      const stats = getAgentStats(u.firebase_uid);
+                      const isSelected = selectedCreatorIds.includes(u.firebase_uid);
+                      return (
+                        <tr key={u.id} onClick={() => setSelectedCreatorIds(p => p.includes(u.firebase_uid) ? p.filter(id => id !== u.firebase_uid) : [...p, u.firebase_uid])}
+                            className={`border-b border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors ${isSelected ? 'bg-blue-100' : ''}`}>
+                          <td className="p-3 text-center">
+                            <div className={`w-4 h-4 border-2 border-black mx-auto ${isSelected ? 'bg-blue-600' : 'bg-white'}`}/>
+                          </td>
+                          <td className="p-3">
+                            <div className="font-black uppercase text-xs">{u.display_name}</div>
+                            <div className="text-[9px] text-gray-500 font-mono mb-1">{u.email}</div>
+                            <div className="text-[8px] bg-gray-200 inline-block px-1 rounded">{u.firebase_uid}</div>
+                          </td>
+                          <td className="p-3 space-y-1">
+                             <div className="flex items-center gap-1"><Instagram size={10}/> {u.followers || 0} Followers</div>
+                             <div className="text-gray-500 uppercase">{u.niche || 'General'}</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                               <div className="bg-emerald-100 p-1 border border-black"><div className="text-emerald-700">{stats.completed}</div><div className="text-[7px]">DONE</div></div>
+                               <div className="bg-purple-100 p-1 border border-black"><div className="text-purple-700">{stats.claimed}</div><div className="text-[7px]">USED</div></div>
+                               <div className="bg-blue-100 p-1 border border-black"><div className="text-blue-700">{stats.active}</div><div className="text-[7px]">ACTIVE</div></div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-l-4 border-[#ffde59] pl-4">
-                <h3 className="text-xs font-black uppercase italic">System Critical Alerts</h3>
-                <Bell size={14} className="opacity-20" />
+            <div className="lg:col-span-4 flex flex-col gap-4 h-[700px] border-l-4 border-black pl-8 border-dashed">
+              <div className="bg-black text-white p-3 border-2 border-white shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]">
+                <h3 className="text-lg font-black italic uppercase flex items-center gap-2"><Send size={18}/> DEPLOYMENT CONSOLE</h3>
               </div>
-              <div className="bg-rose-500/10 border-2 border-rose-500 p-4 flex gap-4 items-start">
-                <ShieldAlert className="text-rose-500 shrink-0" size={20} />
-                <div>
-                  <p className="text-[10px] font-black uppercase text-rose-500">Node Congestion</p>
-                  <p className="text-[9px] font-bold opacity-60 uppercase mt-1 leading-tight">User #842 flagged for suspicious engagement activity. Manual audit recommended.</p>
-                </div>
+              <div className="bg-[#111] p-4 border-2 border-gray-700 mb-2">
+                <p className="text-[9px] font-black uppercase text-gray-500 mb-2">TARGET SUMMARY</p>
+                {selectedCreatorIds.length > 0 ? (
+                  <div className="text-sm font-black text-blue-400">Targeting {selectedCreatorIds.length} Nodes</div>
+                ) : (
+                  <div className="text-sm font-black text-rose-500 animate-pulse">GLOBAL BROADCAST (ALL)</div>
+                )}
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-xs font-black uppercase italic border-l-4 border-[#834bf1] pl-4">Recent Economy Logs</h3>
-              <div className={`${card} border-[3px] ${border} divide-y-2 divide-black/5 max-h-64 overflow-y-auto`}>
-                {submissions.slice(0, 5).map((s, i) => (
-                  <div key={i} className="p-4 flex justify-between items-center text-[10px]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-black text-white flex items-center justify-center font-black italic border border-white">
-                        {s.profiles?.display_name?.charAt(0) || 'A'}
+              <div className="flex-1 overflow-auto space-y-3 pr-2 custom-scrollbar">
+                <p className="text-[10px] font-black uppercase bg-gray-800 text-white px-2 py-1 sticky top-0">MISSIONS</p>
+                {missions.map(m => {
+                   const isDraft = m.assigned_to?.includes('DRAFT');
+                   return (
+                    <div key={m.id} 
+                        onClick={() => setSelectedProtocol({id: m.id, type: 'mission'})}
+                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === m.id && selectedProtocol.type === 'mission' ? 'border-purple-500 bg-purple-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
+                      <div className="flex justify-between items-start">
+                        <span className="font-black text-xs uppercase truncate pr-6">{m.title}</span>
+                        <button onClick={(e) => handleDeleteProtocol(e, m.id, 'mission')} className="text-gray-500 hover:text-rose-500 p-1 transition-colors"><Trash2 size={12}/></button>
                       </div>
-                      <div>
-                        <p className="font-black uppercase">{s.profiles?.display_name}</p>
-                        <p className="opacity-40">{s.missions?.title}</p>
+                      <div className="flex gap-2 mt-1 items-center">
+                         {isDraft && <span className="text-[8px] bg-yellow-500 text-black px-1 font-bold">DRAFT</span>}
+                         <span className="text-[9px] text-gray-400">{m.reward_amount} RC</span>
                       </div>
                     </div>
-                    <span className="font-black text-emerald-500">+{s.missions?.reward_amount} RC</span>
-                  </div>
-                ))}
+                  );
+                })}
+                <p className="text-[10px] font-black uppercase bg-gray-800 text-white px-2 py-1 sticky top-0 mt-4">VOUCHERS</p>
+                {vouchers.map(v => {
+                   const isDraft = v.assigned_to?.includes('DRAFT');
+                   return (
+                    <div key={v.id} 
+                        onClick={() => setSelectedProtocol({id: v.id, type: 'voucher'})}
+                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === v.id && selectedProtocol.type === 'voucher' ? 'border-blue-500 bg-blue-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
+                      <div className="flex justify-between items-start">
+                        <span className="font-black text-xs uppercase truncate pr-6">{v.title}</span>
+                        <button onClick={(e) => handleDeleteProtocol(e, v.id, 'voucher')} className="text-gray-500 hover:text-rose-500 p-1 transition-colors"><Trash2 size={12}/></button>
+                      </div>
+                      <div className="flex gap-2 mt-1 items-center">
+                         {isDraft && <span className="text-[8px] bg-yellow-500 text-black px-1 font-bold">DRAFT</span>}
+                         <span className="text-[9px] text-gray-400">{v.cost} RC</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+              <button 
+                onClick={handleExecuteDeploy}
+                disabled={submitting || !selectedProtocol}
+                className="w-full py-4 bg-[#834bf1] text-white border-2 border-white font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_#fff] hover:translate-y-1 hover:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
+              >
+                {submitting ? <Loader2 className="animate-spin mx-auto"/> : "EXECUTE DEPLOYMENT"}
+              </button>
             </div>
           </div>
         )}
 
-        {/* VIEW: QUEUE / TASK VERIFICATION */}
-        {activeTab === 'queue' && (
-          <div className="space-y-6 animate-in slide-in-from-right-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black italic uppercase font-display">Review Queue</h2>
-              <div className="px-3 py-1 bg-black text-[#ffde59] text-[10px] font-black uppercase tracking-widest border border-white">
-                Pending: {liveStats.pendingMissions}
+        {activeTab === 'missions' && (
+          <div className="max-w-2xl mx-auto py-8">
+            <h2 className="text-2xl font-black italic uppercase mb-8 flex items-center gap-3"><Zap className="text-purple-500"/> CREATE MISSION TEMPLATE</h2>
+            <form onSubmit={createDraftMission} className="space-y-6 bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_#000]">
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Partner Brand</label>
+                <select className="w-full p-4 border-4 border-black font-bold text-black bg-gray-50" required value={missionForm.brand_id} onChange={e => setMissionForm({...missionForm, brand_id: e.target.value})}>
+                  <option value="">-- SELECT ALLIANCE NODE --</option>
+                  {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
               </div>
-            </div>
-            
-            <div className="space-y-4">
-              {submissions.filter(s => s.status === 'pending').map((sub) => (
-                <div key={sub.id} className={`${card} border-[3px] ${border} p-6 shadow-[8px_8px_0px_0px_#000] relative group`}>
-                   <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h4 className="font-black text-lg uppercase italic font-display leading-none">{sub.profiles?.display_name}</h4>
-                        <p className="text-[9px] font-bold text-[#834bf1] uppercase tracking-widest mt-1 italic">MISSION: {sub.missions?.title}</p>
-                      </div>
-                      <div className="bg-yellow-400 w-3 h-3 rounded-full animate-pulse border-2 border-black"></div>
-                   </div>
-                   <div className="flex gap-2">
-                     <button onClick={() => setSelectedSubmission(sub)} className="flex-1 bg-black text-[#39ff14] py-4 font-black text-[10px] uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_0px_#834bf1] active:translate-y-1 active:shadow-none transition-all">Verify Evidence</button>
-                     <button className="w-12 border-2 border-black flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"><X size={20}/></button>
-                   </div>
-                </div>
-              ))}
-              {liveStats.pendingMissions === 0 && (
-                <div className="py-32 text-center border-4 border-dashed border-black/10">
-                   <p className="font-black uppercase text-xs tracking-[0.5em] opacity-20 italic">Grid Silent. No transmissions.</p>
-                </div>
-              )}
-            </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Mission Title</label>
+                <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="e.g. VISUAL CAPTURE: CABIN17" required value={missionForm.title} onChange={e => setMissionForm({...missionForm, title: e.target.value})}/>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Reward (RC)</label>
+                <input className="w-full p-4 border-4 border-black font-bold text-black" type="number" placeholder="000" required value={missionForm.reward} onChange={e => setMissionForm({...missionForm, reward: e.target.value})}/>
+              </div>
+              <div className="bg-gray-100 p-4 border-2 border-black space-y-2">
+                <p className="text-xs font-black text-black flex items-center gap-2"><ShieldCheck size={14}/> VERIFICATION FACTORS</p>
+                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 1 (e.g. Primary Tag)" value={missionForm.checkpoint1} onChange={e => setMissionForm({...missionForm, checkpoint1: e.target.value})}/>
+                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 2 (e.g. Visual Match)" value={missionForm.checkpoint2} onChange={e => setMissionForm({...missionForm, checkpoint2: e.target.value})}/>
+                <input className="w-full p-2 border border-black text-black text-sm" placeholder="Factor 3 (e.g. Caption Check)" value={missionForm.checkpoint3} onChange={e => setMissionForm({...missionForm, checkpoint3: e.target.value})}/>
+              </div>
+              <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase border-2 border-transparent hover:bg-gray-800 transition-all">
+                {submitting ? 'SYNCING...' : 'SAVE AS DRAFT'}
+              </button>
+            </form>
           </div>
         )}
 
-        {/* VIEW: AGENTS / USER MONITORING */}
-        {activeTab === 'agents' && (
-          <div className="space-y-6 animate-in slide-in-from-right-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={18} />
-              <input className={`w-full ${card} border-[3px] ${border} p-5 pl-12 font-bold text-xs uppercase tracking-widest outline-none focus:bg-[#ffde59] focus:text-black transition-all`} placeholder="Search Identity Node..." />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {users.map(u => (
-                <div key={u.id} className={`${card} border-[3px] ${border} p-5 flex justify-between items-center group active:scale-[0.98] transition-all cursor-pointer`} onClick={() => setInspectedAgent(u)}>
-                   <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-black italic border-2 border-white shadow-[3px_3px_0px_0px_#834bf1]">
-                        {u.display_name?.charAt(0)}
-                      </div>
-                      <div>
-                        <h4 className="font-black text-sm uppercase italic truncate w-32">{u.display_name}</h4>
-                        <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest">@{u.handle || 'unlinked'}</p>
-                      </div>
-                   </div>
-                   <div className="text-right">
-                      <div className="text-lg font-black italic text-emerald-500 leading-none">{u.reelcoins} RC</div>
-                      <p className="text-[8px] font-black opacity-30 uppercase tracking-[0.2em] mt-1">LIQUID VAULT</p>
-                   </div>
-                   <MoreVertical size={16} className="opacity-20" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* VIEW: DEPLOY / WAR ROOM */}
-        {activeTab === 'deploy' && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-4">
-             <div className="bg-black text-white p-6 border-[4px] border-white shadow-[10px_10px_0px_0px_#834bf1]">
-                <h2 className="text-2xl font-black italic uppercase font-display mb-2">Protocol Deployment</h2>
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-relaxed">Precision targeting of creator nodes. Select nodes, verify protocol, and execute.</p>
-             </div>
-
-             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                   <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Target Nodes: <span className="text-[#39ff14]">{selectedCreatorIds.length || 'ALL (GLOBAL)'}</span></p>
-                   <button onClick={() => setSelectedCreatorIds(users.map(u => u.firebase_uid))} className="text-[9px] font-black uppercase text-[#834bf1] underline decoration-2">Link All Nodes</button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-3">
-                      <p className="text-[8px] font-black uppercase opacity-30">Missions</p>
-                      {missions.filter(m => m.status === 'draft').map(m => (
-                        <div key={m.id} onClick={() => setSelectedProtocol({id: m.id, type: 'mission'})}
-                             className={`p-4 border-2 ${selectedProtocol?.id === m.id ? 'bg-[#834bf1] text-white border-white scale-105' : `${card} border-black/10`} cursor-pointer transition-all`}>
-                          <p className="text-[10px] font-black uppercase truncate">{m.title}</p>
-                          <p className="text-[8px] opacity-40 mt-1">{m.reward_amount} RC</p>
-                        </div>
-                      ))}
-                   </div>
-                   <div className="space-y-3">
-                      <p className="text-[8px] font-black uppercase opacity-30">Vouchers</p>
-                      {vouchers.filter(v => v.status === 'draft').map(v => (
-                        <div key={v.id} onClick={() => setSelectedProtocol({id: v.id, type: 'voucher'})}
-                             className={`p-4 border-2 ${selectedProtocol?.id === v.id ? 'bg-[#ffde59] text-black border-black scale-105' : `${card} border-black/10`} cursor-pointer transition-all`}>
-                          <p className="text-[10px] font-black uppercase truncate">{v.title}</p>
-                          <p className="text-[8px] opacity-40 mt-1">{v.cost} RC</p>
-                        </div>
-                      ))}
-                   </div>
-                </div>
-             </div>
-
-             <button onClick={handleExecuteDeploy} disabled={submitting || !selectedProtocol}
-                className="w-full py-6 bg-[#39ff14] text-black border-[4px] border-black font-black uppercase text-xs italic shadow-[8px_8px_0px_0px_#000] active:translate-y-1 active:shadow-none transition-all disabled:opacity-30 disabled:grayscale">
-                {submitting ? 'EXECUTING...' : 'EXECUTE GLOBAL BROADCAST'}
-             </button>
+        {activeTab === 'vouchers' && (
+          <div className="max-w-2xl mx-auto py-8">
+            <h2 className="text-2xl font-black italic uppercase mb-8 flex items-center gap-3"><Gift className="text-blue-500"/> CREATE VOUCHER TEMPLATE</h2>
+            <form onSubmit={createDraftVoucher} className="space-y-6 bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_#000]">
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Alliance Node</label>
+                <select className="w-full p-4 border-4 border-black font-bold text-black bg-gray-50" required value={voucherForm.brand_id} onChange={e => setVoucherForm({...voucherForm, brand_id: e.target.value})}>
+                  <option value="">-- SELECT BRAND --</option>
+                  {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Voucher Identity</label>
+                <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="e.g. 50% OFF PREMIUM DINING" required value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})}/>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <label className="text-[10px] font-black uppercase text-gray-400">Acquisition Cost (RC)</label>
+                   <input className="w-full p-4 border-4 border-black font-bold text-black" type="number" placeholder="COST (RC)" required value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})}/>
+                 </div>
+                 <div>
+                   <label className="text-[10px] font-black uppercase text-gray-400">System Hash Code</label>
+                   <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="OPTIONAL HASH" value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})}/>
+                 </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400">Briefing (Optional)</label>
+                <textarea className="w-full p-4 border-4 border-black font-bold text-black resize-none" rows={3} placeholder="Describe the voucher perks..." value={voucherForm.description} onChange={e => setVoucherForm({...voucherForm, description: e.target.value})}></textarea>
+              </div>
+              <button disabled={submitting} className="w-full py-4 bg-black text-white font-black uppercase border-2 border-black shadow-[4px_4px_0px_0px_#000] hover:bg-gray-900 transition-all">
+                {submitting ? 'SYNCING...' : 'SAVE AS DRAFT'}
+              </button>
+            </form>
           </div>
         )}
 
         {activeTab === 'brands' && <BrandManager />}
+        
+        {activeTab === 'users' && (
+          <div className="bg-white text-black p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000]">
+            <h3 className="font-black mb-6 text-xl uppercase italic font-display">Full Agent Roster</h3>
+            <div className="overflow-auto max-h-[600px]">
+              {users.map(u => (
+                <div key={u.id} className="border-b-2 border-gray-100 py-4 flex justify-between items-center hover:bg-gray-50 px-4 transition-colors">
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-black italic">{u.display_name?.charAt(0)}</div>
+                      <div>
+                        <div className="font-bold uppercase text-sm tracking-tight">{u.display_name}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">{u.email}</div>
+                      </div>
+                   </div>
+                   <div className="flex gap-6 items-center">
+                      <div className="text-right">
+                         <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Liquid Assets</div>
+                         <div className="font-bold text-emerald-600 text-sm">{u.reelcoins} RC</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                         {u.card_status === 'pending' ? (
+                           <div className="flex gap-2">
+                             <button onClick={() => handleUpdateStatus(u.firebase_uid, 'rejected')} className="p-2 border-2 border-black bg-rose-500 text-white hover:bg-rose-600 transition-colors" title="Reject"><X size={14} strokeWidth={3}/></button>
+                             <button onClick={() => handleUpdateStatus(u.firebase_uid, 'approved')} className="p-2 border-2 border-black bg-emerald-500 text-white hover:bg-emerald-600 transition-colors" title="Approve"><Check size={14} strokeWidth={3}/></button>
+                           </div>
+                         ) : (
+                           <span className={`px-3 py-1 border-2 border-black text-[9px] font-black uppercase h-fit tracking-widest ${u.card_status === 'approved' ? 'bg-emerald-400 text-black' : 'bg-rose-400 text-black'}`}>{u.card_status}</span>
+                         )}
+                      </div>
+                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-      </main>
-
-      {/* MOBILE BOTTOM NAVIGATION - Thumb Optimized */}
-      <nav className={`fixed bottom-0 left-0 right-0 ${card} border-t-4 ${border} z-[150] px-4 py-3 flex justify-around items-center md:hidden`}>
-        {[
-          { id: 'home', icon: LayoutDashboard, label: 'HUB' },
-          { id: 'queue', icon: ListChecks, label: 'QUEUE' },
-          { id: 'deploy', icon: Send, label: 'WAR' },
-          { id: 'agents', icon: Users, label: 'AGENTS' },
-          { id: 'brands', icon: Building2, label: 'BRANDS' },
-        ].map(nav => (
-          <button 
-            key={nav.id}
-            onClick={() => setActiveTab(nav.id as any)}
-            className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === nav.id ? 'text-[#834bf1] scale-110' : 'opacity-30'}`}
-          >
-            <nav.icon size={20} strokeWidth={activeTab === nav.id ? 3 : 2} />
-            <span className="text-[7px] font-black uppercase tracking-widest">{nav.label}</span>
-          </button>
-        ))}
-      </nav>
-
-      {/* AGENT INSPECTION DRAWER - Mobile Experience */}
-      {inspectedAgent && (
-        <div className="fixed inset-0 z-[200] flex items-end justify-center p-4">
-           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setInspectedAgent(null)}></div>
-           <div className={`relative w-full max-w-lg bg-white text-black border-[6px] border-black shadow-[0_-20px_50px_rgba(0,0,0,0.5)] p-8 animate-in slide-in-from-bottom-10 duration-500`}>
-              <div className="flex justify-between items-start mb-8">
-                 <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 bg-black text-white flex items-center justify-center font-black text-2xl italic border-2 border-black shadow-[4px_4px_0px_0px_#834bf1]">
-                      {inspectedAgent.display_name?.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-black uppercase italic font-display leading-none">{inspectedAgent.display_name}</h3>
-                      <p className="text-xs font-bold opacity-40 uppercase tracking-[0.2em] mt-1 italic">{inspectedAgent.email}</p>
-                    </div>
-                 </div>
-                 <button onClick={() => setInspectedAgent(null)} className="p-2 bg-slate-100 border-2 border-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"><X size={20} /></button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                 <div className="bg-emerald-50 border-[3px] border-emerald-500 p-5 shadow-[4px_4px_0px_0px_#000]">
-                    <p className="text-[8px] font-black uppercase opacity-40 mb-1">Liquid Vault</p>
-                    <p className="text-2xl font-black italic text-emerald-600 font-display leading-none">{inspectedAgent.reelcoins} RC</p>
-                 </div>
-                 <div className="bg-blue-50 border-[3px] border-blue-500 p-5 shadow-[4px_4px_0px_0px_#000]">
-                    <p className="text-[8px] font-black uppercase opacity-40 mb-1">Performance</p>
-                    <p className="text-2xl font-black italic text-blue-600 font-display leading-none">94%</p>
-                 </div>
-              </div>
-
-              <div className="space-y-3 mb-10">
-                 <button className="w-full bg-[#834bf1] text-white py-5 font-black uppercase text-xs tracking-widest border-[4px] border-black shadow-[6px_6px_0px_0px_#000] flex items-center justify-center gap-3">
-                    <MessageSquare size={18} /> Sync Direct Message
-                 </button>
-                 <button className="w-full bg-black text-white py-4 font-black uppercase text-[10px] tracking-widest border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]">
-                    Audit Identity History
-                 </button>
-                 <button className="w-full bg-rose-500 text-white py-4 font-black uppercase text-[10px] tracking-widest border-[4px] border-black shadow-[4px_4px_0px_0px_#000]">
-                    Sever Node Link (Ban)
-                 </button>
-              </div>
+        {activeTab === 'submissions' && (
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             {submissions.filter(s => s.status === 'pending').length === 0 && <div className="col-span-full py-20 text-center opacity-40 font-black uppercase text-xs tracking-[0.5em] italic">No pending transmissions detected.</div>}
+             {submissions.filter(s => s.status === 'pending').map(sub => (
+               <div key={sub.id} className="bg-white p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-black hover:-translate-y-1 transition-transform">
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="font-black text-lg uppercase leading-tight italic">{sub.profiles?.display_name}</h4>
+                    <span className="text-[8px] bg-slate-100 px-2 py-1 font-bold border border-black uppercase tracking-widest italic">Mission Signal</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">Deployment: {sub.missions?.title || sub.mission?.title}</p>
+                  <button onClick={() => setSelectedSubmission(sub)} className="bg-yellow-400 w-full py-3 font-black text-xs border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all uppercase tracking-widest italic">Verify Evidence</button>
+               </div>
+             ))}
            </div>
-        </div>
-      )}
+        )}
+
+        {activeTab === 'ledger' && (
+          <div className="bg-white text-black p-8 border-4 border-black shadow-[8px_8px_0px_0px_#000]">
+            <h3 className="font-black mb-8 text-2xl uppercase italic font-display tracking-tight">Global Transaction Ledger</h3>
+            <div className="overflow-auto max-h-[600px] border-[3px] border-black">
+              {transactions.map(t => (
+                <div key={t.id} className="border-b-2 border-slate-100 last:border-b-0 py-4 px-6 flex justify-between items-center text-[11px] font-bold hover:bg-slate-50 transition-colors">
+                   <div className="flex items-center gap-6">
+                     <span className="text-gray-400 font-mono text-[9px] uppercase">{new Date(t.created_at).toLocaleDateString()}</span>
+                     <span className="uppercase tracking-tight">{t.description}</span>
+                   </div>
+                   <span className={`italic font-black text-sm ${t.amount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{t.amount > 0 ? '+' : ''}{t.amount} RC</span>
+                </div>
+              ))}
+              {transactions.length === 0 && <div className="p-12 text-center opacity-30 font-black uppercase text-[10px] tracking-widest italic">Ledger empty. No assets shifted.</div>}
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 };
