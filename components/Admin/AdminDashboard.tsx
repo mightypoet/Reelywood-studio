@@ -85,12 +85,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const fetchAllData = async () => {
     if (!supabase) return;
     try {
+      // TASK 1: Simplified fetch for vouchers and correct table for brands
       const [u, m, v, t, b, s] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
-        // Task 1: Simplified fetch for vouchers to ensure they load regardless of brand relationship
+        // Simplified fetch: guaranteed delivery without join failure risk
         supabase.from('vouchers').select('*').order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').ilike('description', '%voucher%').order('created_at', { ascending: false }),
+        // Updated Brand Fetch from partner_brands
         supabase.from('partner_brands').select('id, name').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false })
       ]);
@@ -104,10 +106,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       }
 
       if (t.data) setTransactions(t.data);
+      
       if (b.data) {
         console.log('SYNC: Alliance Nodes Fetched:', b.data);
         setBrandOptions(b.data);
       }
+      
       if (s.data) setSubmissions(s.data);
     } catch (e) { console.error("TERMINAL_FETCH_ERROR:", e); }
   };
@@ -161,7 +165,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         expires_at: missionForm.expires_at ? new Date(missionForm.expires_at).toISOString() : null
       };
       
-      console.log('SYNC: Saving Mission Draft:', payload);
       const { error } = await supabase.from('missions').insert([payload]);
       if (error) throw error;
 
@@ -177,7 +180,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     if (!supabase) return;
 
     if (!voucherForm.brand_id) {
-      alert("⚠️ PROTOCOL ERROR: Please select a valid Alliance Node (Brand) from the database.");
+      alert("⚠️ PROTOCOL ERROR: Please select a valid Alliance Node (Brand).");
       return;
     }
 
@@ -194,14 +197,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         code: voucherForm.code || 'REEL-' + Math.random().toString(36).substr(2, 6).toUpperCase()
       };
       
-      console.log('SYNC: Transmitting Voucher Payload (Protocol Secure):', payload);
-      
       const { error } = await supabase.from('vouchers').insert([payload]);
       if (error) throw error;
       
       showToast('success', "VOUCHER TEMPLATE SAVED AS DRAFT");
       setVoucherForm({ title: '', cost: '', brand_id: '', code: '', description: '', expires_at: '' });
       
+      // TASK 4: Refresh on Save
       fetchAllData();
     } catch (e: any) { 
       console.error('SYNC_FATAL_ERROR:', e);
@@ -214,7 +216,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const card = darkMode ? 'bg-[#1a1a1a]' : 'bg-white';
   const border = darkMode ? 'border-white' : 'border-black';
 
-  // Task 2: Robust mapping with fallbacks for display titles
+  // TASK 3: Robust Deployment List Mapping
   const deployableItems = [
     ...missions.map(m => ({ 
       id: m.id, 
@@ -349,6 +351,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                <div className="grid grid-cols-2 gap-4">
                  <div className="col-span-2 border-[3px] border-black p-2 bg-white">
                   <label className="block font-black text-[9px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
+                  {/* TASK 2: Correct Dropdown logic */}
                   <select 
                     className="w-full bg-transparent outline-none font-black uppercase text-black text-xs" 
                     required 
@@ -384,6 +387,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               
               <div className="border-4 border-black p-3 mb-4 bg-white">
                 <label className="block font-black text-[10px] uppercase mb-1 text-black/40 italic">ALLIANCE NODE</label>
+                {/* TASK 2: Correct Dropdown logic for vouchers */}
                 <select
                   className="w-full bg-transparent outline-none font-black uppercase text-black text-xs"
                   required
