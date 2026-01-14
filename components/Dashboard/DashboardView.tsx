@@ -6,7 +6,7 @@ import { signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'fireb
 import { 
   LogOut, User, Wallet, CheckCircle2, ArrowLeft, Loader2,
   Lock, X, Bell, Fingerprint, Clock, Zap, Sparkles, Gift,
-  Target, Info, MapPin, TrendingUp, Maximize2, RefreshCw, Building2
+  Target, Info, MapPin, TrendingUp, Maximize2, RefreshCw, Building2, CheckCircle
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 
@@ -47,7 +47,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (allMissions) {
         const filtered = allMissions.filter(m => {
           if (m.assigned_to?.includes('DRAFT')) return false;
-          // Missions targeting check: Only show if explicitly assigned OR if assigned_to is empty array (Global)
           const isGlobal = Array.isArray(m.assigned_to) && m.assigned_to.length === 0;
           const isAssigned = m.assigned_to?.includes(user.uid) || m.assigned_to?.includes(profileData?.id);
           return isGlobal || isAssigned;
@@ -61,13 +60,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       ]);
 
       if (rRes.data) {
-        // LOCKDOWN: Strict filtering for rewards to prevent leakage
         const filteredRewards = rRes.data.filter(r => {
-          // Rule 1: A reward is Global ONLY if assigned_to is an empty array [].
           const isGlobal = Array.isArray(r.assigned_to) && r.assigned_to.length === 0;
-          // Rule 2: If not global, only show if current user's UID is in the array.
           const isAssigned = Array.isArray(r.assigned_to) && r.assigned_to.includes(user.uid);
-          
           return isGlobal || isAssigned;
         });
         setRewards(filteredRewards);
@@ -94,10 +89,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, []);
 
-  // --- SAFE REAL-TIME SYNC LOOP ---
   useEffect(() => {
     if (!currentUser || !supabase) return;
-
     const client = supabase;
     const channel = client.channel(`user-sync-${currentUser.uid}`)
       .on(
@@ -109,15 +102,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           filter: `firebase_uid=eq.${currentUser.uid}` 
         },
         (payload) => {
-          console.log("Real-time Identity Update:", payload.new);
           setProfile((current: any) => ({ ...current, ...payload.new }));
         }
       )
       .subscribe();
-
-    return () => { 
-        client.removeChannel(channel); 
-    };
+    return () => { client.removeChannel(channel); };
   }, [currentUser]);
 
   const handleRedeem = async (reward: any) => {
@@ -275,25 +264,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       <div className="col-span-full py-24 text-center opacity-20 font-black uppercase text-xs tracking-widest italic border-4 border-dashed border-black">Scanning grid...</div>
                     ) : (
                       missions.map((m) => {
-                        const submission = userSubmissions.find(s => s.mission_id === m.id);
+                        // FIX: Use String comparison for IDs to avoid data type mismatch
+                        const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
+                        // FIX: Logic for pending/done states
                         const isDone = submission?.status === 'approved' || submission?.status === 'completed';
                         const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
+                        
                         const brand = m.partner_brands;
 
+                        // FIX: Update card styles based on status
                         const cardStyles = isDone 
-                          ? 'bg-emerald-50 border-emerald-400 shadow-emerald-200' 
+                          ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200' 
                           : isPending 
-                            ? 'bg-yellow-50 border-yellow-400 shadow-yellow-200' 
+                            ? 'bg-yellow-50 border-yellow-500 shadow-yellow-200' 
                             : 'bg-white border-black shadow-black';
 
                         const buttonStyles = isDone 
-                          ? 'bg-emerald-500 text-white border-emerald-600' 
+                          ? 'bg-emerald-600 text-white border-emerald-700 cursor-not-allowed opacity-80' 
                           : isPending 
-                            ? 'bg-yellow-400 text-black border-yellow-500' 
-                            : 'bg-[#834bf1] text-white hover:bg-black';
+                            ? 'bg-yellow-500 text-black border-yellow-600 cursor-not-allowed opacity-80' 
+                            : 'bg-[#834bf1] text-white hover:bg-black shadow-black';
 
                         return (
-                          <div key={m.id} className={`border-[4px] p-8 shadow-[8px_8px_0px_0px] group hover:-translate-y-1 transition-all flex flex-col ${cardStyles}`}>
+                          <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardStyles}`}>
+                             
+                             {/* VERIFIED STAMP OVERLAY */}
+                             {isDone && (
+                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20">
+                                 <div className="border-[6px] border-emerald-600/30 px-6 py-2 rounded-xl">
+                                    <span className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-emerald-600/30 font-display">
+                                      MISSION ACCOMPLISHED
+                                    </span>
+                                 </div>
+                               </div>
+                             )}
+
                              <div className="flex justify-between items-start mb-6">
                                 <div className="w-14 h-14 bg-white border-[3px] border-black flex items-center justify-center p-2 shadow-[3px_3px_0px_0px_#000]">
                                    {brand?.logo_url ? (
@@ -308,7 +313,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                              </div>
                              
                              <div className="mb-4">
-                               <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isDone ? 'text-emerald-600' : isPending ? 'text-yellow-600' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood Labs'}</p>
+                               <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isDone ? 'text-emerald-700' : isPending ? 'text-yellow-700' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood Labs'}</p>
                                <h3 className="text-xl font-black uppercase italic font-display leading-tight">{m.title}</h3>
                              </div>
                              
@@ -316,11 +321,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                              
                              <div className="mt-auto">
                                 <button 
-                                  onClick={() => setSelectedMission(m)}
+                                  // FIX: Strict access control
+                                  onClick={() => !isDone && !isPending && setSelectedMission(m)}
                                   disabled={isDone || isPending}
-                                  className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all ${buttonStyles}`}
+                                  className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${buttonStyles}`}
                                 >
-                                  {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEW IN PROGRESS' : 'INITIALIZE MISSION'}
+                                  {isDone ? 'MISSION COMPLETED' : isPending ? 'PENDING REVIEW' : 'INITIALIZE MISSION'}
                                 </button>
                              </div>
                           </div>
