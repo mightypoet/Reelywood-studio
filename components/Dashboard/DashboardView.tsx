@@ -3,27 +3,9 @@ import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
 import { signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { 
-  LogOut, 
-  User, 
-  Wallet, 
-  CheckCircle2, 
-  ArrowLeft,
-  Loader2,
-  Lock,
-  X,
-  Bell,
-  Fingerprint,
-  Clock,
-  Zap,
-  Sparkles,
-  Gift,
-  Target,
-  Info,
-  MapPin,
-  TrendingUp,
-  Maximize2,
-  RefreshCw,
-  Building2
+  LogOut, User, Wallet, CheckCircle2, ArrowLeft, Loader2,
+  Lock, X, Bell, Fingerprint, Clock, Zap, Sparkles, Gift,
+  Target, Info, MapPin, TrendingUp, Maximize2, RefreshCw, Building2
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 
@@ -98,12 +80,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, []);
 
-  // --- REAL-TIME SYNC LOOP ---
+  // --- SAFE REAL-TIME SYNC LOOP ---
   useEffect(() => {
     if (!currentUser || !supabase) return;
 
-    // Listen for changes to THIS user's profile specifically
-    const profileSub = supabase.channel(`user-sync-${currentUser.uid}`)
+    const client = supabase;
+    const channel = client.channel(`user-sync-${currentUser.uid}`)
       .on(
         'postgres_changes',
         { 
@@ -114,13 +96,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         },
         (payload) => {
           console.log("Real-time Identity Update:", payload.new);
-          // Instantly update local state with new Balance or Status
           setProfile((current: any) => ({ ...current, ...payload.new }));
         }
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(profileSub); };
+    return () => { 
+        client.removeChannel(channel); 
+    };
   }, [currentUser]);
 
   const handleRedeem = async (reward: any) => {
@@ -157,12 +140,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return (
       <div className="min-h-screen bg-[#f0f0f0] flex items-center justify-center p-6">
         <div className="bg-white border-[4px] border-black shadow-[12px_12px_0px_0px_#000] p-10 max-w-md w-full space-y-8">
-           <div className="text-center space-y-4 text-black">
+           <div className="text-center space-y-4">
               <div className="w-16 h-16 bg-[#834bf1] border-[3px] border-black mx-auto flex items-center justify-center shadow-[4px_4px_0px_0px_#000]">
                 <Fingerprint className="text-white" size={32} />
               </div>
-              <h1 className="text-3xl font-black italic uppercase font-display">Hub Access Required</h1>
-              <p className="text-[10px] font-black uppercase text-black/40 tracking-widest">Verify identity node to continue</p>
+              <h1 className="text-3xl font-black italic uppercase font-display text-black">Hub Access Required</h1>
+              <p className="text-[10px] font-black uppercase text-black/40 tracking-widest text-black">Verify identity node to continue</p>
            </div>
            <button 
              onClick={() => signInWithPopup(auth, googleProvider)}
@@ -217,7 +200,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <div className="grid lg:grid-cols-12 gap-12">
           <div className="lg:col-span-4 space-y-12">
             <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000] relative overflow-hidden group">
-               <div className="absolute top-4 right-4 bg-[#ffde59] border-[3px] border-black px-3 py-1 font-black text-[9px] uppercase tracking-widest shadow-[3px_3px_0px_0px_#000]">
+               <div className="absolute top-4 right-4 bg-[#ffde59] border-[3px] border-black px-3 py-1 font-black text-[9px] uppercase tracking-widest shadow-[3px_3px_0px_0px_#000] text-black">
                   {isApproved ? 'VERIFIED' : 'SYNCING'}
                </div>
                <div className="w-32 h-32 border-[5px] border-black mx-auto mb-6 bg-slate-100 overflow-hidden shadow-[6px_6px_0px_0px_#834bf1]">
@@ -261,17 +244,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             </div>
 
             {!isApproved && (
-               <div className="bg-[#ffde59] border-[6px] border-black p-12 text-center shadow-[16px_16px_0px_0px_#000] animate-in zoom-in duration-300">
+               <div className="bg-[#ffde59] border-[6px] border-black p-12 text-center shadow-[16px_16px_0px_0px_#000] animate-in zoom-in duration-300 text-black">
                   <Lock size={48} className="mx-auto mb-6 text-black" strokeWidth={3} />
-                  <h3 className="text-3xl font-black uppercase italic font-display text-black">Identity Syncing</h3>
-                  <p className="text-xs font-bold uppercase tracking-tight leading-relaxed max-w-sm mx-auto mt-4 text-black">
+                  <h3 className="text-3xl font-black uppercase italic font-display">Identity Syncing</h3>
+                  <p className="text-xs font-bold uppercase tracking-tight leading-relaxed max-w-sm mx-auto mt-4">
                     Your credentials are being reviewed by the Reelywood Dispatch. Access will unlock upon node verification.
                   </p>
                </div>
             )}
 
             {isApproved && (
-              <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="space-y-8 animate-in fade-in duration-500 text-black">
                 {activeTab === 'missions' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {missions.length === 0 ? (

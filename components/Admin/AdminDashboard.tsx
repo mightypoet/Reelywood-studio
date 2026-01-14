@@ -243,7 +243,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         </div>
       )}
 
-      <main className="p-6">
+      <main className="p-6 text-black">
         {activeTab === 'home' && renderHome()}
         {activeTab === 'queue' && renderQueue()}
         {activeTab === 'users' && renderUserRoster()}
