@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Zap, Calendar, Sparkles, Bot } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -115,13 +114,6 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
     });
   };
 
-  const handleEnterClick = () => {
-    const aboutSection = document.getElementById('about');
-    if (aboutSection) {
-      aboutSection.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   return (
     <section 
       className="relative min-h-screen flex flex-col bg-white dark:bg-[#0a0a0a] transition-colors overflow-x-hidden"
@@ -162,8 +154,8 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             </div>
 
             <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pt-8">
-              <button onClick={handleEnterClick} className="group w-full sm:w-auto bg-[#834bf1] text-white px-12 py-8 rounded-none font-black text-sm transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2">
-                <span className="italic font-display">Enter Reelywood →</span>
+              <button onClick={onDashboardClick} className="group w-full sm:w-auto bg-[#834bf1] text-white px-12 py-8 rounded-none font-black text-sm transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2">
+                <span>Claim Creator ID</span> <Calendar size={22} className="group-hover:rotate-12 transition-transform" />
               </button>
               <button onClick={onDashboardClick} className="w-full sm:w-auto bg-white text-black px-12 py-8 rounded-none font-black text-sm transition-all flex items-center justify-center space-x-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 group">
                 <span>Enter Hub</span> <ArrowRight size={22} className="group-hover:translate-x-2 transition-transform" />
