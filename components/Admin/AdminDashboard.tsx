@@ -12,6 +12,7 @@ import {
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
 import { AgentDetailView } from './AgentDetailView';
+import { CreationWizard } from './CreationWizard';
 
 // --- TYPES ---
 export interface Profile {
@@ -45,11 +46,13 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Alert[]>([]);
   
-  // Detail Sheets
+  // Detail Sheets & Modals
   const [selectedAgent, setSelectedAgent] = useState<Profile | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [creationMode, setCreationMode] = useState<'mission' | 'voucher' | null>(null);
   const [showNotifs, setShowNotifs] = useState(false);
 
   useEffect(() => {
@@ -91,17 +94,19 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const fetchAllData = async () => {
     if (!supabase) return;
     try {
-      const [u, m, v, s] = await Promise.all([
+      const [u, m, v, s, b] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)'),
         supabase.from('rewards').select('*, partner_brands(*)'),
-        supabase.from('submissions').select('*, profiles(*), missions(*)').order('created_at', { ascending: false })
+        supabase.from('submissions').select('*, profiles(*), missions(*)').order('created_at', { ascending: false }),
+        supabase.from('partner_brands').select('*')
       ]);
       
       if (u.data) setUsers(u.data);
       if (m.data) setMissions(m.data);
       if (v.data) setVouchers(v.data);
       if (s.data) setSubmissions(s.data);
+      if (b.data) setBrands(b.data);
 
       const alerts: Alert[] = [];
       if (v.data?.some((r: any) => (r.stock || 0) < 5)) {
@@ -208,6 +213,31 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     </div>
   );
 
+  const renderMenu = () => (
+    <div className="space-y-4 animate-in fade-in duration-300">
+        <button 
+            onClick={() => setCreationMode('mission')}
+            className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all group"
+        >
+            <span className="font-black uppercase text-sm italic group-hover:text-[#834bf1]">New Mission Brief</span>
+            <Zap size={20} className="text-[#834bf1]" />
+        </button>
+
+        <button 
+            onClick={() => setCreationMode('voucher')}
+            className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all group"
+        >
+            <span className="font-black uppercase text-sm italic group-hover:text-[#ffde59]">Generate Voucher Node</span>
+            <Gift size={20} className="text-[#ffde59]" />
+        </button>
+
+        <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black opacity-50 cursor-not-allowed">
+            <span className="font-black uppercase text-sm italic">Audit Ledger (Coming Soon)</span>
+            <FileText size={20} className="text-slate-400" />
+        </button>
+    </div>
+  );
+
   return (
     <div className={`min-h-screen bg-slate-50 pb-32 font-lexend`}>
       <header className="bg-white border-b-4 border-black p-4 sticky top-0 z-[100] flex justify-between items-center">
@@ -248,22 +278,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         {activeTab === 'queue' && renderQueue()}
         {activeTab === 'users' && renderUserRoster()}
         {activeTab === 'brands' && <BrandManager />}
-        {activeTab === 'menu' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black">
-               <span className="font-black uppercase text-sm italic">New Mission Brief</span>
-               <Zap size={20} className="text-[#834bf1]" />
-             </button>
-             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black">
-               <span className="font-black uppercase text-sm italic">Generate Voucher Node</span>
-               <Gift size={20} className="text-[#ffde59]" />
-             </button>
-             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black">
-               <span className="font-black uppercase text-sm italic">Audit Ledger</span>
-               <FileText size={20} className="text-slate-400" />
-             </button>
-          </div>
-        )}
+        {activeTab === 'menu' && renderMenu()}
       </main>
 
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-black border-4 border-white p-2 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
@@ -292,6 +307,19 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           onClose={() => { setSelectedSubmission(null); fetchAllData(); }} 
           onRefresh={fetchAllData} 
         />
+      )}
+
+      {creationMode && (
+         <CreationWizard 
+            type={creationMode}
+            users={users}
+            brands={brands}
+            onClose={() => setCreationMode(null)}
+            onSuccess={() => {
+                showToast('success', `${creationMode.toUpperCase()} DEPLOYED SUCCESSFULLY`);
+                fetchAllData();
+            }}
+         />
       )}
 
       {notify && (
