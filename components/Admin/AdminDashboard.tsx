@@ -27,6 +27,12 @@ export interface Profile {
   created_at: string;
 }
 
+interface Alert {
+  id: number;
+  text: string;
+  type: 'warning' | 'critical';
+}
+
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
@@ -39,7 +45,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Alert[]>([]);
   
   // Detail Sheets
   const [selectedAgent, setSelectedAgent] = useState<Profile | null>(null);
@@ -97,9 +103,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       if (v.data) setVouchers(v.data);
       if (s.data) setSubmissions(s.data);
 
-      const alerts = [];
-      if (v.data?.some(r => r.stock < 5)) alerts.push({ id: 1, text: "Low Voucher Stock Detected", type: "warning" });
-      if (s.data?.filter(sub => sub.status === 'pending').length > 5) alerts.push({ id: 2, text: "High Submission Queue Volume", type: "critical" });
+      const alerts: Alert[] = [];
+      if (v.data?.some((r: any) => (r.stock || 0) < 5)) {
+        alerts.push({ id: 1, text: "Low Voucher Stock Detected", type: "warning" });
+      }
+      const pendingCount = s.data?.filter((sub: any) => sub.status === 'pending').length || 0;
+      if (pendingCount > 5) {
+        alerts.push({ id: 2, text: "High Submission Queue Volume", type: "critical" });
+      }
       setNotifications(alerts);
 
     } catch (e) { console.error(e); }
@@ -199,7 +210,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   return (
     <div className={`min-h-screen bg-slate-50 pb-32 font-lexend`}>
-      {/* HEADER MONITOR */}
       <header className="bg-white border-b-4 border-black p-4 sticky top-0 z-[100] flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-black text-[#ffde59] flex items-center justify-center border-2 border-black shadow-[3px_3px_0px_0px_#834bf1]">
@@ -219,7 +229,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         </div>
       </header>
 
-      {/* NOTIFICATION OVERLAY */}
       {showNotifs && (
         <div className="fixed top-20 right-4 w-64 bg-black border-4 border-white p-4 shadow-[10px_10px_0px_0px_rgba(0,0,0,0.5)] z-[1000] animate-in slide-in-from-top-4">
           <h5 className="text-[10px] font-black uppercase text-white/40 tracking-[0.3em] mb-4">System Alerts</h5>
@@ -234,7 +243,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         </div>
       )}
 
-      {/* MAIN VIEWPORT */}
       <main className="p-6">
         {activeTab === 'home' && renderHome()}
         {activeTab === 'queue' && renderQueue()}
@@ -258,7 +266,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         )}
       </main>
 
-      {/* THUMB-RULE NAVIGATION (BOTTOM TAB BAR) */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-black border-4 border-white p-2 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
         {[
           { id: 'home', icon: Home, label: 'HUB' },
@@ -275,7 +282,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         ))}
       </nav>
 
-      {/* DETAIL SHEETS */}
       {selectedAgent && (
         <AgentDetailView agent={selectedAgent} onClose={() => { setSelectedAgent(null); fetchAllData(); }} />
       )}

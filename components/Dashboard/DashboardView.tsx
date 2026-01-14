@@ -102,6 +102,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   useEffect(() => {
     if (!currentUser || !supabase) return;
 
+    // Listen for changes to THIS user's profile specifically
     const profileSub = supabase.channel(`user-sync-${currentUser.uid}`)
       .on(
         'postgres_changes',
@@ -113,6 +114,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         },
         (payload) => {
           console.log("Real-time Identity Update:", payload.new);
+          // Instantly update local state with new Balance or Status
           setProfile((current: any) => ({ ...current, ...payload.new }));
         }
       )
@@ -155,7 +157,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return (
       <div className="min-h-screen bg-[#f0f0f0] flex items-center justify-center p-6">
         <div className="bg-white border-[4px] border-black shadow-[12px_12px_0px_0px_#000] p-10 max-w-md w-full space-y-8">
-           <div className="text-center space-y-4">
+           <div className="text-center space-y-4 text-black">
               <div className="w-16 h-16 bg-[#834bf1] border-[3px] border-black mx-auto flex items-center justify-center shadow-[4px_4px_0px_0px_#000]">
                 <Fingerprint className="text-white" size={32} />
               </div>
@@ -164,7 +166,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
            </div>
            <button 
              onClick={() => signInWithPopup(auth, googleProvider)}
-             className="w-full bg-white border-[4px] border-black py-5 font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3"
+             className="w-full bg-white border-[4px] border-black py-5 font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3 text-black"
            >
              <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
              <span>Continue with Google</span>
@@ -246,13 +248,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <div className="flex border-[6px] border-black bg-white p-2 shadow-[10px_10px_0px_0px_#000]">
               <button 
                 onClick={() => setActiveTab('missions')} 
-                className={`flex-1 py-5 font-black uppercase text-sm italic tracking-[0.2em] transition-all ${activeTab === 'missions' ? 'bg-[#ffde59] border-[4px] border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100'}`}
+                className={`flex-1 py-5 font-black uppercase text-sm italic tracking-[0.2em] transition-all ${activeTab === 'missions' ? 'bg-[#ffde59] border-[4px] border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100 text-black'}`}
               >
                 Mission Grid
               </button>
               <button 
                 onClick={() => setActiveTab('rewards')} 
-                className={`flex-1 py-5 font-black uppercase text-sm italic tracking-[0.2em] transition-all ${activeTab === 'rewards' ? 'bg-[#834bf1] text-white border-[4px] border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100'}`}
+                className={`flex-1 py-5 font-black uppercase text-sm italic tracking-[0.2em] transition-all ${activeTab === 'rewards' ? 'bg-[#834bf1] text-white border-[4px] border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100 text-black'}`}
               >
                 Reward Node
               </button>
@@ -261,8 +263,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             {!isApproved && (
                <div className="bg-[#ffde59] border-[6px] border-black p-12 text-center shadow-[16px_16px_0px_0px_#000] animate-in zoom-in duration-300">
                   <Lock size={48} className="mx-auto mb-6 text-black" strokeWidth={3} />
-                  <h3 className="text-3xl font-black uppercase italic font-display">Identity Syncing</h3>
-                  <p className="text-xs font-bold uppercase tracking-tight leading-relaxed max-w-sm mx-auto mt-4">
+                  <h3 className="text-3xl font-black uppercase italic font-display text-black">Identity Syncing</h3>
+                  <p className="text-xs font-bold uppercase tracking-tight leading-relaxed max-w-sm mx-auto mt-4 text-black">
                     Your credentials are being reviewed by the Reelywood Dispatch. Access will unlock upon node verification.
                   </p>
                </div>

@@ -154,19 +154,19 @@ export const BrandManager = () => {
 
               <div className="grid grid-cols-2 gap-6">
                  <div>
-                   <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 flex items-center gap-2"><ImageIcon size={14}/> Logo URL</label>
+                   <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 flex items-center gap-2 text-black"><ImageIcon size={14}/> Logo URL</label>
                    <input type="url" className={inputStyle} placeholder="https://..." 
                       value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} required />
                  </div>
                  <div>
-                   <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 flex items-center gap-2"><ImageIcon size={14}/> Cover URL</label>
+                   <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 flex items-center gap-2 text-black"><ImageIcon size={14}/> Cover URL</label>
                    <input type="url" className={inputStyle} placeholder="https://..." 
                       value={formData.cover_image_url} onChange={e => setFormData({...formData, cover_image_url: e.target.value})} required />
                  </div>
               </div>
 
               <div>
-                 <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 flex items-center gap-2"><MapPin size={14}/> Location Text</label>
+                 <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 flex items-center gap-2 text-black"><MapPin size={14}/> Location Text</label>
                  <input type="text" className={inputStyle} placeholder="City/Street" 
                     value={formData.location_text} onChange={e => setFormData({...formData, location_text: e.target.value})} required />
               </div>
@@ -200,7 +200,7 @@ export const BrandManager = () => {
         {fetchLoading ? (
           <div className="py-20 text-center opacity-40 font-black uppercase tracking-[0.5em] text-xs text-black">Accessing Alliance Database...</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-black">
             {brands.map(brand => (
               <div key={brand.id} className="bg-white border-[4px] border-black p-6 shadow-[8px_8px_0px_0px_#000] flex flex-col group hover:shadow-[12px_12px_0px_0px_#834bf1] transition-all">
                 <div className="flex gap-6 items-start mb-6">
