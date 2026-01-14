@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { Users, Globe, Search, CheckCircle, X, Loader2, Zap, Gift, Target } from 'lucide-react';
@@ -39,11 +40,18 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
 
   const handleDeploy = async () => {
     if (!supabase) return;
+    
+    // Safety check: Don't allow empty targeting if not global
+    if (targetMode !== 'global' && selectedUserIds.length === 0) {
+      alert("⚠️ TARGET ERROR: Please select at least one agent node.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Determined "Assigned To" Array: Global = empty array
-      const assignedTo = targetMode === 'global' ? [] : selectedUserIds;
+      // STRICT PAYLOAD: Global uses empty array, targeted uses selected UIDs
+      const assignedTo = targetMode === 'global' ? [] : [...selectedUserIds];
       const brand = brands.find(b => b.id === formData.brand_id);
       
       let table = '';

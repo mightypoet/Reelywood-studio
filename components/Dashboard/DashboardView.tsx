@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
@@ -46,7 +47,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (allMissions) {
         const filtered = allMissions.filter(m => {
           if (m.assigned_to?.includes('DRAFT')) return false;
-          const isGlobal = !m.assigned_to || m.assigned_to.length === 0;
+          // Missions targeting check: Only show if explicitly assigned OR if assigned_to is empty array (Global)
+          const isGlobal = Array.isArray(m.assigned_to) && m.assigned_to.length === 0;
           const isAssigned = m.assigned_to?.includes(user.uid) || m.assigned_to?.includes(profileData?.id);
           return isGlobal || isAssigned;
         });
@@ -58,7 +60,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         supabase.from('submissions').select('mission_id, status').eq('user_id', user.uid)
       ]);
 
-      if (rRes.data) setRewards(rRes.data);
+      if (rRes.data) {
+        // LOCKDOWN: Strict filtering for rewards to prevent leakage
+        const filteredRewards = rRes.data.filter(r => {
+          // Rule 1: A reward is Global ONLY if assigned_to is an empty array [].
+          const isGlobal = Array.isArray(r.assigned_to) && r.assigned_to.length === 0;
+          // Rule 2: If not global, only show if current user's UID is in the array.
+          const isAssigned = Array.isArray(r.assigned_to) && r.assigned_to.includes(user.uid);
+          
+          return isGlobal || isAssigned;
+        });
+        setRewards(filteredRewards);
+      }
+      
       if (sRes.data) setUserSubmissions(sRes.data);
 
     } catch (err) {
