@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Mail, Lock, Chrome, Sparkles, Loader2, AlertCircle, ExternalLink, Copy, Check, Play } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, Chrome, Sparkles, Loader2, AlertCircle, ExternalLink, Copy, Check, Play, ShieldAlert } from 'lucide-react';
 
 interface AuthViewProps {
   onBack: () => void;
@@ -32,10 +32,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
     } catch (err: any) {
       console.error("Auth Error:", err);
       
+      // Explicitly catch and handle the unauthorized domain error
       if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
         setError({
           code: 'auth/unauthorized-domain',
-          message: "This domain is not authorized in your Firebase project.",
+          message: "DOMAIN_NOT_WHITELISTED: This URL is not authorized in the Firebase production node.",
           domain: window.location.hostname
         });
       } else {
@@ -50,7 +51,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f0f0] dark:bg-[#0a0a0a] flex items-center justify-center p-6 relative overflow-hidden font-['Plus_Jakarta_Sans']">
+    <div className="min-h-screen bg-[#f0f0f0] dark:bg-[#0a0a0a] flex items-center justify-center p-6 relative overflow-hidden font-lexend">
       {/* Neobrutalist background decoration */}
       <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"></div>
 
@@ -68,45 +69,46 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
           {error?.code === 'auth/unauthorized-domain' ? (
             <div className="space-y-6 animate-in fade-in zoom-in duration-300">
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-16 h-16 bg-rose-500 border-[3px] border-black text-white rounded-none flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  <AlertCircle size={32} strokeWidth={3} />
+                <div className="w-20 h-20 bg-rose-500 border-[3px] border-black text-white rounded-none flex items-center justify-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                  <ShieldAlert size={40} strokeWidth={3} />
                 </div>
-                <h2 className="text-3xl font-black text-black dark:text-white leading-tight uppercase font-display italic">Authorize Domain</h2>
+                <h2 className="text-3xl font-black text-black dark:text-white leading-tight uppercase font-display italic">Protocol Error</h2>
+                <div className="bg-rose-100 border-2 border-rose-500 p-3">
+                   <p className="text-rose-700 text-[10px] font-black uppercase tracking-widest leading-relaxed">
+                    UNAUTHORIZED_DOMAIN
+                  </p>
+                </div>
                 <p className="text-black/60 dark:text-white/60 text-xs font-bold uppercase tracking-widest leading-relaxed">
-                  Firebase security blocks auth from this URL. To fix, add this domain in your <span className="text-[#834bf1] font-black underline decoration-[2px] underline-offset-4">Firebase Console</span>.
+                  Security protocols prevent authentication from this domain. Add the following URL to your <span className="text-[#834bf1] font-black">Firebase Authorized Domains</span> list.
                 </p>
               </div>
 
-              <div className="bg-[#f0f0f0] border-[3px] border-black rounded-none p-4 space-y-3">
-                <p className="text-[10px] font-black text-black/40 uppercase tracking-[0.2em]">Add to Authorized Domains:</p>
-                <div className="flex items-center justify-between bg-white border-[2px] border-black rounded-none px-4 py-2">
-                  <code className="text-[#834bf1] font-black text-sm truncate mr-2">{error.domain}</code>
+              <div className="bg-slate-50 dark:bg-zinc-900 border-[3px] border-black rounded-none p-5 space-y-4">
+                <p className="text-[9px] font-black text-black/40 dark:text-white/40 uppercase tracking-[0.3em]">Copy this domain:</p>
+                <div className="flex items-center justify-between bg-white dark:bg-black border-[3px] border-black rounded-none px-4 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <code className="text-[#834bf1] font-black text-xs truncate mr-2">{error.domain}</code>
                   <button 
                     onClick={handleCopyDomain}
-                    className="p-2 hover:bg-slate-50 text-black transition-colors"
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 text-black dark:text-white transition-all active:scale-90"
                   >
-                    {copied ? <Check size={16} className="text-emerald-500" strokeWidth={3} /> : <Copy size={16} strokeWidth={3} />}
+                    {copied ? <Check size={18} className="text-emerald-500" strokeWidth={4} /> : <Copy size={18} strokeWidth={3} />}
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-4 pt-2">
+              <div className="space-y-4 pt-4">
                 <a 
-                  href="https://console.firebase.google.com/project/_/authentication/providers" 
+                  href="https://console.firebase.google.com/" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center space-x-3 bg-[#834bf1] text-white py-4 border-[3px] border-black font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+                  className="w-full flex items-center justify-center space-x-3 bg-[#834bf1] text-white py-5 border-[3px] border-black font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
                 >
-                  <span>Open Console</span>
+                  <span>Open Firebase Console</span>
                   <ExternalLink size={18} strokeWidth={3} />
                 </a>
-                <button 
-                  onClick={onBack}
-                  className="w-full flex items-center justify-center space-x-3 bg-white text-black border-[3px] border-black py-4 font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-                >
-                  <Play size={16} fill="currentColor" />
-                  <span>Enter Demo Mode (Bypass)</span>
-                </button>
+                <p className="text-[8px] font-black text-center text-black/30 uppercase tracking-[0.3em]">
+                  Path: Authentication > Settings > Authorized Domains
+                </p>
               </div>
             </div>
           ) : (
@@ -117,10 +119,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
                 </div>
                 <div>
                   <h1 className="text-4xl font-black text-black dark:text-white uppercase font-display italic tracking-tighter leading-none mb-2">
-                    Log in / Sign up
+                    Identity Sync
                   </h1>
                   <p className="text-black/50 dark:text-white/50 text-[10px] font-black uppercase tracking-[0.4em]">
-                    Identity Sync Protocol • Reelywood
+                    Production Node Access • Reelywood
                   </p>
                 </div>
               </div>
@@ -172,7 +174,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
                   onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
                   className="text-black dark:text-white font-black uppercase text-[11px] tracking-[0.2em] hover:text-[#834bf1] underline decoration-[2px] underline-offset-8 decoration-black/20 hover:decoration-[#834bf1] transition-all"
                 >
-                  {mode === 'login' ? 'Create Agency Account' : 'Return to Secure Login'}
+                  {mode === 'login' ? 'Register New Authority' : 'Return to Secure Login'}
                 </button>
                 <p className="text-[8px] font-black uppercase text-black/30 dark:text-white/20 tracking-[0.5em] text-center">
                   Production Node v4.0.1
