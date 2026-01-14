@@ -21,7 +21,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     // 1. Initial Fetch
     const checkStatus = async () => {
       try {
-        const { data } = await supabase.from('submissions')
+        const { data } = await supabase!.from('submissions')
           .select('*').eq('mission_id', mission.id).eq('user_id', user.uid).maybeSingle();
         if (data) { 
           setExistingSubmission(data); 
@@ -33,7 +33,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     checkStatus();
 
     // 2. Real-Time Listener for THIS specific mission submission
-    const channel = supabase.channel(`mission-status-${mission.id}-${user.uid}`)
+    const channel = supabase!.channel(`mission-status-${mission.id}-${user.uid}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'submissions', filter: `mission_id=eq.${mission.id}` }, 
         (payload) => {
