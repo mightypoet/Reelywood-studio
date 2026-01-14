@@ -3,7 +3,7 @@ import { supabase } from '../../lib/clients';
 import { 
   X, Wallet, Zap, Gift, CheckCircle, 
   TrendingUp, Clock, ShieldCheck, Plus, 
-  Minus, Loader2, Instagram, MapPin
+  Minus, Loader2, Instagram, MapPin, AlertCircle, Ban
 } from 'lucide-react';
 import { Profile } from './AdminDashboard';
 
@@ -17,6 +17,7 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [adjusting, setAdjusting] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
   const [adjustAmount, setAdjustAmount] = useState('');
 
   useEffect(() => {
@@ -52,7 +53,6 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
     const amount = type === 'credit' ? Number(adjustAmount) : -Number(adjustAmount);
     
     try {
-      // Assuming RPC exists for balance adjustment
       const { error } = await supabase.rpc('adjust_user_balance', {
         target_uid: agent.firebase_uid,
         amount_delta: amount,
@@ -69,6 +69,33 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
     }
   };
 
+  const handleToggleStatus = async () => {
+    if (!supabase) return;
+    const isApproving = agent.card_status !== 'approved';
+    const newStatus = isApproving ? 'approved' : 'rejected';
+
+    if (!confirm(`Are you sure you want to ${isApproving ? 'VERIFY' : 'SUSPEND'} this node?`)) return;
+
+    setStatusUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ card_status: newStatus })
+        .eq('firebase_uid', agent.firebase_uid);
+
+      if (error) throw error;
+      
+      // Close modal on success so parent dashboard can refresh
+      onClose();
+    } catch (err: any) {
+      alert("Status Update Protocol Failure: " + err.message);
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const isApproved = agent.card_status === 'approved';
+
   return (
     <div className="fixed inset-0 z-[200] flex items-end animate-in fade-in duration-300">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
@@ -80,7 +107,7 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
         <div className="flex justify-between items-start mb-8 text-black">
            <div className="flex items-center gap-6">
               <div className="w-16 h-16 sm:w-20 sm:h-20 border-[4px] border-black bg-[#834bf1] shadow-[4px_4px_0px_0px_#000] overflow-hidden">
-                <img src={agent.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${agent.id}`} className="w-full h-full object-cover" />
+                <img src={agent.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${agent.id}`} className="w-full h-full object-cover" alt={agent.display_name} />
               </div>
               <div>
                 <h2 className="text-2xl sm:text-3xl font-black italic uppercase font-display leading-none">{agent.display_name}</h2>
@@ -90,7 +117,7 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
                 </div>
               </div>
            </div>
-           <button onClick={onClose} className="p-3 bg-slate-100 border-2 border-black shadow-[3px_3px_0px_0px_#000]">
+           <button onClick={onClose} className="p-3 bg-slate-100 border-2 border-black shadow-[3px_3px_0px_0px_#000] active:scale-90 transition-transform">
              <X size={24} strokeWidth={4} />
            </button>
         </div>
@@ -169,9 +196,29 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
           </div>
         </div>
 
-        <button className="w-full py-5 border-4 border-black text-black font-black uppercase text-xs tracking-[0.4em] italic hover:bg-slate-50 transition-colors mb-10">
-           Suspend Node Access
+        {/* --- DYNAMIC VERIFICATION / SUSPENSION BUTTON --- */}
+        <button 
+          onClick={handleToggleStatus}
+          disabled={statusUpdating}
+          className={`w-full py-6 border-[4px] border-black font-black uppercase text-sm tracking-[0.4em] italic shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-[0.98] disabled:opacity-50
+            ${isApproved 
+              ? 'bg-white text-rose-600 hover:bg-rose-50' 
+              : 'bg-[#39ff14] text-black hover:bg-[#32e012]'
+            }`}
+        >
+          {statusUpdating ? (
+            <Loader2 className="animate-spin" size={24} />
+          ) : (
+            <>
+              {isApproved ? <Ban size={20} /> : <ShieldCheck size={20} />}
+              <span>{isApproved ? 'SUSPEND NODE ACCESS' : 'VERIFY & ACTIVATE NODE'}</span>
+            </>
+          )}
         </button>
+
+        <p className="mt-6 text-center text-[8px] font-black uppercase tracking-[0.5em] text-black/20 italic">
+          Identity Sync Protocol • Reelywood Terminal v4.2.1
+        </p>
       </div>
     </div>
   );
