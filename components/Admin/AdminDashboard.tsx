@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { 
@@ -8,7 +8,7 @@ import {
   Building2, ListChecks, Clock, X,
   Crosshair, CheckSquare, Box,
   Instagram, Send, FileText, CheckCircle, AlertCircle, Filter, ShieldCheck, Ticket, Calendar,
-  Layout, ChevronDown, ChevronUp
+  Layout, ChevronDown, ChevronUp, TrendingUp, DollarSign, BarChart3
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -29,8 +29,6 @@ export interface Profile {
   created_at: string;
 }
 
-const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
-
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'deploy' | 'missions' | 'vouchers' | 'users' | 'ledger' | 'brands' | 'submissions'>('deploy');
   const [darkMode, setDarkMode] = useState<boolean>(true);
@@ -44,6 +42,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [brands, setBrands] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [userVouchers, setUserVouchers] = useState<any[]>([]);
   
   // Selection State
   const [selectedCreatorIds, setSelectedCreatorIds] = useState<string[]>([]);
@@ -69,13 +68,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const fetchAllData = async () => {
     if (!supabase) return;
     try {
-      const [uRes, mRes, vRes, bRes, sRes, tRes] = await Promise.all([
+      const [uRes, mRes, vRes, bRes, sRes, tRes, uvRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false }),
         supabase.from('partner_brands').select('*').order('name', { ascending: true }),
         supabase.from('submissions').select('*, profiles(display_name), missions(*)').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').order('created_at', { ascending: false })
+        supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+        supabase.from('user_vouchers').select('*')
       ]);
 
       if (uRes.data) setUsers(uRes.data);
@@ -84,11 +84,45 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       if (bRes.data) setBrands(bRes.data);
       if (sRes.data) setSubmissions(sRes.data);
       if (tRes.data) setTransactions(tRes.data);
+      if (uvRes.data) setUserVouchers(uvRes.data);
 
     } catch (e) { 
       console.error("TERMINAL_FETCH_ERROR:", e); 
     }
   };
+
+  // --- MONITORING LOGIC ---
+
+  const getDetailedAgentStats = (uid: string) => {
+    const approvedSubs = submissions.filter(s => s.user_id === uid && (s.status === 'approved' || s.status === 'completed'));
+    const assignedMissions = missions.filter(m => Array.isArray(m.assigned_to) && m.assigned_to.includes(uid));
+    const redeemed = userVouchers.filter(uv => uv.user_uid === uid).length;
+    const lifetimeSpent = transactions
+      .filter(t => t.user_uid === uid && t.amount < 0)
+      .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
+
+    return { 
+      completed: approvedSubs.length, 
+      active: assignedMissions.length,
+      redeemedCount: redeemed,
+      spent: lifetimeSpent
+    };
+  };
+
+  const getBrandHealth = (brandId: string) => {
+    const brandMissions = missions.filter(m => m.brand_id === brandId);
+    const brandVouchers = vouchers.filter(v => v.brand_id === brandId);
+    const brandMissionIds = brandMissions.map(m => m.id);
+    const brandSubmissions = submissions.filter(s => brandMissionIds.includes(s.mission_id)).length;
+    
+    return {
+      missionCount: brandMissions.length,
+      voucherCount: brandVouchers.length,
+      engagement: brandSubmissions
+    };
+  };
+
+  // --- ACTIONS ---
 
   const showToast = (type: 'success' | 'error', msg: string) => {
     setNotify({ type, msg });
@@ -263,17 +297,34 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               <div className="flex-1 overflow-auto border-2 border-black bg-white">
                 <table className="w-full text-left text-black">
                     <thead className="bg-black text-white text-[8px] uppercase font-black sticky top-0 z-10">
-                      <tr><th className="p-2 w-8"><CheckSquare size={10}/></th><th className="p-2">Identity</th><th className="p-2">Profile Stats</th></tr>
+                      <tr><th className="p-2 w-8"><CheckSquare size={10}/></th><th className="p-2">Identity</th><th className="p-2">Deep Monitor</th></tr>
                     </thead>
                     <tbody className="text-[9px] font-bold">
-                      {users.map(u => (
-                        <tr key={u.id} onClick={() => setSelectedCreatorIds(p => p.includes(u.firebase_uid) ? p.filter(id => id !== u.firebase_uid) : [...p, u.firebase_uid])}
-                            className={`border-b border-gray-100 cursor-pointer ${selectedCreatorIds.includes(u.firebase_uid) ? 'bg-blue-50' : ''}`}>
-                          <td className="p-2"><div className={`w-3 h-3 border border-black ${selectedCreatorIds.includes(u.firebase_uid) ? 'bg-blue-600' : 'bg-white'}`}/></td>
-                          <td className="p-2 truncate"><div className="font-black uppercase truncate w-32">{u.display_name}</div><div className="text-[7px] text-gray-400 font-mono">{u.email}</div></td>
-                          <td className="p-2"><Instagram size={8} className="inline mr-1"/>{u.followers || 0}</td>
-                        </tr>
-                      ))}
+                      {users.map(u => {
+                        const stats = getDetailedAgentStats(u.firebase_uid);
+                        return (
+                          <tr key={u.id} onClick={() => setSelectedCreatorIds(p => p.includes(u.firebase_uid) ? p.filter(id => id !== u.firebase_uid) : [...p, u.firebase_uid])}
+                              className={`border-b border-gray-100 cursor-pointer ${selectedCreatorIds.includes(u.firebase_uid) ? 'bg-blue-50' : ''}`}>
+                            <td className="p-2"><div className={`w-3 h-3 border border-black ${selectedCreatorIds.includes(u.firebase_uid) ? 'bg-blue-600' : 'bg-white'}`}/></td>
+                            <td className="p-2 truncate">
+                              <div className="font-black uppercase truncate w-32">{u.display_name}</div>
+                              <div className="text-[7px] text-gray-400 font-mono">{u.email}</div>
+                            </td>
+                            <td className="p-2">
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-1 border border-black">DONE: {stats.completed}</span>
+                                  <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1 border border-black">ACT: {stats.active}</span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                   <span className="text-[9px] font-black text-[#834bf1]">VAULT: {u.reelcoins} RC</span>
+                                   <span className="text-[8px] font-bold text-gray-400">(Redeemed: {stats.redeemedCount})</span>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                 </table>
               </div>
@@ -354,29 +405,72 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           </div>
         )}
 
-        {activeTab === 'brands' && <BrandManager />}
+        {activeTab === 'brands' && (
+          <div className="space-y-10">
+            <BrandManager />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
+               {brands.map(brand => {
+                 const health = getBrandHealth(brand.id);
+                 return (
+                   <div key={`health-${brand.id}`} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000] text-black">
+                      <div className="flex items-center gap-4 mb-4">
+                         <img src={brand.logo_url} className="w-10 h-10 border-2 border-black object-contain" />
+                         <h4 className="font-black text-sm uppercase italic truncate">{brand.name}</h4>
+                      </div>
+                      <div className="mt-4 pt-4 border-t-2 border-dashed border-black/10 grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <div className="text-xl font-black italic">{health.missionCount}</div>
+                          <div className="text-[7px] font-bold uppercase tracking-widest text-gray-400">Missions</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-black italic">{health.voucherCount}</div>
+                          <div className="text-[7px] font-bold uppercase tracking-widest text-gray-400">Rewards</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-black italic text-[#834bf1]">{health.engagement}</div>
+                          <div className="text-[7px] font-bold uppercase tracking-widest text-gray-400">Subs</div>
+                        </div>
+                      </div>
+                   </div>
+                 );
+               })}
+            </div>
+          </div>
+        )}
 
         {activeTab === 'users' && (
           <div className="bg-white text-black p-3 border-2 border-black shadow-[3px_3px_0px_0px_#000]">
             <h3 className="font-black mb-4 text-xs uppercase italic">Agent Roster</h3>
             <div className="overflow-auto max-h-[500px]">
-              {users.map(u => (
-                <div key={u.id} className="border-b border-gray-100 py-3 flex justify-between items-center px-2 hover:bg-gray-50">
-                   <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-black italic shrink-0">{u.display_name?.charAt(0)}</div>
-                      <div className="min-w-0"><div className="font-bold uppercase text-[10px] truncate">{u.display_name}</div><div className="text-[7px] text-gray-400 font-mono truncate">{u.email}</div></div>
-                   </div>
-                   <div className="flex gap-2 shrink-0 items-center">
-                      <div className="text-right mr-2"><div className="text-[7px] opacity-40 font-black">LIQUID</div><div className="text-[10px] font-bold text-emerald-600">{u.reelcoins} RC</div></div>
-                      {u.card_status === 'pending' ? (
-                        <div className="flex gap-1">
-                          <button onClick={() => supabase!.from('profiles').update({ card_status: 'approved' }).eq('firebase_uid', u.firebase_uid).then(fetchAllData)} className="p-1.5 border border-black bg-emerald-500 text-white active:scale-90"><Check size={10}/></button>
-                          <button onClick={() => supabase!.from('profiles').update({ card_status: 'rejected' }).eq('firebase_uid', u.firebase_uid).then(fetchAllData)} className="p-1.5 border border-black bg-rose-500 text-white active:scale-90"><X size={10}/></button>
+              {users.map(u => {
+                const stats = getDetailedAgentStats(u.firebase_uid);
+                return (
+                  <div key={u.id} className="border-b border-gray-100 py-3 flex justify-between items-center px-2 hover:bg-gray-50">
+                     <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-black italic shrink-0">{u.display_name?.charAt(0)}</div>
+                        <div className="min-w-0">
+                          <div className="font-bold uppercase text-[10px] truncate">{u.display_name}</div>
+                          <div className="text-[7px] text-gray-400 font-mono truncate">{u.email}</div>
                         </div>
-                      ) : <span className={`px-2 py-0.5 border border-black text-[7px] font-black uppercase ${u.card_status === 'approved' ? 'bg-emerald-400' : 'bg-rose-400'}`}>{u.card_status}</span>}
-                   </div>
-                </div>
-              ))}
+                     </div>
+                     <div className="flex gap-4 shrink-0 items-center">
+                        <div className="text-right flex flex-col gap-1">
+                          <div className="flex gap-2">
+                             <div className="text-[8px] font-black px-1 border border-black bg-blue-50">ACT: {stats.active}</div>
+                             <div className="text-[8px] font-black px-1 border border-black bg-emerald-50">OK: {stats.completed}</div>
+                          </div>
+                          <div className="text-[10px] font-bold text-emerald-600">{u.reelcoins} RC VAULT</div>
+                        </div>
+                        {u.card_status === 'pending' ? (
+                          <div className="flex gap-1">
+                            <button onClick={() => supabase!.from('profiles').update({ card_status: 'approved' }).eq('firebase_uid', u.firebase_uid).then(fetchAllData)} className="p-1.5 border border-black bg-emerald-50 text-emerald-600 active:scale-90"><Check size={10}/></button>
+                            <button onClick={() => supabase!.from('profiles').update({ card_status: 'rejected' }).eq('firebase_uid', u.firebase_uid).then(fetchAllData)} className="p-1.5 border border-black bg-rose-50 text-rose-600 active:scale-90"><X size={10}/></button>
+                          </div>
+                        ) : <span className={`px-2 py-0.5 border border-black text-[7px] font-black uppercase ${u.card_status === 'approved' ? 'bg-emerald-400' : 'bg-rose-400'}`}>{u.card_status}</span>}
+                     </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
