@@ -98,6 +98,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, []);
 
+  // --- REAL-TIME SYNC LOOP ---
+  useEffect(() => {
+    if (!currentUser || !supabase) return;
+
+    const profileSub = supabase.channel(`user-sync-${currentUser.uid}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'profiles',
+          filter: `firebase_uid=eq.${currentUser.uid}` 
+        },
+        (payload) => {
+          console.log("Real-time Identity Update:", payload.new);
+          setProfile((current: any) => ({ ...current, ...payload.new }));
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(profileSub); };
+  }, [currentUser]);
+
   const handleRedeem = async (reward: any) => {
     if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
     if (!confirm(`Redeem "${reward.title}" from ${reward.partner_brands?.name || 'Reelywood'}?`)) return;
@@ -258,7 +281,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
                         const brand = m.partner_brands;
 
-                        // Conditional UI Styling based on status
                         const cardStyles = isDone 
                           ? 'bg-emerald-50 border-emerald-400 shadow-emerald-200' 
                           : isPending 

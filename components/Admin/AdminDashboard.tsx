@@ -7,11 +7,25 @@ import {
   Loader2, Activity, Terminal,
   Building2, ListChecks, Clock, X,
   Instagram, Send, FileText, CheckCircle, AlertCircle, 
-  Bell, Home, Menu, ArrowUpRight, ShieldCheck, Wallet
+  Bell, Home, Menu, ArrowUpRight, ShieldCheck, Wallet, ChevronRight, ArrowLeft
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
 import { AgentDetailView } from './AgentDetailView';
+
+// --- TYPES ---
+export interface Profile {
+  id: string;
+  firebase_uid: string;
+  email: string;
+  display_name: string;
+  handle: string;
+  role: string;
+  card_status: 'none' | 'pending' | 'approved' | 'rejected';
+  reelcoins: number;
+  photo_url?: string;
+  created_at: string;
+}
 
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
 
@@ -21,18 +35,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [notify, setNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   
   // Data Stores
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<Profile[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   
   // Detail Sheets
-  const [selectedAgent, setSelectedAgent] = useState<any>(null);
+  const [selectedAgent, setSelectedAgent] = useState<Profile | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [showNotifs, setShowNotifs] = useState(false);
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -85,7 +97,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       if (v.data) setVouchers(v.data);
       if (s.data) setSubmissions(s.data);
 
-      // Simple system alerts
       const alerts = [];
       if (v.data?.some(r => r.stock < 5)) alerts.push({ id: 1, text: "Low Voucher Stock Detected", type: "warning" });
       if (s.data?.filter(sub => sub.status === 'pending').length > 5) alerts.push({ id: 2, text: "High Submission Queue Volume", type: "critical" });
@@ -115,12 +126,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       </div>
 
       <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000]">
-        <h4 className="font-black text-xs uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+        <h4 className="font-black text-xs uppercase tracking-[0.3em] mb-6 flex items-center gap-2 text-black">
           <Terminal size={14} /> System Health
         </h4>
         <div className="space-y-4">
           <div className="flex justify-between items-center text-[10px] font-bold">
-            <span className="uppercase opacity-40">Database Latency</span>
+            <span className="uppercase opacity-40 text-black">Database Latency</span>
             <span className="text-emerald-500">14ms [STABLE]</span>
           </div>
           <div className="h-2 bg-slate-100 border-2 border-black">
@@ -134,20 +145,20 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
   const renderQueue = () => (
     <div className="space-y-4 animate-in fade-in duration-300">
-      <h3 className="text-xl font-black italic uppercase mb-6 flex items-center gap-3">
+      <h3 className="text-xl font-black italic uppercase mb-6 flex items-center gap-3 text-black">
         <ListChecks className="text-[#834bf1]" /> Transmission Queue
       </h3>
       {submissions.filter(s => s.status === 'pending').length === 0 ? (
-        <div className="py-20 text-center opacity-30 italic font-black uppercase text-xs tracking-widest">Grid Quiet... No signals.</div>
+        <div className="py-20 text-center opacity-30 italic font-black uppercase text-xs tracking-widest text-black">Grid Quiet... No signals.</div>
       ) : (
         submissions.filter(s => s.status === 'pending').map(sub => (
-          <div key={sub.id} className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+          <div key={sub.id} className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
                onClick={() => setSelectedSubmission(sub)}>
             <div className="flex justify-between items-start mb-3">
-              <span className="bg-slate-100 px-2 py-1 border-2 border-black text-[8px] font-black uppercase tracking-widest">Identity: {sub.profiles?.display_name}</span>
+              <span className="bg-slate-100 px-2 py-1 border-2 border-black text-[8px] font-black uppercase tracking-widest text-black">Agent: {sub.profiles?.display_name}</span>
               <span className="text-[#834bf1] font-black text-xs italic">+{sub.missions?.reward_amount} RC</span>
             </div>
-            <h4 className="font-black text-sm uppercase leading-tight truncate">{sub.missions?.title}</h4>
+            <h4 className="font-black text-sm uppercase leading-tight truncate text-black">{sub.missions?.title}</h4>
             <div className="flex items-center gap-2 mt-4 text-[9px] font-black text-slate-400 uppercase italic">
               <Clock size={10} /> {new Date(sub.created_at).toLocaleTimeString()}
             </div>
@@ -161,23 +172,23 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     <div className="space-y-4 animate-in fade-in duration-300">
       <div className="relative mb-6">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-        <input className="w-full bg-white border-4 border-black p-4 pl-12 font-bold text-xs uppercase tracking-widest focus:bg-[#ffde59] focus:outline-none" placeholder="Search Agent ID..." />
+        <input className="w-full bg-white border-4 border-black p-4 pl-12 font-bold text-xs uppercase tracking-widest focus:bg-[#ffde59] focus:outline-none text-black" placeholder="Search Agent ID..." />
       </div>
       {users.map(u => (
-        <div key={u.id} className="bg-white border-4 border-black p-4 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] active:scale-[0.98] transition-transform"
+        <div key={u.id} className="bg-white border-4 border-black p-4 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] active:scale-[0.98] transition-transform cursor-pointer"
              onClick={() => setSelectedAgent(u)}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 border-2 border-black bg-[#834bf1] overflow-hidden shadow-[2px_2px_0px_0px_#000]">
               <img src={u.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${u.id}`} className="w-full h-full object-cover" />
             </div>
             <div>
-              <h4 className="font-black text-sm uppercase leading-none">{u.display_name}</h4>
+              <h4 className="font-black text-sm uppercase leading-none text-black">{u.display_name}</h4>
               <p className="text-[9px] font-black uppercase tracking-widest text-[#834bf1] mt-1">@{u.handle || 'unlinked'}</p>
             </div>
           </div>
           <div className="text-right">
             <span className="block font-black text-sm text-emerald-600 italic">{u.reelcoins} RC</span>
-            <span className={`text-[8px] font-black uppercase px-1 border border-black ${u.card_status === 'approved' ? 'bg-[#39ff14]' : 'bg-[#ffde59]'}`}>
+            <span className={`text-[8px] font-black uppercase px-1 border border-black ${u.card_status === 'approved' ? 'bg-[#39ff14] text-black' : 'bg-[#ffde59] text-black'}`}>
               {u.card_status}
             </span>
           </div>
@@ -186,21 +197,19 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     </div>
   );
 
-  const bg = darkMode ? 'bg-slate-50' : 'bg-gray-100';
-
   return (
-    <div className={`min-h-screen ${bg} pb-32 font-lexend`}>
+    <div className={`min-h-screen bg-slate-50 pb-32 font-lexend`}>
       {/* HEADER MONITOR */}
       <header className="bg-white border-b-4 border-black p-4 sticky top-0 z-[100] flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-black text-[#ffde59] flex items-center justify-center border-2 border-black shadow-[3px_3px_0px_0px_#834bf1]">
             <Terminal size={20} strokeWidth={3} />
           </div>
-          <h1 className="text-lg font-black italic uppercase font-display leading-none">REELY<span className="text-[#834bf1]">OPS</span></h1>
+          <h1 className="text-lg font-black italic uppercase font-display leading-none text-black">REELY<span className="text-[#834bf1]">OPS</span></h1>
         </div>
         
         <div className="flex items-center gap-4">
-          <button onClick={() => setShowNotifs(!showNotifs)} className="relative p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000]">
+          <button onClick={() => setShowNotifs(!showNotifs)} className="relative p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black">
             <Bell size={18} />
             {notifications.length > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-black"></span>}
           </button>
@@ -233,15 +242,15 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         {activeTab === 'brands' && <BrandManager />}
         {activeTab === 'menu' && (
           <div className="space-y-4 animate-in fade-in duration-300">
-             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000]">
+             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black">
                <span className="font-black uppercase text-sm italic">New Mission Brief</span>
                <Zap size={20} className="text-[#834bf1]" />
              </button>
-             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000]">
+             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black">
                <span className="font-black uppercase text-sm italic">Generate Voucher Node</span>
                <Gift size={20} className="text-[#ffde59]" />
              </button>
-             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000]">
+             <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black">
                <span className="font-black uppercase text-sm italic">Audit Ledger</span>
                <FileText size={20} className="text-slate-400" />
              </button>
@@ -250,7 +259,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       </main>
 
       {/* THUMB-RULE NAVIGATION (BOTTOM TAB BAR) */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-black border-4 border-white p-2 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-black border-4 border-white p-2 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
         {[
           { id: 'home', icon: Home, label: 'HUB' },
           { id: 'queue', icon: ListChecks, label: 'QC' },
@@ -266,7 +275,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         ))}
       </nav>
 
-      {/* DETAIL SHEETS (ACTION SHEETS) */}
+      {/* DETAIL SHEETS */}
       {selectedAgent && (
         <AgentDetailView agent={selectedAgent} onClose={() => { setSelectedAgent(null); fetchAllData(); }} />
       )}

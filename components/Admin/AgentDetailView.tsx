@@ -5,9 +5,10 @@ import {
   TrendingUp, Clock, ShieldCheck, Plus, 
   Minus, Loader2, Instagram, MapPin
 } from 'lucide-react';
+import { Profile } from './AdminDashboard';
 
 interface AgentDetailViewProps {
-  agent: any;
+  agent: Profile;
   onClose: () => void;
 }
 
@@ -30,7 +31,7 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
         supabase.from('transactions').select('*').eq('user_uid', agent.firebase_uid).order('created_at', { ascending: false })
       ]);
 
-      const approvedCount = subs.data?.filter(s => s.status === 'approved').length || 0;
+      const approvedCount = subs.data?.filter(s => s.status === 'approved' || s.status === 'completed').length || 0;
       const totalSubs = subs.data?.length || 0;
       const rate = totalSubs > 0 ? Math.round((approvedCount / totalSubs) * 100) : 0;
       
@@ -73,65 +74,62 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
       
       <div className="relative w-full bg-white border-t-[6px] border-black rounded-t-[3rem] p-8 max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-20 duration-500 shadow-[0_-10px_50px_rgba(0,0,0,0.3)]">
         
-        {/* Header Hook */}
         <div className="w-16 h-2 bg-slate-200 rounded-full mx-auto mb-8"></div>
         
         <div className="flex justify-between items-start mb-8">
            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 border-[4px] border-black bg-[#834bf1] shadow-[4px_4px_0px_0px_#000] overflow-hidden">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 border-[4px] border-black bg-[#834bf1] shadow-[4px_4px_0px_0px_#000] overflow-hidden">
                 <img src={agent.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${agent.id}`} className="w-full h-full object-cover" />
               </div>
               <div>
-                <h2 className="text-3xl font-black italic uppercase font-display leading-none">{agent.display_name}</h2>
+                <h2 className="text-2xl sm:text-3xl font-black italic uppercase font-display leading-none text-black">{agent.display_name}</h2>
                 <div className="flex items-center gap-2 mt-2">
                   <Instagram size={14} className="text-[#834bf1]" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">@{agent.handle || 'unlinked'}</span>
                 </div>
               </div>
            </div>
-           <button onClick={onClose} className="p-3 bg-slate-100 border-2 border-black shadow-[3px_3px_0px_0px_#000]">
+           <button onClick={onClose} className="p-3 bg-slate-100 border-2 border-black shadow-[3px_3px_0px_0px_#000] text-black">
              <X size={24} strokeWidth={4} />
            </button>
         </div>
 
-        {/* 360 METRICS */}
         <div className="grid grid-cols-3 gap-3 mb-10">
           <div className="bg-slate-50 border-[3px] border-black p-4 text-center">
             <span className="block text-2xl font-black italic font-display text-[#834bf1]">{stats.completionRate}%</span>
-            <span className="text-[8px] font-black uppercase tracking-widest opacity-40">QC Passed</span>
+            <span className="text-[8px] font-black uppercase tracking-widest opacity-40 text-black">QC Passed</span>
           </div>
           <div className="bg-slate-50 border-[3px] border-black p-4 text-center">
             <span className="block text-2xl font-black italic font-display text-emerald-600">{stats.totalEarned}</span>
-            <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Gross RC</span>
+            <span className="text-[8px] font-black uppercase tracking-widest opacity-40 text-black">Gross RC</span>
           </div>
           <div className="bg-slate-50 border-[3px] border-black p-4 text-center">
             <span className="block text-2xl font-black italic font-display text-[#ffde59] drop-shadow-[1px_1px_0px_#000]">{stats.vouchersClaimed}</span>
-            <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Perks Used</span>
+            <span className="text-[8px] font-black uppercase tracking-widest opacity-40 text-black">Perks Used</span>
           </div>
         </div>
 
-        {/* VAULT LOG */}
         <div className="mb-10">
           <div className="flex items-center justify-between border-b-2 border-black/5 pb-4 mb-4">
-             <h4 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2 italic">
+             <h4 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2 italic text-black">
                <Wallet size={16} /> Asset Ledger
              </h4>
              <span className="text-xl font-black text-emerald-600 italic font-display">{agent.reelcoins} RC</span>
           </div>
           
-          <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
             {loading ? (
-              <div className="py-10 text-center opacity-20 animate-pulse font-black text-[10px] uppercase">Retrieving Vault Data...</div>
+              <div className="py-10 text-center opacity-20 animate-pulse font-black text-[10px] uppercase text-black">Retrieving Vault Data...</div>
             ) : history.length === 0 ? (
-              <div className="py-10 text-center opacity-20 italic font-black text-[10px] uppercase">No transactions detected.</div>
+              <div className="py-10 text-center opacity-20 italic font-black text-[10px] uppercase text-black">No transactions detected.</div>
             ) : (
               history.map(tx => (
                 <div key={tx.id} className="flex justify-between items-center bg-slate-50 p-4 border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,0.05)]">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-tight truncate max-w-[200px]">{tx.description || 'System Update'}</p>
+                  <div className="min-w-0 flex-1 mr-4">
+                    <p className="text-[10px] font-black uppercase tracking-tight truncate text-black">{tx.description || 'System Update'}</p>
                     <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">{new Date(tx.created_at).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString()}</p>
                   </div>
-                  <span className={`text-xs font-black italic ${tx.amount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  <span className={`text-xs font-black italic shrink-0 ${tx.amount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {tx.amount > 0 ? '+' : ''}{tx.amount}
                   </span>
                 </div>
@@ -140,7 +138,6 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
           </div>
         </div>
 
-        {/* OPS INTERFACE */}
         <div className="bg-black text-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_#834bf1] mb-10">
           <h4 className="font-black text-xs uppercase tracking-[0.3em] mb-6 flex items-center gap-3 italic">
             <ShieldCheck size={16} className="text-[#ffde59]" /> Balance Override
