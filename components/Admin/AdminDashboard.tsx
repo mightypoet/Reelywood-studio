@@ -3,11 +3,10 @@ import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { 
   Users, Zap, Gift, Search, 
-  Check, Moon, Sun, Trash2,
-  Loader2, Activity, Terminal,
+  Activity, Terminal,
   Building2, ListChecks, Clock, X,
-  Instagram, Send, FileText, CheckCircle, AlertCircle, 
-  Bell, Home, Menu, ArrowUpRight, ShieldCheck, Wallet, ChevronRight, ArrowLeft
+  CheckCircle, AlertCircle, 
+  Bell, Home, Menu, FileText
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -38,7 +37,6 @@ const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad1020
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'home' | 'queue' | 'users' | 'brands' | 'menu'>('home');
-  const [darkMode, setDarkMode] = useState<boolean>(true);
   const [notify, setNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   
   // Data Stores
@@ -63,32 +61,40 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     }
 
     fetchAllData();
-    setupRealtime();
-
-    return () => {
-      supabase?.removeAllChannels();
-    };
-  }, []);
-
-  const setupRealtime = () => {
+    
+    // --- REAL-TIME AUTO REFRESH ENGINE (GOD-MODE) ---
     if (!supabase) return;
 
-    const subChannel = supabase.channel('admin-ops')
+    const channel = supabase.channel('admin-god-mode')
+      // 1. Listen for NEW Submissions (User uploads link)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'submissions' }, (payload) => {
-        showToast('success', '🚨 NEW MISSION TRANSMISSION DETECTED');
-        playSignalSound();
-        fetchAllData();
+          showToast('success', '🚀 NEW SUBMISSION RECEIVED');
+          playSignalSound();
+          fetchSubmissionsOnly(); 
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchAllData())
+      // 2. Listen for STATUS changes (Another admin verified something)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'submissions' }, () => {
+          fetchSubmissionsOnly();
+      })
+      // 3. Listen for USER updates (Coins credited / Profile edits)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => {
+          fetchUsersOnly();
+      })
+      // 4. Listen for BRAND changes (Alliance updates)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_brands' }, () => {
+          fetchBrandsOnly();
+      })
       .subscribe();
-  };
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const playSignalSound = () => {
-    try {
+    try { 
       const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
       audio.volume = 0.4;
-      audio.play();
-    } catch (e) { console.log("Audio block", e); }
+      audio.play(); 
+    } catch (e) {}
   };
 
   const fetchAllData = async () => {
@@ -107,18 +113,32 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       if (v.data) setVouchers(v.data);
       if (s.data) setSubmissions(s.data);
       if (b.data) setBrands(b.data);
-
-      const alerts: Alert[] = [];
-      if (v.data?.some((r: any) => (r.stock || 0) < 5)) {
-        alerts.push({ id: 1, text: "Low Voucher Stock Detected", type: "warning" });
-      }
-      const pendingCount = s.data?.filter((sub: any) => sub.status === 'pending').length || 0;
-      if (pendingCount > 5) {
-        alerts.push({ id: 2, text: "High Submission Queue Volume", type: "critical" });
-      }
-      setNotifications(alerts);
+      updateAlerts(s.data || [], v.data || []);
 
     } catch (e) { console.error(e); }
+  };
+
+  const fetchSubmissionsOnly = async () => {
+    const { data } = await supabase!.from('submissions').select('*, profiles(*), missions(*)').order('created_at', { ascending: false });
+    if (data) { setSubmissions(data); updateAlerts(data, vouchers); }
+  };
+
+  const fetchUsersOnly = async () => {
+    const { data } = await supabase!.from('profiles').select('*').order('created_at', { ascending: false });
+    if (data) setUsers(data);
+  };
+
+  const fetchBrandsOnly = async () => {
+      const { data } = await supabase!.from('partner_brands').select('*');
+      if (data) setBrands(data);
+  };
+
+  const updateAlerts = (subs: any[], vouch: any[]) => {
+    const alerts: Alert[] = [];
+    if (vouch.some(r => (r.stock || 0) < 5)) alerts.push({ id: 1, text: "Low Voucher Stock Detected", type: 'warning' });
+    const pendingCount = subs.filter(sub => sub.status === 'pending').length;
+    if (pendingCount > 5) alerts.push({ id: 2, text: `High Submission Queue (${pendingCount})`, type: 'critical' });
+    setNotifications(alerts);
   };
 
   const showToast = (type: 'success' | 'error', msg: string) => {
@@ -129,12 +149,12 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const renderHome = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-[#834bf1] p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-white">
+        <div onClick={() => setActiveTab('queue')} className="bg-[#834bf1] p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-white cursor-pointer hover:translate-y-1 hover:shadow-none transition-all">
           <Activity size={20} className="mb-2 opacity-50" />
           <h3 className="text-3xl font-black italic font-display">{submissions.filter(s => s.status === 'pending').length}</h3>
           <p className="text-[9px] font-black uppercase tracking-widest">Awaiting QC</p>
         </div>
-        <div className="bg-[#ffde59] p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-black">
+        <div onClick={() => setActiveTab('users')} className="bg-[#ffde59] p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-black cursor-pointer hover:translate-y-1 hover:shadow-none transition-all">
           <Users size={20} className="mb-2 opacity-50" />
           <h3 className="text-3xl font-black italic font-display">{users.length}</h3>
           <p className="text-[9px] font-black uppercase tracking-widest">Active Nodes</p>
@@ -143,17 +163,16 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
 
       <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000]">
         <h4 className="font-black text-xs uppercase tracking-[0.3em] mb-6 flex items-center gap-2 text-black">
-          <Terminal size={14} /> System Health
+          <Terminal size={14} /> System Monitoring
         </h4>
         <div className="space-y-4">
           <div className="flex justify-between items-center text-[10px] font-bold">
-            <span className="uppercase opacity-40 text-black">Database Latency</span>
-            <span className="text-emerald-500">14ms [STABLE]</span>
+            <span className="uppercase opacity-40 text-black">Live Uplink</span>
+            <span className="text-emerald-500">ACTIVE [ENCRYPTED]</span>
           </div>
-          <div className="h-2 bg-slate-100 border-2 border-black">
-            <div className="h-full bg-[#834bf1] w-[85%]"></div>
+          <div className="h-2 bg-slate-100 border-2 border-black overflow-hidden">
+            <div className="h-full bg-[#834bf1] w-[95%] animate-pulse"></div>
           </div>
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">All Nodes Synchronized v4.2.1</p>
         </div>
       </div>
     </div>
@@ -214,28 +233,20 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   );
 
   const renderMenu = () => (
-    <div className="space-y-4 animate-in fade-in duration-300">
-        <button 
-            onClick={() => setCreationMode('mission')}
-            className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all group"
-        >
-            <span className="font-black uppercase text-sm italic group-hover:text-[#834bf1]">New Mission Brief</span>
-            <Zap size={20} className="text-[#834bf1]" />
-        </button>
-
-        <button 
-            onClick={() => setCreationMode('voucher')}
-            className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all group"
-        >
-            <span className="font-black uppercase text-sm italic group-hover:text-[#ffde59]">Generate Voucher Node</span>
-            <Gift size={20} className="text-[#ffde59]" />
-        </button>
-
-        <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black opacity-50 cursor-not-allowed">
+      <div className="space-y-4 animate-in fade-in duration-300">
+          <button onClick={() => setCreationMode('mission')} className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all group">
+              <span className="font-black uppercase text-sm italic group-hover:text-[#834bf1]">New Mission Brief</span>
+              <Zap size={20} className="text-[#834bf1]" />
+          </button>
+          <button onClick={() => setCreationMode('voucher')} className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all group">
+              <span className="font-black uppercase text-sm italic group-hover:text-[#ffde59]">Generate Voucher Node</span>
+              <Gift size={20} className="text-[#ffde59]" />
+          </button>
+          <button className="w-full bg-white border-4 border-black p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] text-black opacity-50 cursor-not-allowed">
             <span className="font-black uppercase text-sm italic">Audit Ledger (Coming Soon)</span>
             <FileText size={20} className="text-slate-400" />
         </button>
-    </div>
+      </div>
   );
 
   return (
@@ -247,28 +258,24 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           </div>
           <h1 className="text-lg font-black italic uppercase font-display leading-none text-black">REELY<span className="text-[#834bf1]">OPS</span></h1>
         </div>
-        
         <div className="flex items-center gap-4">
           <button onClick={() => setShowNotifs(!showNotifs)} className="relative p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black">
             <Bell size={18} />
             {notifications.length > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-black"></span>}
           </button>
-          <button onClick={onLogout} className="p-2 border-2 border-black bg-rose-500 text-white shadow-[2px_2px_0px_0px_#000]">
-            <X size={18} strokeWidth={3} />
-          </button>
+          <button onClick={onLogout} className="p-2 border-2 border-black bg-rose-500 text-white shadow-[2px_2px_0px_0px_#000]"><X size={18} strokeWidth={3} /></button>
         </div>
       </header>
 
       {showNotifs && (
         <div className="fixed top-20 right-4 w-64 bg-black border-4 border-white p-4 shadow-[10px_10px_0px_0px_rgba(0,0,0,0.5)] z-[1000] animate-in slide-in-from-top-4">
-          <h5 className="text-[10px] font-black uppercase text-white/40 tracking-[0.3em] mb-4">System Alerts</h5>
           <div className="space-y-3">
-            {notifications.map(n => (
-              <div key={n.id} className="border-l-4 border-[#ffde59] pl-3 py-1">
+            {notifications.map((n,i) => (
+              <div key={i} className={`border-l-4 ${n.type === 'critical' ? 'border-rose-500' : 'border-[#ffde59]'} pl-3 py-1`}>
                 <p className="text-white text-[10px] font-bold uppercase">{n.text}</p>
               </div>
             ))}
-            {notifications.length === 0 && <p className="text-white/20 text-[9px] uppercase font-black">All systems clear.</p>}
+            {notifications.length === 0 && <p className="text-white/20 text-[9px] uppercase font-black">System Clear</p>}
           </div>
         </div>
       )}
@@ -289,44 +296,35 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
           { id: 'brands', icon: Building2, label: 'ALLIANCE' },
           { id: 'menu', icon: Menu, label: 'OPS' }
         ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex flex-col items-center justify-center flex-1 py-2 transition-all ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : 'text-white/40'}`}>
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex flex-col items-center justify-center flex-1 py-2 transition-all ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : 'text-white/40'}`}>
             <tab.icon size={22} strokeWidth={tab.id === activeTab ? 3 : 2} />
             <span className="text-[8px] font-black uppercase mt-1 tracking-widest">{tab.label}</span>
           </button>
         ))}
       </nav>
 
-      {selectedAgent && (
-        <AgentDetailView agent={selectedAgent} onClose={() => { setSelectedAgent(null); fetchAllData(); }} />
-      )}
-
+      {selectedAgent && <AgentDetailView agent={selectedAgent} onClose={() => setSelectedAgent(null)} />}
+      
       {selectedSubmission && (
         <VerificationModal 
           submission={selectedSubmission} 
-          onClose={() => { setSelectedSubmission(null); fetchAllData(); }} 
+          onClose={() => setSelectedSubmission(null)} 
           onRefresh={fetchAllData} 
         />
       )}
 
       {creationMode && (
          <CreationWizard 
-            type={creationMode}
-            users={users}
-            brands={brands}
+            type={creationMode} users={users} brands={brands}
             onClose={() => setCreationMode(null)}
-            onSuccess={() => {
-                showToast('success', `${creationMode.toUpperCase()} DEPLOYED SUCCESSFULLY`);
-                fetchAllData();
-            }}
+            onSuccess={() => { showToast('success', `${creationMode.toUpperCase()} DEPLOYED`); fetchAllData(); }}
          />
       )}
 
       {notify && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4">
           <div className={`flex items-center gap-4 px-6 py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_#000] ${notify.type === 'success' ? 'bg-[#39ff14] text-black' : 'bg-rose-500 text-white'}`}>
-            <CheckCircle size={20} />
-            <span className="font-bold text-[10px] uppercase tracking-widest">{notify.msg}</span>
+            <CheckCircle size={20} /><span className="font-bold text-[10px] uppercase tracking-widest">{notify.msg}</span>
           </div>
         </div>
       )}
