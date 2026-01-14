@@ -370,7 +370,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                    return (
                     <div key={m.id} 
                         onClick={() => setSelectedProtocol({id: m.id, type: 'mission'})}
-                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === m.id && selectedProtocol.type === 'mission' ? 'border-purple-500 bg-purple-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
+                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === m.id && selectedProtocol?.type === 'mission' ? 'border-purple-500 bg-purple-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
                       <div className="flex justify-between items-start">
                         <span className="font-black text-xs uppercase truncate pr-6">{m.title}</span>
                         <button onClick={(e) => handleDeleteProtocol(e, m.id, 'mission')} className="text-gray-500 hover:text-rose-500 p-1 transition-colors"><Trash2 size={12}/></button>
@@ -388,7 +388,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                    return (
                     <div key={v.id} 
                         onClick={() => setSelectedProtocol({id: v.id, type: 'voucher'})}
-                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === v.id && selectedProtocol.type === 'voucher' ? 'border-blue-500 bg-blue-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
+                        className={`border-2 p-3 cursor-pointer transition-all relative ${selectedProtocol?.id === v.id && selectedProtocol?.type === 'voucher' ? 'border-blue-500 bg-blue-900/20' : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'}`}>
                       <div className="flex justify-between items-start">
                         <span className="font-black text-xs uppercase truncate pr-6">{v.title}</span>
                         <button onClick={(e) => handleDeleteProtocol(e, v.id, 'voucher')} className="text-gray-500 hover:text-rose-500 p-1 transition-colors"><Trash2 size={12}/></button>
