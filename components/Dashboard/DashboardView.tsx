@@ -5,7 +5,7 @@ import { signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'fireb
 import { 
   LogOut, Wallet, CheckCircle2, ArrowLeft, Loader2,
   Lock, Fingerprint, Gift, MapPin, Building2, TrendingUp
-} from 'lucide-center';
+} from 'lucide-react';
 import { MissionModal } from './MissionModal';
 
 interface DashboardViewProps {

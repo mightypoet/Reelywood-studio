@@ -57,7 +57,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
     
     setLoading(true);
     try {
-      const { error } = await supabase!.from('submissions').insert([{
+      const { error } = await supabase.from('submissions').insert([{
         mission_id: mission.id,
         user_id: user.uid,
         link: link,
@@ -149,7 +149,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                   {!isSubmitted ? (
                     <div className="space-y-6">
                        <div className="space-y-3">
-                          <label className="text-[10px) font-black uppercase opacity-40 italic tracking-widest text-black">Input Proof of Work (Link)</label>
+                          <label className="text-[10px] font-black uppercase opacity-40 italic tracking-widest text-black">Input Proof of Work (Link)</label>
                           <div className="flex border-[4px] border-black bg-white overflow-hidden focus-within:shadow-[6px_6px_0px_0px_#834bf1] transition-all">
                              <div className="bg-slate-50 p-5 border-r-[4px] border-black text-black/40">
                                 <LinkIcon size={24} strokeWidth={3} />
