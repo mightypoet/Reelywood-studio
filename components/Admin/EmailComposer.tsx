@@ -1,19 +1,25 @@
 
 import React, { useState } from 'react';
 import { X, Send, Loader2, CheckCircle, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
-// Corrected import from Profile
-import { Profile } from './AdminDashboard';
 import { db } from '../../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
+// Define the local interface for the profile data coming from Supabase
+interface AgentProfile {
+  firebase_uid: string;
+  email: string;
+  display_name: string;
+  card_status: string;
+}
+
 interface EmailComposerProps {
-  // Use Profile type instead of missing Application type
-  application: Profile;
+  // Use the local AgentProfile interface instead of the missing import
+  application: AgentProfile;
   onClose: () => void;
 }
 
 export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClose }) => {
-  // Updated property names to match Profile interface: card_status, display_name, firebase_uid
+  // Updated property names to match the profiles table structure used in AdminDashboard
   const [subject, setSubject] = useState(`Reelywood Studio - Identity Verification [${application.card_status.toUpperCase()}]`);
   const [message, setMessage] = useState(
     `Hello ${application.display_name},\n\n` +
@@ -31,7 +37,7 @@ export const EmailComposer: React.FC<EmailComposerProps> = ({ application, onClo
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     try {
-      // Use firebase_uid as the identifier for Firestore document
+      // Use firebase_uid as the identifier for Firestore document or backend log
       const appRef = doc(db, 'creator_applications', application.firebase_uid);
       await updateDoc(appRef, {
         emailSent: true,
