@@ -1,12 +1,31 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
 import { signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { 
-  LogOut, Fingerprint, Loader2, Lock, ArrowLeft,
-  Bell, Zap, Gift, Copy, Check, ChevronDown, ChevronUp,
-  Building2, ExternalLink
+  LogOut, 
+  User, 
+  Wallet, 
+  CheckCircle2, 
+  ArrowLeft,
+  Loader2,
+  Lock,
+  X,
+  Bell,
+  Fingerprint,
+  Clock,
+  Zap,
+  Sparkles,
+  Gift,
+  Target,
+  Info,
+  MapPin,
+  TrendingUp,
+  Maximize2,
+  RefreshCw,
+  Building2,
+  Link as LinkIcon,
+  AlertTriangle
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { RedeemConfirmationModal } from './RedeemConfirmationModal';
@@ -17,298 +36,409 @@ interface DashboardViewProps {
   onBack: () => void;
 }
 
-// --- HELPER COMPONENTS ---
-
-const CountdownTimer: React.FC<{ expiresAt: string | null }> = ({ expiresAt }) => {
-  const [display, setDisplay] = useState<string | null>(null);
-  const [expired, setExpired] = useState(false);
-
-  useEffect(() => {
-    if (!expiresAt) return;
-    const tick = () => {
-      const diff = new Date(expiresAt).getTime() - Date.now();
-      if (diff <= 0) {
-        setExpired(true);
-        setDisplay("EXPIRED");
-      } else {
-        const d = Math.floor(diff / (86400000));
-        const h = Math.floor((diff % 86400000) / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
-        setDisplay(`${d > 0 ? d + 'd ' : ''}${h}h ${m}m`);
-      }
-    };
-    tick();
-    const timer = setInterval(tick, 60000);
-    return () => clearInterval(timer);
-  }, [expiresAt]);
-
-  if (!display) return null;
-  return (
-    <span className={`px-2 py-0.5 border-[1.5px] border-black text-[8px] font-black uppercase tracking-widest bg-white shadow-[2px_2px_0px_0px_#000] ${expired ? 'text-rose-600' : 'text-black'}`}>
-      {expired ? 'EXPIRED' : `⏳ ${display}`}
-    </span>
-  );
-};
-
-// --- MAIN COMPONENT ---
-
 export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
-  
-  // Data State
   const [missions, setMissions] = useState<any[]>([]);
-  const [vouchers, setVouchers] = useState<any[]>([]); 
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [revealedData, setRevealedData] = useState<Record<string, { code: string; revealed_at: string }>>({});
+  const [rewards, setRewards] = useState<any[]>([]);
+  const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
   
-  // UI State
-  const [activeTab, setActiveTab] = useState<'missions' | 'vouchers'>('missions');
+  const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
+  
+  // Custom Modal State
   const [pendingRedeem, setPendingRedeem] = useState<any>(null);
   const [urgentAlert, setUrgentAlert] = useState<any>(null);
-  const [copyStatus, setCopyStatus] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
-  // --- DATA FETCHING ---
-  const fetchData = async (currentUser: FirebaseUser) => {
+  const fetchOperationalGrid = async (user: FirebaseUser, isInitial = false) => {
     if (!supabase) return;
+
     try {
-      // 1. Profile
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('firebase_uid', currentUser.uid).single();
+      const { data: profileData, error: pError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('firebase_uid', user.uid)
+        .single();
+
+      if (pError && pError.code !== 'PGRST116') throw pError;
       setProfile(profileData);
 
-      // 2. Missions
-      const { data: allMissions } = await supabase.from('missions').select('*, partner_brands(*)').order('created_at', { ascending: false });
+      const { data: allMissions } = await supabase
+        .from('missions')
+        .select('*, partner_brands(*)');
+
       if (allMissions) {
-        const relevantMissions = allMissions.filter(m => {
-          const assigned = m.assigned_to;
-          const isGlobal = !assigned || assigned.length === 0 || (assigned.length === 1 && assigned[0] === 'DRAFT');
-          const isAssignedToMe = Array.isArray(assigned) && assigned.includes(currentUser.uid);
-          if (assigned && assigned.includes('DRAFT')) return false;
-          return isGlobal || isAssignedToMe;
+        const filtered = allMissions.filter(m => {
+          if (m.assigned_to?.includes('DRAFT')) return false;
+          const isGlobal = !m.assigned_to || m.assigned_to.length === 0;
+          const isAssigned = m.assigned_to?.includes(user.uid) || m.assigned_to?.includes(profileData?.id);
+          return isGlobal || isAssigned;
         });
-        setMissions(relevantMissions);
+        setMissions(filtered);
       }
 
-      // 3. Vouchers
-      const { data: allVouchers } = await supabase.from('vouchers').select('*, partner_brands(*)').order('created_at', { ascending: false });
-      if (allVouchers) {
-        const relevantVouchers = allVouchers.filter(v => {
-           const assigned = v.assigned_to;
-           const isGlobal = !assigned || assigned.length === 0;
-           const isAssignedToMe = Array.isArray(assigned) && assigned.includes(currentUser.uid);
-           return isGlobal || isAssignedToMe;
-        });
-        setVouchers(relevantVouchers);
+      const [rRes, sRes, nRes] = await Promise.all([
+        supabase.from('rewards').select('*, partner_brands(*)'),
+        supabase.from('submissions').select('*').eq('user_id', user.uid),
+        // Only fetch urgent deployment alerts on initial load
+        isInitial ? supabase.from('notifications')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('is_read', false)
+          .in('type', ['MISSION_DEPLOYED', 'VOUCHER_ADDED'])
+          .order('created_at', { ascending: false })
+          .limit(1) : Promise.resolve({ data: null })
+      ]);
+
+      if (rRes.data) setRewards(rRes.data);
+      if (sRes.data) setUserSubmissions(sRes.data);
+      if (nRes.data && nRes.data.length > 0) {
+        setUrgentAlert(nRes.data[0]);
       }
 
-      // 4. User Data (Submissions & Redeemed Vouchers)
-      const { data: subs } = await supabase.from('submissions').select('*').eq('user_id', currentUser.uid);
-      if (subs) setSubmissions(subs);
-
-      const { data: revealed } = await supabase.from('user_vouchers').select('*').eq('user_uid', currentUser.uid);
-      if (revealed) {
-        const revMap: any = {};
-        revealed.forEach((r: any) => {
-          revMap[r.voucher_id] = { code: r.voucher_code, revealed_at: r.revealed_at };
-        });
-        setRevealedData(revMap);
-      }
-
-    } catch (e) {
-      console.error("DATA_SYNC_ERROR", e);
+    } catch (err) {
+      console.error("GRID_SYNC_FAILURE:", err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (u) {
-        setUser(u);
-        fetchData(u);
+    let pollInterval: number;
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user);
+        fetchOperationalGrid(user, true);
+        pollInterval = window.setInterval(() => {
+          fetchOperationalGrid(user, false);
+        }, 8000);
       } else {
         setLoading(false);
       }
     });
-    return () => unsub();
+
+    return () => {
+      unsubscribe();
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, []);
 
-  const handleRedeem = async () => {
-    if (!pendingRedeem || !user || !profile) return;
-    setIsProcessing(pendingRedeem.id);
+  const handleRedeemClick = (reward: any) => {
+    if (!profile || profile.reelcoins < reward.cost) {
+      return alert("⛔ INSUFFICIENT RC BAL: " + reward.cost + " required.");
+    }
+    setPendingRedeem(reward);
+  };
+
+  const executeRedemption = async () => {
+    if (!pendingRedeem || !currentUser) return;
     
+    setIsProcessing(pendingRedeem.id);
     try {
-      if (profile.reelcoins < pendingRedeem.cost) throw new Error("Insufficient Balance");
-
-      const { error: balError } = await supabase!.from('profiles').update({ reelcoins: profile.reelcoins - pendingRedeem.cost }).eq('id', profile.id);
-      if (balError) throw balError;
-
-      const { error: uvError } = await supabase!.from('user_vouchers').insert([{
-        user_uid: user.uid,
-        voucher_id: pendingRedeem.id,
-        voucher_code: pendingRedeem.code,
-        revealed_at: new Date().toISOString()
-      }]);
-      if (uvError) throw uvError;
-
-      await supabase!.from('transactions').insert([{
-         user_uid: user.uid,
-         amount: -pendingRedeem.cost,
-         type: 'redemption',
-         description: `Redeemed: ${pendingRedeem.title}`
-      }]);
-
-      await fetchData(user);
+      const { error } = await supabase!.rpc('redeem_reward', {
+        user_uid: currentUser?.uid,
+        cost: pendingRedeem.cost,
+        item_title: pendingRedeem.title
+      });
+      if (error) throw error;
+      setRevealedCodes(prev => ({ ...prev, [pendingRedeem.id]: pendingRedeem.code || 'DECRYPTED_HASH' }));
+      fetchOperationalGrid(currentUser);
       setPendingRedeem(null);
-    } catch (e: any) {
-      alert("Redemption Failed: " + e.message);
+    } catch (err: any) {
+      alert("Redemption Protocol Failure: " + err.message);
     } finally {
       setIsProcessing(null);
     }
   };
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopyStatus(id);
-    setTimeout(() => setCopyStatus(null), 2000);
+  const dismissUrgentAlert = async () => {
+    if (urgentAlert && supabase) {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', urgentAlert.id);
+    }
+    setUrgentAlert(null);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-[#834bf1]" size={40}/></div>;
-
-  if (!user) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_#000] text-center max-w-sm w-full">
-         <div className="w-16 h-16 bg-[#834bf1] border-[3px] border-black mx-auto mb-6 flex items-center justify-center shadow-[4px_4px_0px_0px_#000]">
-            <Fingerprint className="text-white" size={32} />
-         </div>
-         <h1 className="text-3xl font-black uppercase italic font-display mb-8">Hub Access</h1>
-         <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full py-4 bg-white border-[3px] border-black font-black uppercase text-xs tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
-           Sign in with Google
-         </button>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-8">
+        <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
+        <p className="text-[12px] font-black uppercase tracking-[0.6em] text-black animate-pulse">Establishing Neural Link...</p>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[#f0f0f0] flex items-center justify-center p-6">
+        <div className="bg-white border-[4px] border-black shadow-[12px_12px_0px_0px_#000] p-10 max-w-md w-full space-y-8">
+           <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-[#834bf1] border-[3px] border-black mx-auto flex items-center justify-center shadow-[4px_4px_0px_0px_#000]">
+                <Fingerprint className="text-white" size={32} />
+              </div>
+              <h1 className="text-3xl font-black italic uppercase font-display">Hub Access Required</h1>
+              <p className="text-[10px] font-black uppercase text-black/40 tracking-widest">Verify identity node to continue</p>
+           </div>
+           <button 
+             onClick={() => signInWithPopup(auth, googleProvider)}
+             className="w-full bg-white border-[4px] border-black py-5 font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3"
+           >
+             <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
+             <span>Continue with Google</span>
+           </button>
+           <button onClick={onBack} className="w-full text-[10px] font-black uppercase text-black/30 hover:text-black">Return to Studio</button>
+        </div>
+      </div>
+    );
+  }
 
   const isApproved = profile?.card_status === 'approved';
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] text-black pb-20">
-      {selectedMission && <MissionModal mission={selectedMission} user={user} onClose={() => { setSelectedMission(null); fetchData(user); }} />}
-      <RedeemConfirmationModal isOpen={!!pendingRedeem} onClose={() => setPendingRedeem(null)} onConfirm={handleRedeem} reward={pendingRedeem} isProcessing={!!isProcessing} />
+    <div className="min-h-screen bg-[#f8f8f8] text-black font-lexend">
+      {selectedMission && (
+        <MissionModal 
+          mission={selectedMission} 
+          user={currentUser} 
+          onClose={() => {
+            setSelectedMission(null);
+            fetchOperationalGrid(currentUser);
+          }} 
+        />
+      )}
 
-      <header className="sticky top-0 z-50 bg-white border-b-[4px] border-black px-4 py-3 md:px-8 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 border-2 border-black bg-white active:scale-95"><ArrowLeft size={18} strokeWidth={3}/></button>
-          <h1 className="text-xl font-black uppercase italic font-display">Hub <span className="text-[#834bf1]">Alpha</span></h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <NotificationBell userId={user.uid} />
-          <img src={user.photoURL || ''} className="w-10 h-10 border-2 border-black object-cover bg-gray-200" />
+      {/* Landing Priority Notification */}
+      <NewAlertModal 
+        notification={urgentAlert} 
+        onClose={dismissUrgentAlert} 
+      />
+
+      {/* Redemption Confirmation Modal */}
+      <RedeemConfirmationModal 
+        isOpen={!!pendingRedeem}
+        onClose={() => setPendingRedeem(null)}
+        onConfirm={executeRedemption}
+        reward={pendingRedeem}
+        isProcessing={!!isProcessing}
+      />
+
+      <header className="border-b-[6px] border-black bg-white sticky top-0 z-[50] px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-6">
+            <button onClick={onBack} className="p-2 border-[3px] border-black shadow-[3px_3px_0px_0px_#000] bg-white hover:bg-[#ffde59] transition-all">
+              <ArrowLeft size={20} strokeWidth={4} />
+            </button>
+            <h1 className="text-xl md:text-3xl font-black uppercase italic font-display">Creator <span className="text-[#834bf1]">Hub</span></h1>
+          </div>
+          
+          <div className="flex items-center space-x-6">
+            {/* Notification Bell Component */}
+            <NotificationBell userId={currentUser.uid} />
+
+            <div className="hidden md:flex flex-col items-end">
+               <span className="text-[10px] font-black uppercase opacity-40">Identity Node</span>
+               <span className="text-xs font-bold uppercase">{currentUser.email}</span>
+            </div>
+            <button onClick={() => auth.signOut()} className="bg-black text-white p-2 border-[3px] border-white shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+              <LogOut size={20} strokeWidth={3} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4 md:p-8 grid lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-4 space-y-6">
-           <div className="bg-white border-[4px] border-black p-8 text-center shadow-[8px_8px_0px_0px_#000]">
-              <div className="w-24 h-24 border-[4px] border-black mx-auto mb-4 overflow-hidden shadow-[4px_4px_0px_0px_#834bf1]">
-                <img src={user.photoURL || ''} className="w-full h-full object-cover" />
-              </div>
-              <h2 className="text-2xl font-black uppercase italic font-display truncate">{profile?.display_name}</h2>
-              <div className={`mt-2 inline-block px-3 py-1 border-[2px] border-black text-[9px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-400' : 'bg-yellow-400'}`}>
-                {isApproved ? 'Verified Agent' : 'Pending Verification'}
-              </div>
-           </div>
-           
-           <div className="bg-[#834bf1] text-white border-[4px] border-black p-8 shadow-[8px_8px_0px_0px_#000]">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Assets</div>
-              <div className="text-6xl font-black italic font-display tracking-tighter">
-                {profile?.reelcoins || 0} <span className="text-2xl text-[#ffde59]">RC</span>
-              </div>
-           </div>
-        </div>
+      <main className="max-w-7xl mx-auto p-6 lg:p-12">
+        <div className="grid lg:grid-cols-12 gap-12">
+          <div className="lg:col-span-4 space-y-12">
+            <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000] relative overflow-hidden group">
+               <div className="absolute top-4 right-4 bg-[#ffde59] border-[3px] border-black px-3 py-1 font-black text-[9px] uppercase tracking-widest shadow-[3px_3px_0px_0px_#000]">
+                  {isApproved ? 'VERIFIED' : 'SYNCING'}
+               </div>
+               <div className="w-32 h-32 border-[5px] border-black mx-auto mb-6 bg-slate-100 overflow-hidden shadow-[6px_6px_0px_0px_#834bf1]">
+                  <img src={currentUser.photoURL || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${currentUser.uid}`} alt="Agent" className="w-full h-full object-cover" />
+               </div>
+               <div className="text-center space-y-2">
+                  <h2 className="text-3xl font-black uppercase italic font-display">{profile?.display_name || "Agent " + currentUser.uid.slice(0,4)}</h2>
+                  <p className="text-[#834bf1] font-black text-xs uppercase tracking-[0.2em] italic">@{profile?.handle || "unlinked"}</p>
+               </div>
+            </div>
 
-        <div className="lg:col-span-8 space-y-8">
-          <div className="flex border-[4px] border-black bg-white p-1 shadow-[8px_8px_0px_0px_#000]">
-             <button onClick={() => setActiveTab('missions')} className={`flex-1 py-4 font-black uppercase text-xs tracking-widest transition-all ${activeTab === 'missions' ? 'bg-[#ffde59] border-2 border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40'}`}>Missions</button>
-             <button onClick={() => setActiveTab('vouchers')} className={`flex-1 py-4 font-black uppercase text-xs tracking-widest transition-all ${activeTab === 'vouchers' ? 'bg-[#834bf1] text-white border-2 border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40'}`}>Vouchers</button>
+            <div className="bg-[#834bf1] border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000] text-white">
+               <div className="flex items-center gap-3 mb-6 opacity-60">
+                  <Wallet size={18} strokeWidth={3} />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em]">Liquid Assets</span>
+               </div>
+               <div className="flex items-baseline gap-4">
+                  <span className="text-7xl font-black italic font-display tracking-tighter">{profile?.reelcoins?.toLocaleString() || "0"}</span>
+                  <span className="text-2xl font-black text-[#ffde59]">RC</span>
+               </div>
+               <div className="mt-8 pt-8 border-t-[3px] border-white/20">
+                  <button className="w-full bg-black text-white py-4 border-[3px] border-white font-black uppercase text-[10px] tracking-[0.4em] shadow-[4px_4px_0px_0px_#fff] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">Vault Ledger</button>
+               </div>
+            </div>
           </div>
 
-          {!isApproved ? (
-            <div className="bg-yellow-400 border-[4px] border-black p-12 text-center shadow-[12px_12px_0px_0px_#000]">
-               <Lock size={48} className="mx-auto mb-4 opacity-20"/>
-               <h3 className="text-2xl font-black uppercase italic font-display">Hub Encrypted</h3>
-               <p className="text-xs font-bold mt-2">Verification node sync required for authorization.</p>
+          <div className="lg:col-span-8 space-y-10">
+            <div className="flex border-[6px] border-black bg-white p-2 shadow-[10px_10px_0px_0px_#000]">
+              <button 
+                onClick={() => setActiveTab('missions')} 
+                className={`flex-1 py-5 font-black uppercase text-sm italic tracking-[0.2em] transition-all ${activeTab === 'missions' ? 'bg-[#ffde59] border-[4px] border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100'}`}
+              >
+                Mission Grid
+              </button>
+              <button 
+                onClick={() => setActiveTab('rewards')} 
+                className={`flex-1 py-5 font-black uppercase text-sm italic tracking-[0.2em] transition-all ${activeTab === 'rewards' ? 'bg-[#834bf1] text-white border-[4px] border-black shadow-[4px_4px_0px_0px_#000]' : 'opacity-40 hover:opacity-100'}`}
+              >
+                Reward Node
+              </button>
             </div>
-          ) : (
-             <div className="space-y-6">
-               {activeTab === 'missions' && (
-                 missions.length === 0 ? <div className="p-12 text-center border-2 border-dashed border-black/10 font-black uppercase opacity-20">No active signals</div> :
-                 missions.map(m => {
-                   const sub = submissions.find(s => s.mission_id === m.id);
-                   const status = sub?.status;
-                   return (
-                     <div key={m.id} className="bg-white border-[4px] border-black p-6 shadow-[6px_6px_0px_0px_#000]">
-                        <div className="flex justify-between items-start mb-6">
-                           <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 border-[3px] border-black p-1 flex items-center justify-center">
-                                {m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain"/> : <Building2 size={20}/>}
-                             </div>
-                             <div>
-                                <h3 className="text-lg font-black uppercase italic leading-none">{m.title}</h3>
-                                <p className="text-[9px] font-bold text-[#834bf1] uppercase tracking-widest mt-1">{m.partner_brands?.name}</p>
-                             </div>
-                           </div>
-                           <div className="text-right">
-                              <div className="text-xl font-black italic">+{m.reward_amount} RC</div>
-                              <CountdownTimer expiresAt={m.expires_at} />
-                           </div>
-                        </div>
-                        <button onClick={() => setSelectedMission(m)} disabled={status === 'approved' || status === 'pending'} className={`w-full py-4 border-[3px] border-black font-black uppercase text-xs ${status === 'approved' ? 'bg-emerald-400' : status === 'pending' ? 'bg-yellow-400' : 'bg-black text-white shadow-[4px_4px_0px_0px_#834bf1] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none'}`}>
-                           {status === 'approved' ? 'COMPLETED' : status === 'pending' ? 'VERIFYING' : 'INIT MISSION'}
-                        </button>
-                     </div>
-                   );
-                 })
-               )}
 
-               {activeTab === 'vouchers' && (
-                 vouchers.length === 0 ? <div className="p-12 text-center border-2 border-dashed border-black/10 font-black uppercase opacity-20">No rewards available</div> :
-                 vouchers.map(v => {
-                   const reveal = revealedData[v.id];
-                   const isExpired = v.expires_at && new Date(v.expires_at).getTime() < Date.now();
-                   return (
-                     <div key={v.id} className="bg-white border-[4px] border-black p-6 shadow-[6px_6px_0px_0px_#000]">
-                        <div className="flex items-center gap-6">
-                           <div className="w-16 h-16 border-[3px] border-black flex items-center justify-center p-2 shadow-[3px_3px_0px_0px_#000]">
-                              {v.partner_brands?.logo_url ? <img src={v.partner_brands.logo_url} className="w-full h-full object-contain"/> : <Gift size={24}/>}
-                           </div>
-                           <div className="flex-1">
-                              <div className="flex justify-between items-start mb-1">
-                                 <h3 className="text-xl font-black uppercase italic truncate pr-4">{v.title}</h3>
-                                 <span className="text-xl font-black text-[#834bf1]">{v.cost} RC</span>
-                              </div>
-                              <p className="text-[10px] font-bold text-black/50 uppercase line-clamp-1 mb-4">{v.description}</p>
-                              {reveal ? (
-                                <div className="flex items-center gap-2">
-                                   <div className="flex-1 bg-emerald-400 border-[2px] border-black p-2 font-mono font-black text-center tracking-widest uppercase">{reveal.code}</div>
-                                   <button onClick={() => copyToClipboard(reveal.code, v.id)} className="p-2 border-[2px] border-black bg-white active:scale-90">{copyStatus === v.id ? <Check size={16}/> : <Copy size={16}/>}</button>
+            {!isApproved && (
+               <div className="bg-[#ffde59] border-[6px] border-black p-12 text-center shadow-[16px_16px_0px_0px_#000] animate-in zoom-in duration-300">
+                  <Lock size={48} className="mx-auto mb-6 text-black" strokeWidth={3} />
+                  <h3 className="text-3xl font-black uppercase italic font-display">Identity Syncing</h3>
+                  <p className="text-xs font-bold uppercase tracking-tight leading-relaxed max-w-sm mx-auto mt-4">
+                    Your credentials are being reviewed by the Reelywood Dispatch. Access will unlock upon node verification.
+                  </p>
+               </div>
+            )}
+
+            {isApproved && (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                {activeTab === 'missions' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {missions.length === 0 ? (
+                      <div className="col-span-full py-24 text-center opacity-20 font-black uppercase text-xs tracking-widest italic border-4 border-dashed border-black">Scanning grid...</div>
+                    ) : (
+                      missions.map((m) => {
+                        const submission = userSubmissions.find(s => s.mission_id === m.id);
+                        const isDone = submission?.status === 'approved' || submission?.status === 'completed';
+                        const isPending = submission?.status === 'pending' || submission?.status === 'verifying' || submission?.status === 'review';
+                        const isRejected = submission?.status === 'rejected';
+                        const brand = m.partner_brands;
+
+                        const cardStyles = isDone 
+                          ? 'bg-emerald-50 border-emerald-400 shadow-emerald-200' 
+                          : isPending 
+                            ? 'bg-yellow-50 border-yellow-400 shadow-yellow-200' 
+                            : isRejected
+                              ? 'bg-rose-50 border-rose-400 shadow-rose-200'
+                              : 'bg-white border-black shadow-black';
+
+                        const buttonStyles = isDone 
+                          ? 'bg-emerald-500 text-white border-emerald-600' 
+                          : isPending 
+                            ? 'bg-yellow-400 text-black border-yellow-500' 
+                            : isRejected
+                              ? 'bg-rose-500 text-white border-rose-600'
+                              : 'bg-[#834bf1] text-white hover:bg-black';
+
+                        return (
+                          <div key={m.id} className={`border-[4px] p-8 shadow-[8px_8px_0px_0px] group hover:-translate-y-1 transition-all flex flex-col ${cardStyles}`}>
+                             <div className="flex justify-between items-start mb-6">
+                                <div className="w-14 h-14 bg-white border-[3px] border-black flex items-center justify-center p-2 shadow-[3px_3px_0px_0px_#000]">
+                                   {brand?.logo_url ? (
+                                     <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" />
+                                   ) : (
+                                     <Building2 size={24} className="text-[#834bf1]" />
+                                   )}
                                 </div>
-                              ) : (
-                                <button onClick={() => setPendingRedeem(v)} disabled={isExpired} className="w-full py-3 bg-black text-white font-black uppercase text-[10px] border-[2px] border-black shadow-[4px_4px_0px_0px_#ffde59] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
-                                   {isExpired ? 'EXPIRED' : 'REDEEM'}
+                                <div className={`px-3 py-1 font-black text-[10px] italic border-[2px] shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] flex items-center gap-1.5 ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : isRejected ? 'bg-rose-500 text-white' : 'bg-black text-[#ffde59]'}`}>
+                                  {isDone && <CheckCircle2 size={12}/>}
+                                  {isPending && <Clock size={12}/>}
+                                  {isRejected && <AlertTriangle size={12}/>}
+                                  {isDone ? 'COMPLETED' : isPending ? 'VERIFYING' : isRejected ? 'REJECTED' : `+${m.reward_amount} RC`}
+                                </div>
+                             </div>
+                             
+                             <div className="mb-4">
+                               <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isDone ? 'text-emerald-600' : isPending ? 'text-yellow-600' : isRejected ? 'text-rose-600' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood Labs'}</p>
+                               <h3 className="text-xl font-black uppercase italic font-display leading-tight">{m.title}</h3>
+                             </div>
+                             
+                             <p className="text-[10px] font-bold text-black/50 leading-relaxed uppercase mb-8 line-clamp-3 border-l-2 border-slate-100 pl-3">{m.description}</p>
+                             
+                             {submission && (
+                               <div className="mb-8 p-3 bg-white/40 border-2 border-black/10 flex items-center gap-3">
+                                 <LinkIcon size={14} className="opacity-40" />
+                                 <p className="text-[9px] font-bold uppercase truncate max-w-[150px] opacity-40">{submission.link}</p>
+                               </div>
+                             )}
+
+                             <div className="mt-auto">
+                                <button 
+                                  onClick={() => setSelectedMission(m)}
+                                  disabled={isDone || isPending}
+                                  className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all ${buttonStyles}`}
+                                >
+                                  {isDone ? 'PROTOCOL FINALIZED' : isPending ? 'REVIEW IN PROGRESS' : isRejected ? 'RE-ATTEMPT SUBMISSION' : 'INITIALIZE MISSION'}
                                 </button>
-                              )}
-                           </div>
-                        </div>
-                     </div>
-                   );
-                 })
-               )}
-             </div>
-          )}
+                             </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {rewards.length === 0 ? (
+                      <div className="py-24 text-center border-4 border-dashed border-black/10">
+                        <Gift size={48} className="mx-auto mb-4 opacity-10" />
+                        <p className="text-xs font-black italic uppercase opacity-20 tracking-widest">Voucher Node Empty</p>
+                      </div>
+                    ) : (
+                      rewards.map((r) => {
+                        const brand = r.partner_brands;
+                        return (
+                          <div key={r.id} className="bg-white border-[5px] border-black p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-8 group hover:shadow-[12px_12px_0px_0px_#ffde59] transition-all">
+                             <div className="flex items-center gap-8 flex-1">
+                                <div className="w-16 h-16 bg-white border-[4px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6 transition-all overflow-hidden p-2">
+                                  {brand?.logo_url ? (
+                                    <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" />
+                                  ) : (
+                                    <Gift size={28} className="text-[#ffde59]" strokeWidth={3} />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                   <div className="flex items-center gap-3 mb-1">
+                                     <h4 className="text-2xl font-black uppercase italic font-display truncate">{r.title}</h4>
+                                     <div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse"></div>
+                                   </div>
+                                   <div className="flex flex-col gap-1">
+                                      <p className="text-[10px] font-black uppercase text-[#834bf1] tracking-[0.3em]">{brand?.name || 'Reelywood'}</p>
+                                      {brand?.location_text && (
+                                        <p className="text-[8px] font-bold uppercase text-black/40 tracking-widest flex items-center gap-1">
+                                          <MapPin size={10}/> {brand.location_text}
+                                        </p>
+                                      )}
+                                   </div>
+                                </div>
+                             </div>
+                             <div className="flex items-center gap-8 shrink-0">
+                                <div className="text-right">
+                                   <span className="text-3xl font-black italic font-display text-[#834bf1]">{r.cost}</span>
+                                   <span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span>
+                                </div>
+                                <button 
+                                  onClick={() => handleRedeemClick(r)}
+                                  disabled={isProcessing === r.id || !!revealedCodes[r.id]}
+                                  className={`px-8 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all ${revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000]' : 'bg-black text-white hover:bg-[#834bf1]'}`}
+                                >
+                                  {isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `HASH: ${revealedCodes[r.id]}` : 'EXECUTE REDEEM'}
+                                </button>
+                             </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>
