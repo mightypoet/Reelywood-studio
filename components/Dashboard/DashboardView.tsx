@@ -89,10 +89,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, []);
 
+  // --- FULL REAL-TIME SYNC ENGINE ---
   useEffect(() => {
     if (!currentUser || !supabase) return;
+
     const client = supabase;
-    const channel = client.channel(`user-sync-${currentUser.uid}`)
+    const channel = client.channel(`dashboard-realtime-${currentUser.uid}`)
+      // 1. Keep Profiles listener (Balance/Status)
       .on(
         'postgres_changes',
         { 
@@ -105,8 +108,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           setProfile((current: any) => ({ ...current, ...payload.new }));
         }
       )
+      // 2. Missions listener (New missions or updates)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'missions' },
+        () => fetchOperationalGrid(currentUser)
+      )
+      // 3. Rewards listener (New vouchers or stock changes)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rewards' },
+        () => fetchOperationalGrid(currentUser)
+      )
+      // 4. Submissions listener (User-specific verification results)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'submissions',
+          filter: `user_id=eq.${currentUser.uid}`
+        },
+        () => fetchOperationalGrid(currentUser)
+      )
       .subscribe();
-    return () => { client.removeChannel(channel); };
+
+    return () => { 
+        client.removeChannel(channel); 
+    };
   }, [currentUser]);
 
   const handleRedeem = async (reward: any) => {
@@ -264,15 +293,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       <div className="col-span-full py-24 text-center opacity-20 font-black uppercase text-xs tracking-widest italic border-4 border-dashed border-black">Scanning grid...</div>
                     ) : (
                       missions.map((m) => {
-                        // FIX: Use String comparison for IDs to avoid data type mismatch
                         const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
-                        // FIX: Logic for pending/done states
                         const isDone = submission?.status === 'approved' || submission?.status === 'completed';
                         const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
                         
                         const brand = m.partner_brands;
 
-                        // FIX: Update card styles based on status
                         const cardStyles = isDone 
                           ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200' 
                           : isPending 
@@ -288,7 +314,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         return (
                           <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardStyles}`}>
                              
-                             {/* VERIFIED STAMP OVERLAY */}
                              {isDone && (
                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20">
                                  <div className="border-[6px] border-emerald-600/30 px-6 py-2 rounded-xl">
@@ -321,7 +346,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                              
                              <div className="mt-auto">
                                 <button 
-                                  // FIX: Strict access control
                                   onClick={() => !isDone && !isPending && setSelectedMission(m)}
                                   disabled={isDone || isPending}
                                   className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${buttonStyles}`}
