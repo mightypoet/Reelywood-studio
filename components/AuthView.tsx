@@ -107,7 +107,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBack, initialMode = 'login
                   <ExternalLink size={18} strokeWidth={3} />
                 </a>
                 <p className="text-[8px] font-black text-center text-black/30 uppercase tracking-[0.3em]">
-                  Path: Authentication > Settings > Authorized Domains
+                  Path: Authentication {'>'} Settings {'>'} Authorized Domains
                 </p>
               </div>
             </div>
