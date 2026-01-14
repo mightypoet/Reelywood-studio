@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/clients';
-import { Users, Globe, Search, CheckCircle, X, Loader2, Zap, Gift, Target, Layers } from 'lucide-react';
+import { Users, Globe, Search, CheckCircle, X, Loader2, Zap, Gift, Target } from 'lucide-react';
 
 interface CreationWizardProps {
   type: 'mission' | 'voucher';
@@ -11,7 +11,7 @@ interface CreationWizardProps {
 }
 
 export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, brands, onClose, onSuccess }) => {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2>(1); // 1 = Details, 2 = Targeting
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -23,7 +23,6 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
   const [formData, setFormData] = useState({
     title: '',
     value: '', // Reward for mission, Cost for voucher
-    stock: '50', // Default stock for vouchers
     brand_id: '',
     description: '',
     code: '', // Only for voucher
@@ -60,20 +59,17 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
           location: brand?.location_text || 'Global Sync',
           image_url: brand?.cover_image_url || '',
           checkpoints: formData.checkpoints.filter(c => c),
-          assigned_to: assignedTo,
-          status: 'active'
+          assigned_to: assignedTo
         };
       } else {
         table = 'rewards';
         payload = {
           title: formData.title,
           cost: parseInt(formData.value),
-          stock: parseInt(formData.stock), // Crucial fix for voucher deployment
           description: formData.description,
           code: formData.code || 'GENERATED-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
           brand_id: formData.brand_id,
-          assigned_to: assignedTo,
-          is_active: true
+          assigned_to: assignedTo
         };
       }
 
@@ -124,29 +120,14 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
            <input type="number" className="w-full p-4 border-4 border-black font-bold text-black" placeholder="000"
              value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})}/>
         </div>
-        {type === 'voucher' ? (
+        {type === 'voucher' && (
            <div>
-             <label className="text-[10px] font-black uppercase opacity-50 text-black">Stock Qty</label>
-             <input type="number" className="w-full p-4 border-4 border-black font-bold text-black" placeholder="50"
-               value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})}/>
-           </div>
-        ) : (
-           <div>
-             <label className="text-[10px] font-black uppercase opacity-50 text-black">Checkpoints</label>
-             <div className="p-4 border-4 border-black font-bold text-xs bg-slate-100 flex items-center gap-2 text-black">
-                <Layers size={14}/> <span>3 Steps Configured</span>
-             </div>
+             <label className="text-[10px] font-black uppercase opacity-50 text-black">Redeem Code</label>
+             <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="AUTO-GEN"
+               value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})}/>
            </div>
         )}
       </div>
-
-      {type === 'voucher' && (
-        <div>
-            <label className="text-[10px] font-black uppercase opacity-50 text-black">Voucher Code (Optional)</label>
-            <input className="w-full p-4 border-4 border-black font-bold text-black" placeholder="Leave empty to auto-generate"
-            value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})}/>
-        </div>
-      )}
 
       <textarea 
         className="w-full p-4 border-4 border-black font-bold resize-none h-24 text-black" 
@@ -178,7 +159,7 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
             onClick={() => { setTargetMode(m as any); setSelectedUserIds([]); }}
             className={`p-2 border-2 border-black font-black uppercase text-[10px] transition-all ${targetMode === m ? 'bg-black text-white' : 'bg-white text-black opacity-50'}`}
           >
-            {m === 'global' ? 'Global' : m === 'single' ? 'Single' : 'Multi'}
+            {m === 'global' ? 'Global (All)' : m === 'single' ? 'Single Node' : 'Multi Node'}
           </button>
         ))}
       </div>
@@ -187,7 +168,7 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
         <div className="flex-1 flex flex-col items-center justify-center border-4 border-black border-dashed bg-slate-50 p-8 text-center opacity-50 text-black">
            <Globe size={48} className="mb-4" />
            <p className="font-black uppercase text-sm">Global Broadcast</p>
-           <p className="text-xs">Deploying to all {users.length} active nodes.</p>
+           <p className="text-xs">This protocol will be deployed to all {users.length} active nodes.</p>
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-0 border-4 border-black bg-white">
@@ -238,7 +219,7 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-       <div className="bg-white w-full max-w-lg h-[700px] border-4 border-black shadow-[12px_12px_0px_0px_#834bf1] flex flex-col">
+       <div className="bg-white w-full max-w-lg h-[650px] border-4 border-black shadow-[12px_12px_0px_0px_#834bf1] flex flex-col">
           <div className="p-4 border-b-4 border-black flex justify-between items-center bg-slate-50 text-black">
              <h2 className="font-black uppercase italic text-lg">
                Create {type === 'mission' ? 'Mission' : 'Voucher'}
