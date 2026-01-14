@@ -92,7 +92,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       )
       .subscribe();
 
-    return () => { supabase!.removeChannel(channel); };
+    return () => { supabase.removeChannel(channel); };
   }, [currentUser]);
 
   const handleRedeem = async (reward: any) => {
@@ -119,7 +119,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
        <div className="bg-white border-4 border-black p-10 shadow-[8px_8px_0px_0px_#000] text-center max-w-sm">
           <Fingerprint className="mx-auto mb-6 text-[#834bf1]" size={48} />
           <h2 className="text-2xl font-black uppercase italic mb-8 text-black">Access Required</h2>
-          <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full bg-black text-white p-4 font-black uppercase tracking-widest border-2 border-black hover:bg-[#ffde59] hover:text-black transition-colors text-black">LOGIN WITH GOOGLE</button>
+          <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full bg-black text-white p-4 font-black uppercase tracking-widest border-2 border-black hover:bg-[#ffde59] hover:text-black transition-colors">LOGIN WITH GOOGLE</button>
        </div>
     </div>
   );
@@ -141,8 +141,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <button onClick={onBack} className="p-2 border-[3px] border-black hover:bg-[#ffde59] transition-all text-black"><ArrowLeft size={20} strokeWidth={3}/></button>
             <h1 className="text-xl font-black italic uppercase font-display leading-none text-black">CREATOR <span className="text-[#834bf1]">HUB</span></h1>
           </div>
-          <div className="flex flex-col items-end text-black">
-             <span className="text-[9px] font-black uppercase opacity-40">Identity Ledger</span>
+          <div className="flex flex-col items-end">
+             <span className="text-[9px] font-black uppercase opacity-40 text-black">Identity Ledger</span>
              <span className="text-xl font-black text-[#834bf1] italic">{profile?.reelcoins || 0} RC</span>
           </div>
       </header>
@@ -172,7 +172,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 </div>
 
                 {activeTab === 'missions' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-black">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {missions.map((m) => {
                         const submission = userSubmissions.find(s => s.mission_id === m.id);
                         const isDone = submission?.status === 'approved' || submission?.status === 'completed';
@@ -202,16 +202,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         );
                     })}
                     {missions.length === 0 && (
-                      <div className="col-span-full py-32 text-center border-4 border-dashed border-black/10 text-black">
+                      <div className="col-span-full py-32 text-center border-4 border-dashed border-black/10">
                           <TrendingUp size={48} className="mx-auto mb-4 opacity-10 text-black" />
                           <p className="text-xs font-black uppercase tracking-widest opacity-20 italic text-black">No missions detected on grid.</p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-6 text-black">
+                  <div className="space-y-6">
                     {rewards.length === 0 ? (
-                      <div className="py-24 text-center border-4 border-dashed border-black/10 text-black">
+                      <div className="py-24 text-center border-4 border-dashed border-black/10">
                         <Gift size={48} className="mx-auto mb-4 opacity-10 text-black" />
                         <p className="text-xs font-black italic uppercase opacity-20 tracking-widest text-black">Voucher Node Empty</p>
                       </div>
@@ -236,7 +236,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                    <div className="flex flex-col gap-1 text-black">
                                       <p className="text-[10px] font-black uppercase text-[#834bf1] tracking-[0.3em]">{brand?.name || 'Reelywood'}</p>
                                       {brand?.location_text && (
-                                        <p className="text-[8px] font-bold uppercase text-black/40 tracking-widest flex items-center gap-1 text-black">
+                                        <p className="text-[8px] font-bold uppercase text-black/40 tracking-widest flex items-center gap-1">
                                           <MapPin size={10}/> {brand.location_text}
                                         </p>
                                       )}
