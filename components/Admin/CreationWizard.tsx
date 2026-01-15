@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../../lib/clients';
-import { Users, Globe, Search, CheckCircle, X, Loader2, Zap, Gift, Target } from 'lucide-react';
+import { Users, Globe, Search, CheckCircle, X, Loader2, Zap, Gift, Target, List } from 'lucide-react';
 
 interface CreationWizardProps {
   type: 'mission' | 'voucher';
@@ -27,8 +26,14 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
     brand_id: '',
     description: '',
     code: '', // Only for voucher
-    checkpoints: ['', '', ''] // Only for mission
+    checkpoints: ['', '', ''] // Added verification factors
   });
+
+  const handleCheckpointChange = (index: number, val: string) => {
+    const newCheckpoints = [...formData.checkpoints];
+    newCheckpoints[index] = val;
+    setFormData({ ...formData, checkpoints: newCheckpoints });
+  };
 
   const handleToggleUser = (uid: string) => {
     if (targetMode === 'single') {
@@ -41,7 +46,6 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
   const handleDeploy = async () => {
     if (!supabase) return;
     
-    // Safety check: Don't allow empty targeting if not global
     if (targetMode !== 'global' && selectedUserIds.length === 0) {
       alert("⚠️ TARGET ERROR: Please select at least one agent node.");
       return;
@@ -50,7 +54,6 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
     setLoading(true);
 
     try {
-      // STRICT PAYLOAD: Global uses empty array, targeted uses selected UIDs
       const assignedTo = targetMode === 'global' ? [] : [...selectedUserIds];
       const brand = brands.find(b => b.id === formData.brand_id);
       
@@ -66,7 +69,7 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
           brand_id: formData.brand_id,
           location: brand?.location_text || 'Global Sync',
           image_url: brand?.cover_image_url || '',
-          checkpoints: formData.checkpoints.filter(c => c),
+          checkpoints: formData.checkpoints.filter(c => c.trim() !== ''), // Filter out empty inputs
           assigned_to: assignedTo
         };
       } else {
@@ -94,7 +97,7 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
   };
 
   const renderDetailsStep = () => (
-    <div className="space-y-6 animate-in slide-in-from-right">
+    <div className="space-y-6 animate-in slide-in-from-right overflow-y-auto max-h-full pr-2 custom-scrollbar">
       <h3 className="text-xl font-black uppercase italic flex items-center gap-2 text-black">
         {type === 'mission' ? <Zap className="text-[#834bf1]" /> : <Gift className="text-[#ffde59]" />}
         Step 1: Protocol Details
@@ -136,6 +139,25 @@ export const CreationWizard: React.FC<CreationWizardProps> = ({ type, users, bra
            </div>
         )}
       </div>
+
+      {type === 'mission' && (
+        <div className="space-y-3">
+          <label className="text-[10px] font-black uppercase opacity-50 text-black flex items-center gap-2">
+            <List size={12}/> Verification Factors (3 Steps)
+          </label>
+          <div className="space-y-2">
+            {formData.checkpoints.map((cp, i) => (
+              <input 
+                key={i}
+                className="w-full p-3 border-[3px] border-black font-bold text-xs text-black bg-slate-50 focus:bg-white"
+                placeholder={`Factor ${i + 1}: e.g. Tag @Reelywood in caption`}
+                value={cp}
+                onChange={(e) => handleCheckpointChange(i, e.target.value)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <textarea 
         className="w-full p-4 border-4 border-black font-bold resize-none h-24 text-black" 
