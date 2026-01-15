@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
 import { signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -29,7 +29,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   // New Balance Override Modal State
   const [adjustmentModal, setAdjustmentModal] = useState<any>(null);
 
-  const fetchOperationalGrid = async (user: FirebaseUser) => {
+  const fetchOperationalGrid = useCallback(async (user: FirebaseUser) => {
     if (!supabase) return;
 
     try {
@@ -61,6 +61,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (allMissions) {
         const filtered = allMissions.filter(m => {
           if (m.assigned_to?.includes('DRAFT')) return false;
+          // Mission is visible if global (empty array) or specifically assigned to user UID or Profile ID
           const isGlobal = Array.isArray(m.assigned_to) && m.assigned_to.length === 0;
           const isAssigned = m.assigned_to?.includes(user.uid) || m.assigned_to?.includes(profileData?.id);
           return isGlobal || isAssigned;
@@ -89,7 +90,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -101,28 +102,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [fetchOperationalGrid]);
 
   useEffect(() => {
     if (!currentUser || !supabase) return;
     const client = supabase;
-    const channel = client.channel(`dashboard-realtime-${currentUser.uid}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${currentUser.uid}` }, (payload) => {
-        setProfile((current: any) => ({ ...current, ...payload.new }));
+    
+    // Establishing dynamic channel for all dashboard related updates
+    const channel = client.channel(`dashboard-live-sync-${currentUser.uid}`)
+      // 1. Profile Updates (Verification status changes, balance changes)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles', 
+        filter: `firebase_uid=eq.${currentUser.uid}` 
+      }, () => {
+        console.log("REALTIME: Profile update detected, refreshing...");
+        fetchOperationalGrid(currentUser);
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `user_id=eq.${currentUser.uid}` }, (payload) => {
-        console.log("GIFT EVENT RECEIVED:", payload);
+      // 2. Transaction Updates (Gift received, manual adjustment)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'transactions', 
+        filter: `user_id=eq.${currentUser.uid}` 
+      }, (payload) => {
+        console.log("REALTIME: Gift/Ledger event received:", payload);
+        fetchOperationalGrid(currentUser);
         if (payload.new.metadata?.description) {
            setAdjustmentModal(payload.new);
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchOperationalGrid(currentUser))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => fetchOperationalGrid(currentUser))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'submissions', filter: `user_id=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
+      // 3. New Missions Pushed by Admin
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'missions' 
+      }, () => {
+        console.log("REALTIME: Mission grid change detected, refreshing...");
+        fetchOperationalGrid(currentUser);
+      })
+      // 4. New Rewards/Vouchers Pushed by Admin
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'rewards' 
+      }, () => {
+        console.log("REALTIME: Reward node change detected, refreshing...");
+        fetchOperationalGrid(currentUser);
+      })
+      // 5. Submission status changes (Mission approved -> green state)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'submissions', 
+        filter: `user_id=eq.${currentUser.uid}` 
+      }, () => {
+        console.log("REALTIME: Submission status change detected, refreshing...");
+        fetchOperationalGrid(currentUser);
+      })
       .subscribe();
 
-    return () => { client.removeChannel(channel); };
-  }, [currentUser]);
+    return () => { 
+      client.removeChannel(channel); 
+    };
+  }, [currentUser, fetchOperationalGrid]);
 
   const handleRedeem = async (reward: any) => {
     if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
@@ -170,7 +214,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 <Fingerprint className="text-white" size={32} />
               </div>
               <h1 className="text-3xl font-black italic uppercase font-display text-black">Hub Access Required</h1>
-              <p className="text-[10px] font-black uppercase text-black/40 tracking-widest text-black">Verify identity node to continue</p>
+              <p className="text-[10px] font-black uppercase text-black/40 tracking-widest">Verify identity node to continue</p>
            </div>
            <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full bg-white border-[4px] border-black py-5 font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3 text-black">
              <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
