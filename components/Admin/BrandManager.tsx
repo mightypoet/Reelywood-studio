@@ -22,6 +22,7 @@ export const BrandManager = () => {
     if (!supabase) return;
     setFetchLoading(true);
     try {
+      // Fetch brands along with a count of their linked missions and rewards
       const { data, error } = await supabase
         .from('partner_brands')
         .select(`
@@ -51,6 +52,7 @@ export const BrandManager = () => {
     
     try {
       if (editingId) {
+        // UPDATE MODE
         const { error } = await supabase
           .from('partner_brands')
           .update(formData)
@@ -59,6 +61,7 @@ export const BrandManager = () => {
         if (error) throw error;
         alert("🚀 Brand Protocols Synchronized!");
       } else {
+        // CREATE MODE
         const { error } = await supabase
           .from('partner_brands')
           .insert([formData]);
@@ -67,6 +70,7 @@ export const BrandManager = () => {
         alert("🚀 New Node Registered in the Alliance!");
       }
 
+      // Reset form and refresh list
       setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '' });
       setEditingId(null);
       fetchBrands();
@@ -89,27 +93,29 @@ export const BrandManager = () => {
       menu_link: brand.menu_link
     });
     setEditingId(brand.id);
+    // Scroll to form for visibility
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id: string) => {
     if (!supabase) return;
     
-    // Check for active missions or rewards linked to brand
     const brand = brands.find(b => b.id === id);
     const missionCount = brand?.missions?.[0]?.count || 0;
+    const rewardCount = brand?.rewards?.[0]?.count || 0;
     
-    if (missionCount > 0) {
-      alert(`⛔ DENIED: This node has ${missionCount} active mission links. Sever missions first.`);
+    // Safety check: Don't delete brands with active links
+    if (missionCount > 0 || rewardCount > 0) {
+      alert(`⛔ DENIED: Active Missions/Rewards Linked. Sever all links before purging this node.`);
       return;
     }
 
-    if (!window.confirm("⚠️ SYSTEM OVERRIDE: Are you sure? This will sever all links to this brand node.")) return;
+    if (!window.confirm("⚠️ SYSTEM OVERRIDE: Are you sure? This will permanently delete this brand node from the Alliance.")) return;
     
     try {
       const { error } = await supabase.from('partner_brands').delete().eq('id', id);
       if (error) throw error;
-      alert("Node Purged.");
+      alert("Node Purged Successfully.");
       fetchBrands();
     } catch (err: any) {
       alert("Purge Failed: " + err.message);
@@ -130,15 +136,15 @@ export const BrandManager = () => {
         <div className="flex justify-between items-center mb-10">
           <h2 className="text-2xl sm:text-4xl font-black italic uppercase flex items-center gap-4 font-display text-black">
             {editingId ? (
-              <span className="text-[#834bf1]">Edit Identity</span>
+              <span className="text-[#834bf1]">Edit Alliance Node</span>
             ) : (
-              <span className="flex items-center gap-4"><Building2 size={40} className="text-[#834bf1]"/> Brand Node</span>
+              <span className="flex items-center gap-4"><Building2 size={40} className="text-[#834bf1]"/> Initialize New Alliance</span>
             )}
           </h2>
           
           {editingId && (
-            <button onClick={handleCancel} className="bg-rose-500 text-white px-4 py-2 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2">
-              <X size={14} strokeWidth={3}/> Abort
+            <button onClick={handleCancel} className="bg-rose-500 text-white px-6 py-2.5 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2">
+              <X size={14} strokeWidth={3}/> Cancel Edit
             </button>
           )}
         </div>
@@ -183,7 +189,7 @@ export const BrandManager = () => {
 
           <button type="submit" disabled={loading} className={`w-full py-6 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] font-black text-sm uppercase tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-95 ${editingId ? 'bg-[#ffde59] text-black' : 'bg-[#834bf1] text-white'}`}>
              {loading ? <Loader2 className="animate-spin" /> : <Save size={20} strokeWidth={3} />} 
-             <span>{loading ? "Processing..." : (editingId ? "Update System Details" : "Initialize Alliance Entry")}</span>
+             <span>{loading ? "Processing..." : (editingId ? "Update Brand Node" : "Initialize Alliance Entry")}</span>
           </button>
         </form>
       </div>
@@ -216,7 +222,6 @@ export const BrandManager = () => {
                   </div>
                 </div>
                 
-                {/* BRAND MONITOR SECTION */}
                 <div className="grid grid-cols-2 gap-2 mb-6">
                    <div className="bg-slate-50 border-2 border-black p-3 text-center">
                       <div className="flex items-center justify-center gap-2 text-[#834bf1]">
@@ -243,13 +248,19 @@ export const BrandManager = () => {
                    </button>
                    <button 
                      onClick={() => handleDelete(brand.id)}
-                     className="bg-rose-500 text-white px-4 py-3 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] font-black hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                     className="bg-rose-500 text-white px-4 py-3 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] font-black hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center"
                    >
                      <Trash2 size={14} strokeWidth={3}/>
                    </button>
                 </div>
               </div>
             ))}
+            
+            {brands.length === 0 && (
+              <div className="col-span-full py-20 text-center border-4 border-dashed border-black/10">
+                <p className="font-black uppercase tracking-widest text-black/20 italic">No Alliance Nodes Detected.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -289,32 +289,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       <div className="col-span-full py-24 text-center opacity-20 font-black uppercase text-xs tracking-widest italic border-4 border-dashed border-black">Scanning grid...</div>
                     ) : (
                       missions.map((m) => {
-                        // FIX: Ensure ID comparison is robust with string conversion to handle type mismatches
+                        // FIX: Explicitly convert IDs to strings to prevent type mismatch (Number vs String)
                         const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
                         
-                        // FIX: Logic for mission completion and pending states
-                        const isDone = submission && (submission.status === 'approved' || submission.status === 'completed' || submission.status === 'verified');
-                        const isPending = submission && (submission.status === 'pending' || submission.status === 'verifying' || submission.status === 'qc_review');
+                        // FIX: Accurate status mapping
+                        const isDone = submission?.status === 'approved' || submission?.status === 'completed';
+                        const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
                         
                         const brand = m.partner_brands;
 
-                        // FIX: Apply visual states based on status
-                        const cardStyles = isDone 
-                          ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200 cursor-default' 
-                          : isPending 
-                            ? 'bg-yellow-50 border-yellow-500 shadow-yellow-200 cursor-default' 
-                            : 'bg-white border-black shadow-black hover:-translate-y-1';
-
-                        const buttonStyles = isDone 
-                          ? 'bg-emerald-600 text-white border-emerald-700 opacity-80 cursor-not-allowed' 
-                          : isPending 
-                            ? 'bg-yellow-500 text-black border-yellow-600 opacity-80 cursor-not-allowed' 
-                            : 'bg-[#834bf1] text-white hover:bg-black shadow-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none';
+                        // FIX: Visual state styles
+                        const cardBg = isDone ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200' : isPending ? 'bg-yellow-50 border-yellow-500 shadow-yellow-200' : 'bg-white border-black shadow-black';
+                        const btnColor = isDone ? 'bg-emerald-600 border-emerald-700' : isPending ? 'bg-yellow-400 border-yellow-600 text-black' : 'bg-[#834bf1] border-black';
+                        const btnText = isDone ? 'MISSION COMPLETED' : isPending ? 'PENDING REVIEW' : 'INITIALIZE MISSION';
 
                         return (
-                          <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardStyles}`}>
-                             
-                             {/* MISSION ACCOMPLISHED STAMP */}
+                          <div 
+                            key={m.id} 
+                            className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardBg} ${(isDone || isPending) ? 'pointer-events-none' : ''}`}
+                          >
+                             {/* MISSION ACCOMPLISHED STAMP OVERLAY */}
                              {isDone && (
                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20 opacity-30 select-none">
                                  <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-2xl">
@@ -333,7 +327,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                      <Building2 size={24} className="text-[#834bf1]" />
                                    )}
                                 </div>
-                                <div className={`px-3 py-1 font-black text-xs italic border-[2px] ${isDone ? 'bg-emerald-600 text-white border-emerald-800' : isPending ? 'bg-yellow-500 text-black border-yellow-700' : 'bg-black text-[#ffde59] border-black'}`}>
+                                <div className={`px-3 py-1 font-black text-xs italic border-[2px] ${isDone ? 'bg-emerald-600 text-white' : isPending ? 'bg-yellow-400 text-black' : 'bg-black text-[#ffde59]'}`}>
                                   {isDone ? 'VERIFIED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
                                 </div>
                              </div>
@@ -347,15 +341,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                              
                              <div className="mt-auto">
                                 <button 
-                                  // FIX: Strict interaction check to prevent opening modal if already submitted
                                   onClick={() => {
+                                    // FIX: Strict interaction check
                                     if (isDone || isPending) return;
                                     setSelectedMission(m);
                                   }}
-                                  disabled={!!isDone || !!isPending}
-                                  className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] transition-all ${buttonStyles}`}
+                                  disabled={isDone || isPending}
+                                  className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none text-white ${btnColor}`}
                                 >
-                                  {isDone ? 'MISSION COMPLETED' : isPending ? 'PENDING REVIEW' : 'INITIALIZE MISSION'}
+                                  {btnText}
                                 </button>
                              </div>
                           </div>
