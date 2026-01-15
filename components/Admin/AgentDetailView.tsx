@@ -3,7 +3,7 @@ import { supabase } from '../../lib/clients';
 import { 
   X, Wallet, Zap, Gift, CheckCircle, 
   TrendingUp, Clock, ShieldCheck, Plus, 
-  Minus, Loader2, Instagram, MapPin, AlertCircle, Ban
+  Minus, Loader2, Instagram, MapPin, AlertCircle, Ban, Image as ImageIcon, Type
 } from 'lucide-react';
 import { Profile } from './AdminDashboard';
 
@@ -19,6 +19,8 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
   const [adjusting, setAdjusting] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustDesc, setAdjustDesc] = useState('');
+  const [adjustImage, setAdjustImage] = useState('');
 
   useEffect(() => {
     fetchAgentIntel();
@@ -56,12 +58,16 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
       const { error } = await supabase.rpc('adjust_user_balance', {
         target_uid: agent.firebase_uid,
         amount_delta: amount,
-        reason: `ADMIN_ADJUSTMENT: Manual override`
+        reason: adjustDesc || `ADMIN_ADJUSTMENT: Manual override`,
+        meta_image: adjustImage || null
       });
 
       if (error) throw error;
       setAdjustAmount('');
+      setAdjustDesc('');
+      setAdjustImage('');
       fetchAgentIntel();
+      alert("Balance Override Successful.");
     } catch (err: any) {
       alert("Terminal Sync Failure: " + err.message);
     } finally {
@@ -84,8 +90,6 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
         .eq('firebase_uid', agent.firebase_uid);
 
       if (error) throw error;
-      
-      // Close modal on success so parent dashboard can refresh
       onClose();
     } catch (err: any) {
       alert("Status Update Protocol Failure: " + err.message);
@@ -170,15 +174,39 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
           <h4 className="font-black text-xs uppercase tracking-[0.3em] mb-6 flex items-center gap-3 italic">
             <ShieldCheck size={16} className="text-[#ffde59]" /> Balance Override
           </h4>
-          <div className="space-y-6">
-            <div className="relative">
+          <div className="space-y-4">
+            <div className="flex gap-4">
+               <div className="flex-1 space-y-4">
+                  <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2">
+                    <Type size={14} className="text-[#ffde59]"/>
+                    <input 
+                      value={adjustDesc}
+                      onChange={e => setAdjustDesc(e.target.value)}
+                      placeholder="DESCRIPTION (e.g. Valentines Day Bonus)" 
+                      className="w-full bg-transparent p-2 font-bold uppercase text-[10px] tracking-widest focus:outline-none placeholder:text-white/10"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2">
+                    <ImageIcon size={14} className="text-[#ffde59]"/>
+                    <input 
+                      value={adjustImage}
+                      onChange={e => setAdjustImage(e.target.value)}
+                      placeholder="COVER IMAGE URL (OPTIONAL)" 
+                      className="w-full bg-transparent p-2 font-bold uppercase text-[10px] tracking-widest focus:outline-none placeholder:text-white/10"
+                    />
+                  </div>
+               </div>
+            </div>
+            
+            <div className="relative border-t border-white/10 pt-4">
               <input 
                 value={adjustAmount}
                 onChange={e => setAdjustAmount(e.target.value)}
-                placeholder="INPUT VALUE (RC)..." 
-                className="w-full bg-transparent border-b-4 border-white/20 p-4 font-black italic text-2xl focus:border-[#ffde59] focus:outline-none transition-colors placeholder:text-white/10"
+                placeholder="000 (RC)" 
+                className="w-full bg-transparent p-4 font-black italic text-4xl text-center focus:text-[#ffde59] focus:outline-none transition-colors placeholder:text-white/10"
               />
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <button 
                 onClick={() => handleAdjustBalance('credit')}
@@ -196,7 +224,6 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
           </div>
         </div>
 
-        {/* --- DYNAMIC VERIFICATION / SUSPENSION BUTTON --- */}
         <button 
           onClick={handleToggleStatus}
           disabled={statusUpdating}
