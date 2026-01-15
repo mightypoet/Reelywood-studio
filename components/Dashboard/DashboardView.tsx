@@ -348,7 +348,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                              <div className="mt-auto">
                                 <button 
                                   // FIX: Strict interaction check to prevent opening modal if already submitted
-                                  onClick={() => !isDone && !isPending && setSelectedMission(m)}
+                                  onClick={() => {
+                                    if (isDone || isPending) return;
+                                    setSelectedMission(m);
+                                  }}
                                   disabled={!!isDone || !!isPending}
                                   className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] transition-all ${buttonStyles}`}
                                 >
