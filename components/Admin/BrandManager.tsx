@@ -7,6 +7,7 @@ export const BrandManager = () => {
   const [fetchLoading, setFetchLoading] = useState(true);
   const [brands, setBrands] = useState<any[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<any>(null);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [activeTab, setActiveTab] = useState<'missions' | 'vouchers' | 'settings'>('missions');
   const [brandMissions, setBrandMissions] = useState<any[]>([]);
   const [brandVouchers, setBrandVouchers] = useState<any[]>([]);
@@ -80,6 +81,11 @@ export const BrandManager = () => {
     fetchBrandDetails(brand.id);
   };
 
+  const handleCloseModal = () => {
+    setSelectedBrand(null);
+    setIsCreatingNew(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
@@ -99,7 +105,7 @@ export const BrandManager = () => {
         alert("🚀 New Node Registered!");
       }
       setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '' });
-      setSelectedBrand(null);
+      handleCloseModal();
       fetchBrands();
     } catch (err: any) {
       alert("Terminal Error: " + err.message);
@@ -127,7 +133,7 @@ export const BrandManager = () => {
       if (error) throw error;
       
       if (type === 'brand') {
-        setSelectedBrand(null);
+        handleCloseModal();
         fetchBrands();
       } else {
         fetchBrandDetails(selectedBrand.id);
@@ -144,7 +150,7 @@ export const BrandManager = () => {
     <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       
       {/* ADD BRAND TRIGGER SECTION */}
-      <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#000] flex flex-col md:flex-row justify-between items-center gap-6">
+      <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#000] flex flex-col md:flex-row justify-between items-center gap-6 text-black">
         <div>
           <h2 className="text-3xl font-black italic uppercase font-display text-black">Alliance Network</h2>
           <p className="text-[10px] font-black uppercase tracking-widest text-black/40">Scale • Manage • Deploy</p>
@@ -152,6 +158,7 @@ export const BrandManager = () => {
         <button 
           onClick={() => {
             setSelectedBrand(null);
+            setIsCreatingNew(true);
             setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '' });
             setActiveTab('settings');
           }}
@@ -186,7 +193,7 @@ export const BrandManager = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-2 mt-auto">
+              <div className="grid grid-cols-2 gap-2 mt-auto text-black">
                  <div className="bg-slate-50 border-2 border-black p-3 text-center">
                     <div className="flex items-center justify-center gap-2 text-[#834bf1]">
                        <Zap size={12} />
@@ -208,16 +215,16 @@ export const BrandManager = () => {
       </div>
 
       {/* DETAIL MODAL / DRILL DOWN */}
-      {(selectedBrand || (activeTab === 'settings' && !selectedBrand)) && (
+      {(selectedBrand || isCreatingNew) && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setSelectedBrand(null)}></div>
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={handleCloseModal}></div>
           
           <div className="relative w-full max-w-4xl bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Modal Header */}
             <div className="p-8 border-b-[4px] border-black bg-[#f8f8f8] flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div className="flex items-center gap-6">
-                <div className="w-20 h-20 bg-white border-[4px] border-black shadow-[6px_6px_0px_0px_#000] p-2">
-                  <img src={formData.logo_url} className="w-full h-full object-contain" />
+                <div className="w-20 h-20 bg-white border-[4px] border-black shadow-[6px_6px_0px_0px_#000] p-2 flex items-center justify-center overflow-hidden">
+                  <img src={formData.logo_url} className="w-full h-full object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
                 </div>
                 <div>
                   <h2 className="text-3xl font-black italic uppercase font-display leading-none text-black">
@@ -228,7 +235,7 @@ export const BrandManager = () => {
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedBrand(null)} className="bg-rose-500 text-white p-3 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
+              <button onClick={handleCloseModal} className="bg-rose-500 text-white p-3 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
                 <X size={24} strokeWidth={4}/>
               </button>
             </div>
