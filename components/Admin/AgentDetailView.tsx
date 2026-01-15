@@ -31,7 +31,7 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
     try {
       const [subs, txs] = await Promise.all([
         supabase.from('submissions').select('*').eq('user_id', agent.firebase_uid),
-        supabase.from('transactions').select('*').eq('user_uid', agent.firebase_uid).order('created_at', { ascending: false })
+        supabase.from('transactions').select('*').eq('user_id', agent.firebase_uid).order('created_at', { ascending: false })
       ]);
 
       const approvedCount = subs.data?.filter(s => s.status === 'approved' || s.status === 'completed').length || 0;
@@ -55,8 +55,8 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
     const amount = type === 'credit' ? Number(adjustAmount) : -Number(adjustAmount);
     
     try {
-      // CRITICAL FIX: Ensure parameter names match EXACTLY what is defined in the SQL function
-      // and pass them as individual top-level properties in the object.
+      // Ensure parameter names match the SQL function and use 'user_id' instead of 'user_uid' if the RPC or table requires it.
+      // Based on the bug report, the database uses user_id.
       const { error } = await supabase.rpc('adjust_user_balance', {
         target_uid: agent.firebase_uid,
         amount_delta: amount,
