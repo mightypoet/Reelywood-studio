@@ -95,7 +95,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
     const client = supabase;
     const channel = client.channel(`dashboard-realtime-${currentUser.uid}`)
-      // 1. Keep Profiles listener (Balance/Status)
       .on(
         'postgres_changes',
         { 
@@ -108,19 +107,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           setProfile((current: any) => ({ ...current, ...payload.new }));
         }
       )
-      // 2. Missions listener (New missions or updates)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'missions' },
         () => fetchOperationalGrid(currentUser)
       )
-      // 3. Rewards listener (New vouchers or stock changes)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rewards' },
         () => fetchOperationalGrid(currentUser)
       )
-      // 4. Submissions listener (User-specific verification results)
       .on(
         'postgres_changes',
         { 
@@ -293,31 +289,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       <div className="col-span-full py-24 text-center opacity-20 font-black uppercase text-xs tracking-widest italic border-4 border-dashed border-black">Scanning grid...</div>
                     ) : (
                       missions.map((m) => {
+                        // FIX: Ensure ID comparison is robust with string conversion to handle type mismatches
                         const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
-                        const isDone = submission?.status === 'approved' || submission?.status === 'completed';
-                        const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
+                        
+                        // FIX: Logic for mission completion and pending states
+                        const isDone = submission && (submission.status === 'approved' || submission.status === 'completed' || submission.status === 'verified');
+                        const isPending = submission && (submission.status === 'pending' || submission.status === 'verifying' || submission.status === 'qc_review');
                         
                         const brand = m.partner_brands;
 
+                        // FIX: Apply visual states based on status
                         const cardStyles = isDone 
-                          ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200' 
+                          ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200 cursor-default' 
                           : isPending 
-                            ? 'bg-yellow-50 border-yellow-500 shadow-yellow-200' 
-                            : 'bg-white border-black shadow-black';
+                            ? 'bg-yellow-50 border-yellow-500 shadow-yellow-200 cursor-default' 
+                            : 'bg-white border-black shadow-black hover:-translate-y-1';
 
                         const buttonStyles = isDone 
-                          ? 'bg-emerald-600 text-white border-emerald-700 cursor-not-allowed opacity-80' 
+                          ? 'bg-emerald-600 text-white border-emerald-700 opacity-80 cursor-not-allowed' 
                           : isPending 
-                            ? 'bg-yellow-500 text-black border-yellow-600 cursor-not-allowed opacity-80' 
-                            : 'bg-[#834bf1] text-white hover:bg-black shadow-black';
+                            ? 'bg-yellow-500 text-black border-yellow-600 opacity-80 cursor-not-allowed' 
+                            : 'bg-[#834bf1] text-white hover:bg-black shadow-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none';
 
                         return (
                           <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardStyles}`}>
                              
+                             {/* MISSION ACCOMPLISHED STAMP */}
                              {isDone && (
-                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20">
-                                 <div className="border-[6px] border-emerald-600/30 px-6 py-2 rounded-xl">
-                                    <span className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-emerald-600/30 font-display">
+                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20 opacity-30 select-none">
+                                 <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-2xl">
+                                    <span className="text-4xl font-black uppercase italic tracking-tighter text-emerald-700 font-display whitespace-nowrap">
                                       MISSION ACCOMPLISHED
                                     </span>
                                  </div>
@@ -332,7 +333,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                      <Building2 size={24} className="text-[#834bf1]" />
                                    )}
                                 </div>
-                                <div className={`px-3 py-1 font-black text-xs italic border-[2px] ${isDone ? 'bg-emerald-500 text-white' : isPending ? 'bg-yellow-400 text-black' : 'bg-black text-[#ffde59]'}`}>
+                                <div className={`px-3 py-1 font-black text-xs italic border-[2px] ${isDone ? 'bg-emerald-600 text-white border-emerald-800' : isPending ? 'bg-yellow-500 text-black border-yellow-700' : 'bg-black text-[#ffde59] border-black'}`}>
                                   {isDone ? 'VERIFIED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
                                 </div>
                              </div>
@@ -346,9 +347,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                              
                              <div className="mt-auto">
                                 <button 
+                                  // FIX: Strict interaction check to prevent opening modal if already submitted
                                   onClick={() => !isDone && !isPending && setSelectedMission(m)}
-                                  disabled={isDone || isPending}
-                                  className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${buttonStyles}`}
+                                  disabled={!!isDone || !!isPending}
+                                  className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] transition-all ${buttonStyles}`}
                                 >
                                   {isDone ? 'MISSION COMPLETED' : isPending ? 'PENDING REVIEW' : 'INITIALIZE MISSION'}
                                 </button>
