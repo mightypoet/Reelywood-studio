@@ -69,6 +69,7 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
       fetchAgentIntel();
       alert("Balance Override Successful.");
     } catch (err: any) {
+      console.error("RPC Error:", err);
       alert("Terminal Sync Failure: " + err.message);
     } finally {
       setAdjusting(false);
