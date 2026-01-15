@@ -42,11 +42,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (pError && pError.code !== 'PGRST116') throw pError;
       setProfile(profileData);
 
-      // Check for unread adjustments/metadata in transactions
+      // Check for unread adjustments/metadata in transactions - matching user_id column
       const { data: latestTxs } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_uid', user.uid)
+        .eq('user_id', user.uid)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -110,7 +110,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${currentUser.uid}` }, (payload) => {
         setProfile((current: any) => ({ ...current, ...payload.new }));
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `user_uid=eq.${currentUser.uid}` }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `user_id=eq.${currentUser.uid}` }, (payload) => {
+        console.log("GIFT EVENT RECEIVED:", payload);
         if (payload.new.metadata?.description) {
            setAdjustmentModal(payload.new);
         }
