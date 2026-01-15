@@ -55,6 +55,8 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
     const amount = type === 'credit' ? Number(adjustAmount) : -Number(adjustAmount);
     
     try {
+      // CRITICAL FIX: Ensure parameter names match EXACTLY what is defined in the SQL function
+      // and pass them as individual top-level properties in the object.
       const { error } = await supabase.rpc('adjust_user_balance', {
         target_uid: agent.firebase_uid,
         amount_delta: amount,
