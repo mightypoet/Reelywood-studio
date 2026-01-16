@@ -31,6 +31,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [missions, setMissions] = useState<any[]>([]);
   const [rewards, setRewards] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
+  const [myRedemptions, setMyRedemptions] = useState<any[]>([]);
   
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -75,9 +76,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setMissions(filtered);
       }
 
-      const [rRes, sRes] = await Promise.all([
+      const [rRes, sRes, redRes] = await Promise.all([
         supabase.from('rewards').select('*, partner_brands(*)'),
-        supabase.from('submissions').select('mission_id, status').eq('user_id', user.uid)
+        supabase.from('submissions').select('mission_id, status').eq('user_id', user.uid),
+        supabase.from('user_rewards').select('reward_id').eq('user_id', user.uid)
       ]);
 
       if (rRes.data) {
@@ -90,6 +92,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       }
       
       if (sRes.data) setUserSubmissions(sRes.data);
+      if (redRes.data) setMyRedemptions(redRes.data);
 
     } catch (err) {
       console.error("GRID_SYNC_FAILURE:", err);
@@ -116,7 +119,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     
     // --- CONSOLIDATED REALTIME ENGINE ---
     const channel = client.channel(`dashboard-live-sync-${currentUser.uid}`)
-      // 1. New Missions (Logic Filtering in JS due to Supabase Array Filter limitation)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
@@ -135,14 +137,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           fetchOperationalGrid(currentUser); // Auto Refresh
         }
       })
-      // 2. Mission Grid / Rewards Auto-Refresh (Updates/Deletes)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, (payload) => {
         if (payload.eventType !== 'INSERT') fetchOperationalGrid(currentUser);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
         fetchOperationalGrid(currentUser);
       })
-      // 3. My Submissions (Refresh on Verification/Rejection)
       .on('postgres_changes', { 
         event: 'UPDATE', 
         schema: 'public', 
@@ -152,7 +152,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         console.log("PROTOCOL: SUBMISSION STATUS CHANGED");
         fetchOperationalGrid(currentUser);
       })
-      // 4. My Ledger / Transactions
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
@@ -164,7 +163,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
            setAdjustmentModal(payload.new);
         }
       })
-      // 5. My Profile (Refresh on Approval/Manual Balance Change)
       .on('postgres_changes', { 
         event: 'UPDATE', 
         schema: 'public', 
@@ -369,17 +367,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       <div className="col-span-full py-24 text-center opacity-20 font-black uppercase text-xs tracking-widest italic border-4 border-dashed border-black text-black">Scanning grid...</div>
                     ) : (
                       missions.map((m) => {
-                        // FIX: Robust string-based ID matching to prevent type mismatch bugs
                         const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
-                        
-                        // FIX: Case-insensitive status mapping for consistent visual state
                         const subStatus = (submission?.status || '').toLowerCase();
                         const isDone = ['approved', 'completed'].includes(subStatus);
                         const isPending = ['pending', 'verifying'].includes(subStatus);
                         
                         const brand = m.partner_brands;
                         
-                        // FIX: Enforced visible background colors based on mission logic
                         const cardBg = isDone 
                           ? 'bg-emerald-100 border-emerald-500 shadow-emerald-200' 
                           : isPending 
@@ -444,16 +438,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     ) : (
                       rewards.map((r) => {
                         const brand = r.partner_brands;
+                        const isRedeemed = myRedemptions.some(red => String(red.reward_id) === String(r.id));
+                        
                         return (
-                          <div key={r.id} className="bg-white border-[5px] border-black p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col md:flex-row items-center justify-between gap-8 group hover:shadow-[12px_12px_0px_0px_#ffde59] transition-all">
+                          <div key={r.id} className={`relative border-[5px] p-8 shadow-[8px_8px_0px_0px] flex flex-col md:flex-row items-center justify-between gap-8 group transition-all overflow-hidden ${isRedeemed ? 'bg-slate-200 border-slate-400 opacity-75 pointer-events-none' : 'bg-white border-black hover:shadow-[12px_12px_0px_0px_#ffde59]'}`}>
+                             
+                             {isRedeemed && (
+                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 z-20 pointer-events-none select-none">
+                                 <div className="border-[6px] border-rose-600 px-8 py-4 rounded-xl">
+                                   <span className="text-5xl font-black uppercase italic tracking-tighter text-rose-600 font-display">REDEEMED</span>
+                                 </div>
+                               </div>
+                             )}
+
                              <div className="flex items-center gap-8 flex-1 text-black">
-                                <div className="w-16 h-16 bg-white border-[4px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6 transition-all overflow-hidden p-2">{brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Gift size={28} className="text-[#ffde59]" strokeWidth={3} />}</div>
+                                <div className={`w-16 h-16 border-[4px] flex items-center justify-center shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6 transition-all overflow-hidden p-2 ${isRedeemed ? 'bg-slate-300 border-slate-500' : 'bg-white border-black'}`}>
+                                  {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Gift size={28} className={`${isRedeemed ? 'text-slate-500' : 'text-[#ffde59]'}`} strokeWidth={3} />}
+                                </div>
                                 <div className="min-w-0">
-                                   <div className="flex items-center gap-3 mb-1"><h4 className="text-2xl font-black uppercase italic font-display truncate">{r.title}</h4><div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse"></div></div>
-                                   <div className="flex flex-col gap-1"><p className="text-[10px] font-black uppercase text-[#834bf1] tracking-[0.3em]">{brand?.name || 'Reelywood'}</p>{brand?.location_text && <p className="text-[8px] font-bold uppercase text-black/40 tracking-widest flex items-center gap-1"><MapPin size={10}/> {brand.location_text}</p>}</div>
+                                   <div className="flex items-center gap-3 mb-1">
+                                      <h4 className={`text-2xl font-black uppercase italic font-display truncate ${isRedeemed ? 'text-slate-600' : ''}`}>{r.title}</h4>
+                                      {!isRedeemed && <div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse"></div>}
+                                   </div>
+                                   <div className="flex flex-col gap-1">
+                                      <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${isRedeemed ? 'text-slate-500' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood'}</p>
+                                      {brand?.location_text && <p className="text-[8px] font-bold uppercase text-black/40 tracking-widest flex items-center gap-1"><MapPin size={10}/> {brand.location_text}</p>}
+                                   </div>
                                 </div>
                              </div>
-                             <div className="flex items-center gap-8 shrink-0 text-black"><div className="text-right"><span className="text-3xl font-black italic font-display text-[#834bf1]">{r.cost}</span><span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span></div><button onClick={() => handleRedeem(r)} disabled={isProcessing === r.id || !!revealedCodes[r.id]} className={`px-8 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all ${revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000]' : 'bg-black text-white hover:bg-[#834bf1]'}`}>{isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `HASH: ${revealedCodes[r.id]}` : 'EXECUTE REDEEM'}</button></div>
+                             <div className="flex items-center gap-8 shrink-0 text-black">
+                                <div className="text-right">
+                                   <span className={`text-3xl font-black italic font-display ${isRedeemed ? 'text-slate-500' : 'text-[#834bf1]'}`}>{r.cost}</span>
+                                   <span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span>
+                                </div>
+                                <button 
+                                  onClick={() => handleRedeem(r)} 
+                                  disabled={isProcessing === r.id || !!revealedCodes[r.id] || isRedeemed} 
+                                  className={`px-8 py-4 border-[3px] font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all ${isRedeemed ? 'bg-slate-400 text-slate-100 border-slate-500 cursor-not-allowed' : revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000]' : 'bg-black text-white hover:bg-[#834bf1] border-black'}`}
+                                >
+                                  {isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `HASH: ${revealedCodes[r.id]}` : isRedeemed ? 'REDEEMED' : 'EXECUTE REDEEM'}
+                                </button>
+                             </div>
                           </div>
                         );
                       })
