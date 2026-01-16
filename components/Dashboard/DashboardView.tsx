@@ -31,7 +31,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [missions, setMissions] = useState<any[]>([]);
   const [rewards, setRewards] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
-  const [myRedemptions, setMyRedemptions] = useState<any[]>([]);
+  const [myRedemptions, setMyRedemptions] = useState<string[]>([]);
   
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -92,7 +92,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       }
       
       if (sRes.data) setUserSubmissions(sRes.data);
-      if (redRes.data) setMyRedemptions(redRes.data);
+      if (redRes.data) setMyRedemptions(redRes.data.map((r: any) => String(r.reward_id)));
 
     } catch (err) {
       console.error("GRID_SYNC_FAILURE:", err);
@@ -438,11 +438,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     ) : (
                       rewards.map((r) => {
                         const brand = r.partner_brands;
-                        // Robust string matching to identify if voucher is already in myRedemptions
-                        const isRedeemed = myRedemptions.some(red => String(red.reward_id) === String(r.id));
+                        // Persistent redemption check using fetched user_rewards
+                        const isRedeemed = myRedemptions.includes(String(r.id)) || !!revealedCodes[r.id];
                         
                         return (
-                          <div key={r.id} className={`relative border-[5px] p-8 shadow-[8px_8px_0px_0px] flex flex-col md:flex-row items-center justify-between gap-8 group transition-all overflow-hidden ${isRedeemed ? 'bg-slate-200 border-slate-400 opacity-75 pointer-events-none' : 'bg-white border-black hover:shadow-[12px_12px_0px_0px_#ffde59]'}`}>
+                          <div key={r.id} className={`relative border-[5px] p-8 flex flex-col md:flex-row items-center justify-between gap-8 group transition-all overflow-hidden ${isRedeemed ? 'bg-gray-100 border-gray-400 opacity-75 pointer-events-none shadow-none' : 'bg-white border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-[12px_12px_0px_0px_#ffde59]'}`}>
                              
                              {isRedeemed && (
                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 z-20 pointer-events-none select-none">
@@ -453,29 +453,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                              )}
 
                              <div className="flex items-center gap-8 flex-1 text-black">
-                                <div className={`w-16 h-16 border-[4px] flex items-center justify-center shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6 transition-all overflow-hidden p-2 ${isRedeemed ? 'bg-slate-300 border-slate-500' : 'bg-white border-black'}`}>
-                                  {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Gift size={28} className={`${isRedeemed ? 'text-slate-500' : 'text-[#ffde59]'}`} strokeWidth={3} />}
+                                <div className={`w-16 h-16 border-[4px] flex items-center justify-center transition-all overflow-hidden p-2 ${isRedeemed ? 'bg-gray-200 border-gray-400 shadow-none' : 'bg-white border-black shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6'}`}>
+                                  {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Gift size={28} className={`${isRedeemed ? 'text-gray-400' : 'text-[#ffde59]'}`} strokeWidth={3} />}
                                 </div>
                                 <div className="min-w-0">
                                    <div className="flex items-center gap-3 mb-1">
-                                      <h4 className={`text-2xl font-black uppercase italic font-display truncate ${isRedeemed ? 'text-slate-600' : ''}`}>{r.title}</h4>
+                                      <h4 className={`text-2xl font-black uppercase italic font-display truncate ${isRedeemed ? 'text-gray-500' : ''}`}>{r.title}</h4>
                                       {!isRedeemed && <div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse"></div>}
                                    </div>
                                    <div className="flex flex-col gap-1">
-                                      <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${isRedeemed ? 'text-slate-500' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood'}</p>
+                                      <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${isRedeemed ? 'text-gray-400' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood'}</p>
                                       {brand?.location_text && <p className="text-[8px] font-bold uppercase text-black/40 tracking-widest flex items-center gap-1"><MapPin size={10}/> {brand.location_text}</p>}
                                    </div>
                                 </div>
                              </div>
                              <div className="flex items-center gap-8 shrink-0 text-black">
                                 <div className="text-right">
-                                   <span className={`text-3xl font-black italic font-display ${isRedeemed ? 'text-slate-500' : 'text-[#834bf1]'}`}>{r.cost}</span>
+                                   <span className={`text-3xl font-black italic font-display ${isRedeemed ? 'text-gray-400' : 'text-[#834bf1]'}`}>{r.cost}</span>
                                    <span className="text-xs font-black ml-2 uppercase italic opacity-40">RC</span>
                                 </div>
                                 <button 
                                   onClick={() => handleRedeem(r)} 
                                   disabled={isProcessing === r.id || !!revealedCodes[r.id] || isRedeemed} 
-                                  className={`px-8 py-4 border-[3px] font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all ${isRedeemed ? 'bg-slate-400 text-slate-100 border-slate-500 cursor-not-allowed' : revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000]' : 'bg-black text-white hover:bg-[#834bf1] border-black'}`}
+                                  className={`px-8 py-4 border-[3px] font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] transition-all ${isRedeemed ? 'bg-gray-800 text-gray-500 border-gray-900 pointer-events-none' : revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000] hover:translate-x-0.5 hover:translate-y-0.5' : 'bg-black text-white hover:bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}
                                 >
                                   {isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `HASH: ${revealedCodes[r.id]}` : isRedeemed ? 'REDEEMED' : 'EXECUTE REDEEM'}
                                 </button>
