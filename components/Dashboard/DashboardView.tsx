@@ -115,9 +115,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     if (!currentUser || !supabase) return;
     const client = supabase;
     
-    // --- CONSOLIDATED REALTIME ENGINE ---
     const channel = client.channel(`dashboard-live-sync-${currentUser.uid}`)
-      // 1. Mission/Voucher Detection logic
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
@@ -194,6 +192,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   }, [currentUser, fetchOperationalGrid]);
 
   const handleRedeem = async (reward: any) => {
+    // SECURITY: Prevent duplicate access
+    const isAlreadyRedeemed = myRedemptions.includes(String(reward.id));
+    if (isAlreadyRedeemed) return alert("⛔ PROTOCOL DENIED: Reward already claimed.");
+
     if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
     if (!confirm(`Redeem "${reward.title}" from ${reward.partner_brands?.name || 'Reelywood'}?`)) return;
     
@@ -256,7 +258,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser); }} />
       )}
 
-      {/* PERSISTENT ALERT MODAL (New Missions/Vouchers) */}
+      {/* PERSISTENT ALERT MODAL */}
       {activeIncomingAlert && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
            <div className="bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] max-w-lg w-full relative overflow-hidden animate-in zoom-in-95 duration-300">
@@ -373,7 +375,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 </div>
               )}
             </div>
-            
             <button onClick={() => auth.signOut()} className="bg-black text-white p-2 border-[3px] border-white shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
               <LogOut size={20} strokeWidth={3} />
             </button>
@@ -438,7 +439,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         const subStatus = (submission?.status || '').toLowerCase();
                         const isDone = ['approved', 'completed'].includes(subStatus);
                         const isPending = ['pending', 'verifying'].includes(subStatus);
-                        
                         const brand = m.partner_brands;
                         
                         const cardBg = isDone 
@@ -459,12 +459,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                           <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardBg}`}>
                              {isDone && (
                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20 opacity-30 select-none">
-                                 <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-xl">
+                                 <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-2xl">
                                    <span className="text-4xl font-black uppercase italic tracking-tighter text-emerald-700 font-display whitespace-nowrap">MISSION ACCOMPLISHED</span>
                                  </div>
                                </div>
                              )}
-                             
                              <div className="flex justify-between items-start mb-6">
                                 <div className="w-14 h-14 bg-white border-[3px] border-black flex items-center justify-center p-2 shadow-[3px_3px_0px_0px_#000]">
                                    {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Building2 size={24} className="text-[#834bf1]" />}
@@ -473,20 +472,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                   {isDone ? 'VERIFIED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
                                 </div>
                              </div>
-                             
                              <div className="mb-4">
                                <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isDone ? 'text-emerald-700' : isPending ? 'text-yellow-700' : 'text-[#834bf1]'}`}>{brand?.name || 'Reelywood Labs'}</p>
                                <h3 className="text-xl font-black uppercase italic font-display leading-tight">{m.title}</h3>
                              </div>
-                             
                              <p className="text-[10px] font-bold text-black/50 leading-relaxed uppercase mb-8 line-clamp-3 border-l-2 border-slate-100 pl-3">{m.description}</p>
-                             
                              <div className="mt-auto">
                                 <button 
-                                  onClick={() => { 
-                                    if (isDone || isPending) return; 
-                                    setSelectedMission(m); 
-                                  }} 
+                                  onClick={() => { if (isDone || isPending) return; setSelectedMission(m); }} 
                                   disabled={isDone || isPending} 
                                   className={`w-full py-4 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none text-white ${btnColor} disabled:cursor-not-allowed`}
                                 >
@@ -505,26 +498,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     ) : (
                       rewards.map((r) => {
                         const brand = r.partner_brands;
+                        // PERSISTED STATE: Check if voucher is in myRedemptions
                         const isRedeemed = myRedemptions.includes(String(r.id)) || !!revealedCodes[r.id];
                         
                         return (
-                          <div key={r.id} className={`relative border-[5px] p-8 flex flex-col md:flex-row items-center justify-between gap-8 group transition-all overflow-hidden ${isRedeemed ? 'bg-gray-100 border-gray-400 opacity-75 pointer-events-none shadow-none' : 'bg-white border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-[12px_12px_0px_0px_#ffde59]'}`}>
+                          <div key={r.id} className={`relative border-[5px] p-8 flex flex-col md:flex-row items-center justify-between gap-8 group transition-all overflow-hidden ${isRedeemed ? 'bg-gray-200 border-gray-400 opacity-75 pointer-events-none' : 'bg-white border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-[12px_12px_0px_0px_#ffde59]'}`}>
                              
                              {isRedeemed && (
-                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 z-20 pointer-events-none select-none">
-                                 <div className="border-[6px] border-rose-600 px-8 py-4 rounded-xl">
+                               <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none select-none bg-white/40">
+                                 <div className="border-[6px] border-rose-600 px-8 py-4 rounded-xl rotate-[-12deg] bg-white shadow-xl">
                                    <span className="text-5xl font-black uppercase italic tracking-tighter text-rose-600 font-display">REDEEMED</span>
                                  </div>
                                </div>
                              )}
 
                              <div className="flex items-center gap-8 flex-1 text-black">
-                                <div className={`w-16 h-16 border-[4px] flex items-center justify-center transition-all overflow-hidden p-2 ${isRedeemed ? 'bg-gray-200 border-gray-400 shadow-none' : 'bg-white border-black shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6'}`}>
+                                <div className={`w-16 h-16 border-[4px] flex items-center justify-center transition-all overflow-hidden p-2 ${isRedeemed ? 'bg-gray-300 border-gray-400' : 'bg-white border-black shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6'}`}>
                                   {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Gift size={28} className={`${isRedeemed ? 'text-gray-400' : 'text-[#ffde59]'}`} strokeWidth={3} />}
                                 </div>
                                 <div className="min-w-0">
                                    <div className="flex items-center gap-3 mb-1">
-                                      <h4 className={`text-2xl font-black uppercase italic font-display truncate ${isRedeemed ? 'text-gray-500' : ''}`}>{r.title}</h4>
+                                      <h4 className={`text-2xl font-black uppercase italic font-display truncate ${isRedeemed ? 'text-gray-500 line-through' : ''}`}>{r.title}</h4>
                                       {!isRedeemed && <div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse"></div>}
                                    </div>
                                    <div className="flex flex-col gap-1">
@@ -540,10 +534,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                 </div>
                                 <button 
                                   onClick={() => handleRedeem(r)} 
-                                  disabled={isProcessing === r.id || !!revealedCodes[r.id] || isRedeemed} 
-                                  className={`px-8 py-4 border-[3px] font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] transition-all ${isRedeemed ? 'bg-gray-800 text-gray-500 border-gray-900 pointer-events-none' : revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000] hover:translate-x-0.5 hover:translate-y-0.5' : 'bg-black text-white hover:bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}
+                                  disabled={isProcessing === r.id || isRedeemed} 
+                                  className={`px-8 py-4 border-[3px] font-black uppercase text-[10px] tracking-[0.4em] shadow-[5px_5px_0px_0px_#000] transition-all ${isRedeemed ? 'bg-gray-700 text-gray-500 border-gray-800' : revealedCodes[r.id] ? 'bg-[#39ff14] text-black border-[#000] hover:translate-x-0.5 hover:translate-y-0.5' : 'bg-black text-white hover:bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}
                                 >
-                                  {isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `HASH: ${revealedCodes[r.id]}` : isRedeemed ? 'REDEEMED' : 'EXECUTE REDEEM'}
+                                  {isProcessing === r.id ? <Loader2 className="animate-spin" /> : revealedCodes[r.id] ? `HASH: ${revealedCodes[r.id]}` : isRedeemed ? 'USED' : 'EXECUTE REDEEM'}
                                 </button>
                              </div>
                           </div>
