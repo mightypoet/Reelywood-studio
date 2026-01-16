@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth, googleProvider } from '../../lib/firebase';
@@ -219,7 +220,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               </div>
               <h1 className="text-3xl font-black italic uppercase font-display text-black">Terminal Access Required</h1>
            </div>
-           <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full bg-white border-[4px] border-black py-5 font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3 text-black text-black">
+           <button onClick={() => signInWithPopup(auth, googleProvider)} className="w-full bg-white border-[4px] border-black py-5 font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3 text-black">
              <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
              <span>Continue with Google</span>
            </button>
@@ -353,7 +354,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             </div>
 
             {!isApproved && (
-               <div className="bg-[#ffde59] border-[6px] border-black p-12 text-center shadow-[16px_16px_0px_0px_#000] animate-in zoom-in duration-300 text-black text-black">
+               <div className="bg-[#ffde59] border-[6px] border-black p-12 text-center shadow-[16px_16px_0px_0px_#000] animate-in zoom-in duration-300 text-black">
                   <Lock size={48} className="mx-auto mb-6 text-black" strokeWidth={3} />
                   <h3 className="text-3xl font-black uppercase italic font-display text-black">Identity Syncing</h3>
                   <p className="text-xs font-bold uppercase tracking-tight leading-relaxed max-w-sm mx-auto mt-4 text-black">Your credentials are being reviewed by Reelywood Dispatch. Access will unlock upon node verification.</p>
@@ -378,7 +379,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         const btnText = isDone ? 'MISSION COMPLETED' : isPending ? 'PENDING REVIEW' : 'INITIALIZE MISSION';
                         
                         return (
-                          <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardBg}`}>
+                          <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardBg} ${(isDone || isPending) ? 'pointer-events-none' : ''}`}>
                              {isDone && (
                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20 opacity-30 select-none">
                                  <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-2xl">
@@ -391,7 +392,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                                 <div className="w-14 h-14 bg-white border-[3px] border-black flex items-center justify-center p-2 shadow-[3px_3px_0px_0px_#000]">
                                    {brand?.logo_url ? <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" /> : <Building2 size={24} className="text-[#834bf1]" />}
                                 </div>
-                                <div className={`px-3 py-1 font-black text-xs italic border-[2px] ${isDone ? 'bg-emerald-600 text-white' : isPending ? 'bg-yellow-400 text-black' : 'bg-black text-[#ffde59]'}`}>
+                                <div className={`px-3 py-1 font-black text-xs italic border-[2px] ${isDone ? 'bg-emerald-600 text-white border-emerald-700' : isPending ? 'bg-yellow-400 text-black border-yellow-600' : 'bg-black text-[#ffde59] border-black'}`}>
                                   {isDone ? 'VERIFIED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
                                 </div>
                              </div>
@@ -406,7 +407,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                              <div className="mt-auto">
                                 <button 
                                   onClick={() => { 
-                                    if (isDone || isPending) return; 
+                                    if (submission) return; 
                                     setSelectedMission(m); 
                                   }} 
                                   disabled={isDone || isPending} 
