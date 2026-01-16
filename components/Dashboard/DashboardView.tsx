@@ -18,10 +18,11 @@ interface DashboardViewProps {
 interface NotificationItem {
   id: string;
   title: string;
-  type: 'mission' | 'system';
+  message: string;
+  type: 'mission' | 'reward' | 'system';
   timestamp: Date;
   read: boolean;
-  reward?: number;
+  data?: any;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
@@ -38,13 +39,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
   
-  // Real-time Notification State
+  // Notification State
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-  
-  // Instant Notification Modal (The Triggered Pop-up)
-  const [notification, setNotification] = useState<any>(null);
-  const [showNotification, setShowNotification] = useState(false);
+  const [activeIncomingAlert, setActiveIncomingAlert] = useState<NotificationItem | null>(null);
   
   // Balance/Ledger Adjustments
   const [adjustmentModal, setAdjustmentModal] = useState<any>(null);
@@ -119,6 +117,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     
     // --- CONSOLIDATED REALTIME ENGINE ---
     const channel = client.channel(`dashboard-live-sync-${currentUser.uid}`)
+      // 1. Mission/Voucher Detection logic
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
@@ -129,28 +128,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         const isAssigned = Array.isArray(newM.assigned_to) && newM.assigned_to.includes(currentUser.uid);
         
         if (isGlobal || isAssigned) {
-          console.log("PROTOCOL: RELEVANT MISSION DETECTED", newM);
+          const newNotif: NotificationItem = {
+            id: Math.random().toString(36).substr(2, 9),
+            title: 'New Mission Deployed',
+            message: newM.title,
+            type: 'mission',
+            timestamp: new Date(),
+            read: false,
+            data: newM
+          };
+          setNotifications(prev => [newNotif, ...prev]);
+          setActiveIncomingAlert(newNotif);
           try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e){}
-          
-          setNotification(newM);
-          setShowNotification(true);
-          fetchOperationalGrid(currentUser); // Auto Refresh
+          fetchOperationalGrid(currentUser);
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, (payload) => {
-        if (payload.eventType !== 'INSERT') fetchOperationalGrid(currentUser);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
-        fetchOperationalGrid(currentUser);
-      })
       .on('postgres_changes', { 
-        event: 'UPDATE', 
+        event: 'INSERT', 
         schema: 'public', 
-        table: 'submissions', 
-        filter: `user_id=eq.${currentUser.uid}` 
-      }, () => {
-        console.log("PROTOCOL: SUBMISSION STATUS CHANGED");
-        fetchOperationalGrid(currentUser);
+        table: 'rewards' 
+      }, (payload) => {
+        const newR = payload.new;
+        const isGlobal = !newR.assigned_to || (Array.isArray(newR.assigned_to) && newR.assigned_to.length === 0);
+        const isAssigned = Array.isArray(newR.assigned_to) && newR.assigned_to.includes(currentUser.uid);
+        
+        if (isGlobal || isAssigned) {
+          const newNotif: NotificationItem = {
+            id: Math.random().toString(36).substr(2, 9),
+            title: 'New Reward Node Online',
+            message: newR.title,
+            type: 'reward',
+            timestamp: new Date(),
+            read: false,
+            data: newR
+          };
+          setNotifications(prev => [newNotif, ...prev]);
+          setActiveIncomingAlert(newNotif);
+          try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e){}
+          fetchOperationalGrid(currentUser);
+        }
       })
       .on('postgres_changes', { 
         event: 'INSERT', 
@@ -169,7 +185,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         table: 'profiles', 
         filter: `firebase_uid=eq.${currentUser.uid}` 
       }, (payload) => {
-        console.log("PROTOCOL: PROFILE UPDATE DETECTED");
         setProfile(payload.new);
         fetchOperationalGrid(currentUser);
       })
@@ -197,6 +212,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     } finally {
       setIsProcessing(null);
     }
+  };
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   if (loading) {
@@ -229,6 +248,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   }
 
   const isApproved = profile?.card_status === 'approved';
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] text-black font-lexend">
@@ -236,31 +256,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser); }} />
       )}
 
-      {/* NEW MISSION TRANSMISSION POPUP */}
-      {showNotification && notification && (
+      {/* PERSISTENT ALERT MODAL (New Missions/Vouchers) */}
+      {activeIncomingAlert && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
            <div className="bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] max-w-lg w-full relative overflow-hidden animate-in zoom-in-95 duration-300">
               <div className="bg-[#834bf1] p-10 text-white border-b-[6px] border-black text-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-20"><Radio size={80} strokeWidth={1} /></div>
                 <Zap size={56} className="mx-auto mb-6 text-[#ffde59] animate-bounce" />
-                <h3 className="text-4xl font-black italic uppercase font-display leading-tight">Incoming Mission</h3>
+                <h3 className="text-4xl font-black italic uppercase font-display leading-tight">{activeIncomingAlert.title}</h3>
                 <p className="text-[10px] font-black uppercase tracking-[0.5em] mt-3 text-[#ffde59]">Broadcast Signal Locked</p>
               </div>
               <div className="p-10 space-y-8">
                 <div className="space-y-4">
-                   <h4 className="text-2xl font-black uppercase italic font-display">{notification.title}</h4>
+                   <h4 className="text-2xl font-black uppercase italic font-display">{activeIncomingAlert.message}</h4>
                    <div className="bg-slate-50 border-[3px] border-black p-5 flex justify-between items-center shadow-[4px_4px_0px_0px_#000]">
-                      <span className="font-black text-xs uppercase italic text-black/50 tracking-widest">Incentive Payload</span>
-                      <span className="text-2xl font-black text-[#834bf1] italic">+{notification.reward_amount} RC</span>
+                      <span className="font-black text-xs uppercase italic text-black/50 tracking-widest">Type</span>
+                      <span className="text-lg font-black text-[#834bf1] italic uppercase">{activeIncomingAlert.type}</span>
                    </div>
                 </div>
                 <button 
-                  onClick={() => { setShowNotification(false); setSelectedMission(notification); }} 
+                  onClick={() => { 
+                    setActiveIncomingAlert(null); 
+                    if (activeIncomingAlert.type === 'mission') {
+                       setSelectedMission(activeIncomingAlert.data);
+                    } else {
+                       setActiveTab('rewards');
+                    }
+                  }} 
                   className="w-full py-6 bg-black text-white border-[4px] border-black shadow-[8px_8px_0px_0px_#834bf1] font-black uppercase text-xs tracking-[0.3em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
                 >
-                  Accept Mission Brief
+                  View Details
                 </button>
-                <button onClick={() => setShowNotification(false)} className="w-full text-[10px] font-black uppercase tracking-widest text-black/30 hover:text-black transition-colors">Acknowledge & Close</button>
+                <button onClick={() => setActiveIncomingAlert(null)} className="w-full text-[10px] font-black uppercase tracking-widest text-black/30 hover:text-black transition-colors">Acknowledge & Close</button>
               </div>
            </div>
         </div>
@@ -294,7 +321,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       )}
 
-      <header className="border-b-[6px] border-black bg-white sticky top-0 z-[50] px-6 py-4">
+      <header className="border-b-[6px] border-black bg-white sticky top-0 z-[100] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <button onClick={onBack} className="p-2 border-[3px] border-black shadow-[3px_3px_0px_0px_#000] bg-white hover:bg-[#ffde59] transition-all">
@@ -303,10 +330,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <h1 className="text-xl md:text-3xl font-black uppercase italic font-display">Creator <span className="text-[#834bf1]">Hub</span></h1>
           </div>
           <div className="flex items-center space-x-6">
-            <div className="hidden md:flex flex-col items-end">
-               <span className="text-[10px] font-black uppercase opacity-40">Identity Node</span>
-               <span className="text-xs font-bold uppercase">{currentUser.email}</span>
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                className={`p-3 border-[3px] border-black shadow-[3px_3px_0px_0px_#000] transition-all relative ${unreadCount > 0 ? 'bg-[#ffde59]' : 'bg-white'}`}
+              >
+                <Bell size={20} strokeWidth={3} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-rose-500 text-white border-2 border-black w-6 h-6 flex items-center justify-center text-[10px] font-black rounded-none shadow-[2px_2px_0px_0px_#000]">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {showNotifDropdown && (
+                <div className="absolute top-14 right-0 w-80 bg-white border-[4px] border-black shadow-[10px_10px_0px_0px_#000] z-[200] animate-in slide-in-from-top-2">
+                  <div className="p-4 border-b-2 border-black bg-slate-50 flex justify-between items-center">
+                    <span className="font-black text-[10px] uppercase tracking-widest">Protocol Notifications</span>
+                    <button onClick={markAllRead} className="text-[9px] font-black uppercase text-[#834bf1] hover:underline">Mark read</button>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-10 text-center opacity-30 italic text-xs font-black uppercase">No signals detected.</div>
+                    ) : (
+                      notifications.map(n => (
+                        <div 
+                          key={n.id} 
+                          className={`p-4 border-b-2 border-black/5 flex gap-4 items-start hover:bg-slate-50 transition-colors ${!n.read ? 'bg-indigo-50/50 border-l-[4px] border-l-[#834bf1]' : ''}`}
+                        >
+                          <div className={`mt-1 p-1.5 border-[2px] border-black shadow-[2px_2px_0px_0px_#000] ${n.type === 'mission' ? 'bg-[#ffde59]' : 'bg-[#834bf1] text-white'}`}>
+                            {n.type === 'mission' ? <Zap size={14} /> : <Gift size={14} />}
+                          </div>
+                          <div>
+                            <p className="font-black text-[10px] uppercase leading-tight">{n.title}</p>
+                            <p className="text-[11px] font-bold mt-1 text-black/60 truncate w-48">{n.message}</p>
+                            <p className="text-[8px] font-black uppercase opacity-30 mt-2">{n.timestamp.toLocaleTimeString()}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+            
             <button onClick={() => auth.signOut()} className="bg-black text-white p-2 border-[3px] border-white shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
               <LogOut size={20} strokeWidth={3} />
             </button>
@@ -392,7 +459,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                           <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardBg}`}>
                              {isDone && (
                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20 opacity-30 select-none">
-                                 <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-2xl">
+                                 <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-xl">
                                    <span className="text-4xl font-black uppercase italic tracking-tighter text-emerald-700 font-display whitespace-nowrap">MISSION ACCOMPLISHED</span>
                                  </div>
                                </div>
@@ -438,7 +505,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     ) : (
                       rewards.map((r) => {
                         const brand = r.partner_brands;
-                        // Persistent redemption check using fetched user_rewards
                         const isRedeemed = myRedemptions.includes(String(r.id)) || !!revealedCodes[r.id];
                         
                         return (
