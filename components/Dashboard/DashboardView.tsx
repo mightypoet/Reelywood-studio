@@ -369,23 +369,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       <div className="col-span-full py-24 text-center opacity-20 font-black uppercase text-xs tracking-widest italic border-4 border-dashed border-black text-black">Scanning grid...</div>
                     ) : (
                       missions.map((m) => {
-                        // FIX: Strict string comparison for IDs to avoid mismatch
+                        // FIX: Robust string-based ID matching to prevent type mismatch bugs
                         const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
-                        const isDone = submission?.status === 'approved' || submission?.status === 'completed';
-                        const isPending = submission?.status === 'pending' || submission?.status === 'verifying';
+                        
+                        // FIX: Case-insensitive status mapping for consistent visual state
+                        const subStatus = (submission?.status || '').toLowerCase();
+                        const isDone = ['approved', 'completed'].includes(subStatus);
+                        const isPending = ['pending', 'verifying'].includes(subStatus);
+                        
                         const brand = m.partner_brands;
                         
-                        // FIX: Updated background and border logic based on status
+                        // FIX: Enforced visible background colors based on mission logic
                         const cardBg = isDone 
-                          ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200' 
+                          ? 'bg-emerald-100 border-emerald-500 shadow-emerald-200' 
                           : isPending 
-                            ? 'bg-yellow-50 border-yellow-500 shadow-yellow-200' 
+                            ? 'bg-yellow-100 border-yellow-500 shadow-yellow-200' 
                             : 'bg-white border-black shadow-black';
 
                         const btnColor = isDone 
                           ? 'bg-emerald-600 border-emerald-700' 
                           : isPending 
-                            ? 'bg-yellow-400 border-yellow-600 text-black' 
+                            ? 'bg-yellow-400 border-yellow-600 text-black shadow-[4px_4px_0px_0px_#000]' 
                             : 'bg-[#834bf1] border-black';
 
                         const btnText = isDone ? 'MISSION COMPLETED' : isPending ? 'PENDING REVIEW' : 'INITIALIZE MISSION';
