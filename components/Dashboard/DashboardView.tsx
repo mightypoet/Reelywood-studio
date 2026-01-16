@@ -438,6 +438,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     ) : (
                       rewards.map((r) => {
                         const brand = r.partner_brands;
+                        // Robust string matching to identify if voucher is already in myRedemptions
                         const isRedeemed = myRedemptions.some(red => String(red.reward_id) === String(r.id));
                         
                         return (
