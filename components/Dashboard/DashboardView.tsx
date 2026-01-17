@@ -122,10 +122,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         table: 'missions' 
       }, (payload) => {
         const newM = payload.new;
+        // Logic: Is it explicitly assigned to this user, or is it global?
         const isGlobal = !newM.assigned_to || (Array.isArray(newM.assigned_to) && newM.assigned_to.length === 0);
         const isAssigned = Array.isArray(newM.assigned_to) && newM.assigned_to.includes(currentUser.uid);
         
-        if (isGlobal || isAssigned) {
+        if (isAssigned || isGlobal) {
           const newNotif: NotificationItem = {
             id: Math.random().toString(36).substr(2, 9),
             title: 'New Mission Deployed',
@@ -150,7 +151,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         const isGlobal = !newR.assigned_to || (Array.isArray(newR.assigned_to) && newR.assigned_to.length === 0);
         const isAssigned = Array.isArray(newR.assigned_to) && newR.assigned_to.includes(currentUser.uid);
         
-        if (isGlobal || isAssigned) {
+        if (isAssigned || isGlobal) {
           const newNotif: NotificationItem = {
             id: Math.random().toString(36).substr(2, 9),
             title: 'New Reward Node Online',
@@ -177,22 +178,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
            setAdjustmentModal(payload.new);
         }
       })
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'profiles', 
-        filter: `firebase_uid=eq.${currentUser.uid}` 
-      }, (payload) => {
-        setProfile(payload.new);
-        fetchOperationalGrid(currentUser);
-      })
       .subscribe();
 
     return () => { client.removeChannel(channel); };
   }, [currentUser, fetchOperationalGrid]);
 
   const handleRedeem = async (reward: any) => {
-    // SECURITY: Prevent duplicate access
     const isAlreadyRedeemed = myRedemptions.includes(String(reward.id));
     if (isAlreadyRedeemed) return alert("⛔ PROTOCOL DENIED: Reward already claimed.");
 
@@ -258,7 +249,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser); }} />
       )}
 
-      {/* PERSISTENT ALERT MODAL */}
+      {/* PERSISTENT ALERT MODAL - TRIGGERED ON REALTIME NOTIFY */}
       {activeIncomingAlert && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
            <div className="bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] max-w-lg w-full relative overflow-hidden animate-in zoom-in-95 duration-300">
@@ -272,22 +263,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 <div className="space-y-4">
                    <h4 className="text-2xl font-black uppercase italic font-display">{activeIncomingAlert.message}</h4>
                    <div className="bg-slate-50 border-[3px] border-black p-5 flex justify-between items-center shadow-[4px_4px_0px_0px_#000]">
-                      <span className="font-black text-xs uppercase italic text-black/50 tracking-widest">Type</span>
+                      <span className="font-black text-xs uppercase italic text-black/50 tracking-widest">Target Type</span>
                       <span className="text-lg font-black text-[#834bf1] italic uppercase">{activeIncomingAlert.type}</span>
                    </div>
                 </div>
                 <button 
                   onClick={() => { 
+                    const targetData = activeIncomingAlert.data;
+                    const type = activeIncomingAlert.type;
                     setActiveIncomingAlert(null); 
-                    if (activeIncomingAlert.type === 'mission') {
-                       setSelectedMission(activeIncomingAlert.data);
+                    if (type === 'mission') {
+                       setSelectedMission(targetData);
                     } else {
                        setActiveTab('rewards');
                     }
                   }} 
                   className="w-full py-6 bg-black text-white border-[4px] border-black shadow-[8px_8px_0px_0px_#834bf1] font-black uppercase text-xs tracking-[0.3em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
                 >
-                  View Details
+                  Authorize Brief
                 </button>
                 <button onClick={() => setActiveIncomingAlert(null)} className="w-full text-[10px] font-black uppercase tracking-widest text-black/30 hover:text-black transition-colors">Acknowledge & Close</button>
               </div>
@@ -302,11 +295,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               <button onClick={() => setAdjustmentModal(null)} className="absolute top-4 right-4 z-10 bg-black text-white p-2 border-2 border-white hover:bg-rose-500 transition-colors">
                 <X size={20} strokeWidth={3}/>
               </button>
-              {adjustmentModal.metadata?.image && (
-                <div className="h-48 w-full border-b-[4px] border-black overflow-hidden bg-slate-100">
-                  <img src={adjustmentModal.metadata.image} className="w-full h-full object-cover" />
-                </div>
-              )}
               <div className="p-10 text-center space-y-6">
                  <div className="w-20 h-20 bg-[#ffde59] border-[4px] border-black mx-auto flex items-center justify-center -rotate-6 shadow-[6px_6px_0px_0px_#000]">
                     <PartyPopper size={40} className="text-black" />
@@ -314,9 +302,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                  <h3 className="text-3xl font-black italic uppercase font-display">Ledger Reward</h3>
                  <div className="bg-[#834bf1] p-6 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] text-white">
                     <div className="text-5xl font-black italic font-display">{adjustmentModal.amount > 0 ? '+' : ''}{adjustmentModal.amount} RC</div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#ffde59] mt-2">Node Sync Success</p>
                  </div>
-                 <p className="font-bold text-sm uppercase tracking-tight italic">"{adjustmentModal.metadata?.description || "Manual override executed."}"</p>
+                 <p className="font-bold text-sm uppercase tracking-tight italic">"{adjustmentModal.metadata?.description || "System update."}"</p>
                  <button onClick={() => setAdjustmentModal(null)} className="w-full bg-black text-white py-5 border-[3px] border-white shadow-[6px_6px_0px_0px_#000] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">Acknowledged</button>
               </div>
            </div>
@@ -348,12 +335,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               {showNotifDropdown && (
                 <div className="absolute top-14 right-0 w-80 bg-white border-[4px] border-black shadow-[10px_10px_0px_0px_#000] z-[200] animate-in slide-in-from-top-2">
                   <div className="p-4 border-b-2 border-black bg-slate-50 flex justify-between items-center">
-                    <span className="font-black text-[10px] uppercase tracking-widest">Protocol Notifications</span>
+                    <span className="font-black text-[10px] uppercase tracking-widest">Notifications</span>
                     <button onClick={markAllRead} className="text-[9px] font-black uppercase text-[#834bf1] hover:underline">Mark read</button>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="p-10 text-center opacity-30 italic text-xs font-black uppercase">No signals detected.</div>
+                      <div className="p-10 text-center opacity-30 italic text-xs font-black uppercase">No new signals.</div>
                     ) : (
                       notifications.map(n => (
                         <div 
@@ -366,7 +353,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                           <div>
                             <p className="font-black text-[10px] uppercase leading-tight">{n.title}</p>
                             <p className="text-[11px] font-bold mt-1 text-black/60 truncate w-48">{n.message}</p>
-                            <p className="text-[8px] font-black uppercase opacity-30 mt-2">{n.timestamp.toLocaleTimeString()}</p>
                           </div>
                         </div>
                       ))
@@ -407,9 +393,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                   <span className="text-7xl font-black italic font-display tracking-tighter">{profile?.reelcoins?.toLocaleString() || "0"}</span>
                   <span className="text-2xl font-black text-[#ffde59]">RC</span>
                </div>
-               <div className="mt-8 pt-8 border-t-[3px] border-white/20">
-                  <button className="w-full bg-black text-white py-4 border-[3px] border-white font-black uppercase text-[10px] tracking-[0.4em] shadow-[4px_4px_0px_0px_#fff] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">Vault Ledger</button>
-               </div>
             </div>
           </div>
 
@@ -423,7 +406,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                <div className="bg-[#ffde59] border-[6px] border-black p-12 text-center shadow-[16px_16px_0px_0px_#000] animate-in zoom-in duration-300 text-black">
                   <Lock size={48} className="mx-auto mb-6 text-black" strokeWidth={3} />
                   <h3 className="text-3xl font-black uppercase italic font-display text-black">Identity Syncing</h3>
-                  <p className="text-xs font-bold uppercase tracking-tight leading-relaxed max-w-sm mx-auto mt-4 text-black">Your credentials are being reviewed by Reelywood Dispatch. Access will unlock upon node verification.</p>
+                  <p className="text-xs font-bold uppercase tracking-tight leading-relaxed max-w-sm mx-auto mt-4 text-black">Your credentials are being reviewed. Access will unlock upon node verification.</p>
                </div>
             )}
 
@@ -498,7 +481,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                     ) : (
                       rewards.map((r) => {
                         const brand = r.partner_brands;
-                        // PERSISTED STATE: Check if voucher is in myRedemptions
                         const isRedeemed = myRedemptions.includes(String(r.id)) || !!revealedCodes[r.id];
                         
                         return (
