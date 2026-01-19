@@ -23,14 +23,15 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { CreatorCardView } from './components/CreatorCardView';
 import { AdminLogin } from './components/Admin/AdminLogin';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { BrandDashboard } from './components/Brands/BrandDashboard';
 import { AcademyView } from './components/AcademyView';
 import { DashboardView } from './components/Dashboard/DashboardView';
 import { AIAssistant } from './components/AIAssistant';
 
-const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com'];
+const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
 
 const MainContent: React.FC = () => {
-  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'academy' | 'dashboard'>('home');
+  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'brand-dashboard' | 'academy' | 'dashboard'>('home');
   const [isVisible, setIsVisible] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -45,6 +46,25 @@ const MainContent: React.FC = () => {
       if (user) {
         try {
           if (!supabase) return;
+          
+          // Determine Role for Intelligent Redirection
+          if (ADMIN_EMAILS.includes(user.email || '')) {
+             setView('admin-dashboard');
+          } else {
+            // Check if user is a Partner Brand
+            const { data: brandMatch } = await supabase
+              .from('partner_brands')
+              .select('id')
+              .eq('brand_email', user.email)
+              .maybeSingle();
+            
+            if (brandMatch) {
+              setView('brand-dashboard');
+            } else {
+              setView('dashboard');
+            }
+          }
+
           const { data: existingUser } = await supabase
             .from('profiles')
             .select('id')
@@ -67,6 +87,8 @@ const MainContent: React.FC = () => {
         } catch (err) {
           console.error("CRITICAL ERROR:", err);
         }
+      } else {
+        setView('home');
       }
     });
     return () => unsubscribe();
@@ -78,6 +100,7 @@ const MainContent: React.FC = () => {
       const path = window.location.pathname;
       const hash = window.location.hash;
       if (path === '/admin' || hash === '#admin') setView('admin-login');
+      else if (path === '/brands' || hash === '#brands') setView('brand-dashboard');
       else if (path === '/dashboard' || hash === '#dashboard') setView('dashboard');
       else if (path === '/creatorcard' || hash === '#creatorcard') setView('creator-card');
       else if (path === '/academy' || hash === '#academy') setView('academy');
@@ -100,6 +123,7 @@ const MainContent: React.FC = () => {
   if (view === 'auth') return <AuthView onBack={() => setView('home')} />;
   if (view === 'creator-card') return <CreatorCardView onBack={() => setView('home')} />;
   if (view === 'dashboard' && user) return <DashboardView onBack={() => setView('home')} />;
+  if (view === 'brand-dashboard' && user) return <BrandDashboard onBack={() => setView('home')} />;
   if (view === 'academy') return <AcademyView onBack={() => setView('home')} />;
   if (view === 'admin-login') return <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />;
   if (view === 'admin-dashboard') return <AdminDashboard onLogout={() => setView('home')} />;
@@ -110,7 +134,14 @@ const MainContent: React.FC = () => {
         onAuthClick={() => setView('auth')} 
         onThemeToggle={toggleTheme} 
         currentTheme={theme} 
-        onDashboardClick={() => setView('dashboard')} 
+        onDashboardClick={() => {
+           if (user) {
+              if (ADMIN_EMAILS.includes(user.email || '')) setView('admin-dashboard');
+              else setView('dashboard');
+           } else {
+              setView('auth');
+           }
+        }} 
       />
       <main>
         <Hero onAuthClick={() => setView('auth')} onDashboardClick={() => setView('dashboard')} />

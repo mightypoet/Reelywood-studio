@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/clients';
 import { X, Sparkles, AlertCircle } from 'lucide-react';
 
 interface LoginModalProps {
@@ -18,8 +20,40 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setLoading(true);
     setError(null);
     try {
-      await loginWithGoogle();
-      // AuthContext will handle the user state change which triggers routing in App.tsx
+      // 1. Authenticate with Google
+      const result: any = await loginWithGoogle();
+      const user = result?.user;
+
+      if (user && supabase) {
+        // 2. Tiered Redirect Logic
+        
+        // Check Admin Table
+        const { data: adminData } = await supabase
+          .from('admins')
+          .select('role')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        if (adminData) {
+          onClose();
+          // We use window.location here to force the routing sync if needed, 
+          // or rely on App.tsx state which is listening to onAuthStateChanged
+          return;
+        }
+
+        // Check Partner Brand Table
+        const { data: brandData } = await supabase
+          .from('partner_brands')
+          .select('id')
+          .eq('brand_email', user.email)
+          .maybeSingle();
+
+        if (brandData) {
+          onClose();
+          return;
+        }
+      }
+      
       onClose();
     } catch (err: any) {
       console.error("Login Failed:", err);
@@ -31,16 +65,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" 
         onClick={onClose}
       ></div>
 
-      {/* Modal Card */}
       <div className="relative w-full max-w-md bg-white border-[6px] border-black shadow-[16px_16px_0px_0px_#000] p-8 md:p-12 animate-in fade-in zoom-in-95 duration-200">
-        
-        {/* Close Button */}
         <button 
           onClick={onClose} 
           className="absolute top-4 right-4 p-2 hover:bg-slate-100 border-2 border-transparent hover:border-black transition-all"
@@ -48,7 +78,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <X size={20} />
         </button>
 
-        {/* Header */}
         <div className="text-center space-y-6 mb-12">
           <div className="w-16 h-16 bg-[#834bf1] border-[3px] border-black flex items-center justify-center mx-auto shadow-[4px_4px_0px_0px_#000]">
             <Sparkles className="text-white" size={28} />
@@ -59,7 +88,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-6 p-4 bg-rose-50 border-[3px] border-black flex items-center gap-3 text-rose-600">
             <AlertCircle size={18} />
@@ -67,7 +95,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {/* Google Button */}
         <button 
           onClick={handleGoogleLogin}
           disabled={loading}
@@ -88,28 +115,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           )}
         </button>
 
-        {/* Divider */}
         <div className="flex items-center gap-4 my-8">
           <div className="h-[2px] bg-black/10 flex-1"></div>
           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-black/30">Secure Gateway</span>
           <div className="h-[2px] bg-black/10 flex-1"></div>
         </div>
 
-        {/* Admin Contact */}
         <div className="bg-[#ffde59] border-[3px] border-black p-4 text-center shadow-[4px_4px_0px_0px_#000]">
           <p className="text-[9px] font-black uppercase tracking-widest leading-relaxed">
             No Platform Access? <br/> Contact Terminal Admin.
           </p>
         </div>
 
-        {/* Footer */}
         <div className="mt-8 pt-6 border-t-2 border-black/5 text-center space-y-2">
           <button className="text-[10px] font-black uppercase tracking-[0.2em] text-black hover:text-[#834bf1] underline decoration-2 underline-offset-4">
             Create Agency Account
           </button>
           <p className="text-[8px] font-black uppercase tracking-[0.3em] text-black/20">Production Node v4.0.1</p>
         </div>
-
       </div>
     </div>
   );

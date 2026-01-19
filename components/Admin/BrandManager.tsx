@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight } from 'lucide-react';
+import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail } from 'lucide-react';
 
 export const BrandManager = () => {
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,8 @@ export const BrandManager = () => {
     description: '',
     location_text: '',
     map_link: '',
-    menu_link: ''
+    menu_link: '',
+    brand_email: '' // Added brand_email
   });
 
   const fetchBrands = async () => {
@@ -75,7 +77,8 @@ export const BrandManager = () => {
       description: brand.description,
       location_text: brand.location_text,
       map_link: brand.map_link,
-      menu_link: brand.menu_link
+      menu_link: brand.menu_link,
+      brand_email: brand.brand_email || '' // Populate brand_email for editing
     });
     setActiveTab('missions');
     fetchBrandDetails(brand.id);
@@ -104,7 +107,7 @@ export const BrandManager = () => {
         if (error) throw error;
         alert("🚀 New Node Registered!");
       }
-      setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '' });
+      setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '', brand_email: '' });
       handleCloseModal();
       fetchBrands();
     } catch (err: any) {
@@ -148,8 +151,6 @@ export const BrandManager = () => {
 
   return (
     <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-      
-      {/* ADD BRAND TRIGGER SECTION */}
       <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#000] flex flex-col md:flex-row justify-between items-center gap-6 text-black">
         <div>
           <h2 className="text-3xl font-black italic uppercase font-display text-black">Alliance Network</h2>
@@ -159,7 +160,7 @@ export const BrandManager = () => {
           onClick={() => {
             setSelectedBrand(null);
             setIsCreatingNew(true);
-            setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '' });
+            setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '', brand_email: '' });
             setActiveTab('settings');
           }}
           className="bg-[#834bf1] text-white px-10 py-5 border-[4px] border-black shadow-[6px_6px_0px_0px_#000] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-4"
@@ -169,7 +170,6 @@ export const BrandManager = () => {
         </button>
       </div>
 
-      {/* BRAND GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {fetchLoading ? (
           <div className="col-span-full py-20 text-center opacity-40 font-black uppercase tracking-[0.5em] text-xs text-black">Accessing Node Database...</div>
@@ -214,13 +214,11 @@ export const BrandManager = () => {
         )}
       </div>
 
-      {/* DETAIL MODAL / DRILL DOWN */}
       {(selectedBrand || isCreatingNew) && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={handleCloseModal}></div>
           
           <div className="relative w-full max-w-4xl bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
-            {/* Modal Header */}
             <div className="p-8 border-b-[4px] border-black bg-[#f8f8f8] flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div className="flex items-center gap-6">
                 <div className="w-20 h-20 bg-white border-[4px] border-black shadow-[6px_6px_0px_0px_#000] p-2 flex items-center justify-center overflow-hidden">
@@ -240,7 +238,6 @@ export const BrandManager = () => {
               </button>
             </div>
 
-            {/* Navigation Tabs */}
             <div className="flex border-b-[4px] border-black bg-white">
               {[
                 { id: 'missions', label: 'Active Missions', icon: Zap },
@@ -258,7 +255,6 @@ export const BrandManager = () => {
               ))}
             </div>
 
-            {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-10 bg-white text-black custom-scrollbar">
               {activeTab === 'missions' && (
                 <div className="space-y-6">
@@ -302,7 +298,7 @@ export const BrandManager = () => {
                     </div>
                   ) : (
                     brandVouchers.map(v => (
-                      <div key={v.id} className="bg-slate-50 border-[3px] border-black p-5 flex items-center justify-between group shadow-[4px_4px_0px_0px_#000] hover:shadow-[8px_8px_0px_0px_#ffde59] transition-all">
+                      <div key={v.id} className="bg-slate-50 border-[3px] border-black p-5 flex items-center justify-between group shadow-[4px_4px_0px_0px_#000] hover:shadow-[8px_8px_0px_0px_#834bf1] transition-all">
                         <div className="flex items-center gap-6">
                            <div className="w-12 h-12 bg-[#ffde59] text-black flex items-center justify-center border-2 border-black shadow-[3px_3px_0px_0px_#000]">
                               <Gift size={20} fill="currentColor" className="stroke-black stroke-[2px]"/>
@@ -333,6 +329,24 @@ export const BrandManager = () => {
                         <input type="text" className={inputStyle} placeholder="Identity Node Name" 
                            value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                       </div>
+                      
+                      {/* Added Brand Login Email Field */}
+                      <div>
+                        <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-[#834bf1] italic">Brand Login Email (Authorized Partner)</label>
+                        <div className="relative">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-black/40">
+                            <Mail size={16} strokeWidth={3} />
+                          </div>
+                          <input 
+                            type="email" 
+                            className={`${inputStyle} pl-12`} 
+                            placeholder="partner@login.com" 
+                            value={formData.brand_email} 
+                            onChange={e => setFormData({...formData, brand_email: e.target.value})} 
+                          />
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Logo Asset URL</label>
@@ -354,7 +368,7 @@ export const BrandManager = () => {
                     <div className="space-y-6">
                       <div>
                         <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Mission Brief Description</label>
-                        <textarea className={`${inputStyle} h-[250px] resize-none`} rows={6} placeholder="Define brand DNA and ecosystem rules..."
+                        <textarea className={`${inputStyle} h-[320px] resize-none`} rows={8} placeholder="Define brand DNA and ecosystem rules..."
                            value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} required ></textarea>
                       </div>
                     </div>
@@ -379,7 +393,6 @@ export const BrandManager = () => {
               )}
             </div>
             
-            {/* Modal Footer / Summary */}
             <div className="p-6 border-t-[4px] border-black bg-[#f0f0f0] flex justify-between items-center px-10">
                <div className="flex gap-8">
                  <div className="flex flex-col">
