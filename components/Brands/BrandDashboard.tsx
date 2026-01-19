@@ -18,7 +18,6 @@ import {
   ExternalLink,
   Clock,
   CheckCircle2,
-  // Fix: Added missing Gift icon import
   Gift
 } from 'lucide-react';
 
@@ -174,7 +173,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
                 </div>
               ) : (
                 <div className="space-y-12">
-                  {/* PENDING SECTION */}
                   <section>
                     <div className="flex items-center gap-3 mb-6">
                       <Clock size={18} className="text-[#834bf1]" />
@@ -200,13 +198,9 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
                           )}
                         </div>
                       ))}
-                      {missionSubmissions.filter(s => s.status === 'pending').length === 0 && (
-                        <p className="text-[10px] italic font-bold text-black/20 uppercase">Queue Clear.</p>
-                      )}
                     </div>
                   </section>
 
-                  {/* VERIFIED SECTION */}
                   <section>
                     <div className="flex items-center gap-3 mb-6">
                       <CheckCircle2 size={18} className="text-emerald-500" />
@@ -238,7 +232,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* STICKY HEADER */}
       <header className="bg-white border-b-[6px] border-black sticky top-0 z-[100] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
@@ -271,7 +264,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       </header>
 
       <main className="max-w-7xl mx-auto p-6 lg:p-12 space-y-12">
-        {/* OVERVIEW HERO */}
         <div className="bg-white border-[6px] border-black p-10 shadow-[16px_16px_0px_0px_#000] relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-10">
           <div className="space-y-6 relative z-10 text-center md:text-left">
             <div className="inline-flex items-center gap-2 bg-[#834bf1] text-white px-4 py-1 border-[2px] border-black font-black text-[10px] uppercase tracking-widest italic">
@@ -285,12 +277,11 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
           </div>
 
           <div className="bg-black text-white p-10 border-[5px] border-black shadow-[10px_10px_0px_0px_#834bf1] text-center min-w-[280px]">
-             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic">Est. Media Value</p>
-             <h3 className="text-6xl font-black italic font-display text-[#ffde59] tracking-tighter">{stats.mediaValue}</h3>
+             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic">AVAILABLE BRAND BALANCE (RC)</p>
+             <h3 className="text-6xl font-black italic font-display text-[#ffde59] tracking-tighter">{brand.reelcoins?.toLocaleString() || 0}</h3>
           </div>
         </div>
 
-        {/* STATS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="bg-white p-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all group">
             <div className="w-14 h-14 bg-[#ffde59] border-[3px] border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_#000] group-hover:rotate-6 transition-transform">
@@ -325,9 +316,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* LOGS & ACTIONS */}
         <div className="grid lg:grid-cols-12 gap-12">
-          {/* ACTIVITY LOG - UPDATED TO FUNCTIONAL */}
           <div className="lg:col-span-8 bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000]">
             <div className="flex items-center justify-between mb-10">
               <h3 className="text-3xl font-black italic uppercase font-display flex items-center gap-4">
@@ -337,7 +326,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
             </div>
 
             <div className="space-y-10">
-              {/* MISSION LIST */}
               <div className="space-y-6">
                 {activeMissions.length === 0 ? (
                   <p className="text-center py-10 opacity-20 font-black italic uppercase text-xs">Scanning Grid... No Missions Found.</p>
@@ -373,7 +361,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
                 )}
               </div>
 
-              {/* VOUCHER LIST (Simplified Context) */}
               {activeRewards.length > 0 && (
                 <div className="pt-8 border-t-[4px] border-black/10">
                    <div className="flex items-center gap-3 mb-8 opacity-40">

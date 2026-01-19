@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail } from 'lucide-react';
+import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus } from 'lucide-react';
 
 export const BrandManager = () => {
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,8 @@ export const BrandManager = () => {
     location_text: '',
     map_link: '',
     menu_link: '',
-    brand_email: '' // Added brand_email
+    brand_email: '',
+    reelcoins: 0
   });
 
   const fetchBrands = async () => {
@@ -78,10 +79,34 @@ export const BrandManager = () => {
       location_text: brand.location_text,
       map_link: brand.map_link,
       menu_link: brand.menu_link,
-      brand_email: brand.brand_email || '' // Populate brand_email for editing
+      brand_email: brand.brand_email || '',
+      reelcoins: brand.reelcoins || 0
     });
     setActiveTab('missions');
     fetchBrandDetails(brand.id);
+  };
+
+  const handleFundBrand = async (e: React.MouseEvent, brand: any) => {
+    e.stopPropagation();
+    const amountStr = window.prompt(`Enter RC amount to add to ${brand.name}:`, "5000");
+    if (!amountStr || isNaN(Number(amountStr))) return;
+    
+    const amount = parseInt(amountStr);
+    setLoading(true);
+    try {
+      const { error } = await supabase!
+        .from('partner_brands')
+        .update({ reelcoins: (brand.reelcoins || 0) + amount })
+        .eq('id', brand.id);
+      
+      if (error) throw error;
+      alert(`Successfully funded ${brand.name} with ${amount} RC.`);
+      fetchBrands();
+    } catch (err: any) {
+      alert("Funding Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -107,7 +132,7 @@ export const BrandManager = () => {
         if (error) throw error;
         alert("🚀 New Node Registered!");
       }
-      setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '', brand_email: '' });
+      setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '', brand_email: '', reelcoins: 0 });
       handleCloseModal();
       fetchBrands();
     } catch (err: any) {
@@ -160,7 +185,7 @@ export const BrandManager = () => {
           onClick={() => {
             setSelectedBrand(null);
             setIsCreatingNew(true);
-            setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '', brand_email: '' });
+            setFormData({ name: '', logo_url: '', cover_image_url: '', description: '', location_text: '', map_link: '', menu_link: '', brand_email: '', reelcoins: 0 });
             setActiveTab('settings');
           }}
           className="bg-[#834bf1] text-white px-10 py-5 border-[4px] border-black shadow-[6px_6px_0px_0px_#000] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-4"
@@ -186,9 +211,17 @@ export const BrandManager = () => {
                        onError={(e) => {e.currentTarget.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=' + brand.name}}/>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-black text-xl uppercase italic leading-none truncate mb-2 text-black">{brand.name}</h4>
-                  <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest truncate flex items-center gap-2">
-                    <MapPin size={10} /> {brand.location_text}
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-black text-xl uppercase italic leading-none truncate mb-2 text-black">{brand.name}</h4>
+                    <button 
+                      onClick={(e) => handleFundBrand(e, brand)}
+                      className="p-1.5 bg-[#ffde59] border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                    >
+                      <Wallet size={14} strokeWidth={3} />
+                    </button>
+                  </div>
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest truncate flex items-center gap-2">
+                    <Wallet size={10} /> {brand.reelcoins?.toLocaleString() || 0} RC
                   </p>
                 </div>
               </div>
@@ -330,7 +363,6 @@ export const BrandManager = () => {
                            value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                       </div>
                       
-                      {/* Added Brand Login Email Field */}
                       <div>
                         <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-[#834bf1] italic">Brand Login Email (Authorized Partner)</label>
                         <div className="relative">

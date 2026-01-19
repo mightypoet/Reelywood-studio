@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../../lib/clients';
-import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, Coins } from 'lucide-react';
+import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, Coins, AlertCircle } from 'lucide-react';
 
 interface VerificationModalProps {
   submission: any;
@@ -13,22 +14,16 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Trace and fix the data path:
-  // The submission object from AdminDashboard contains joined data.
-  // We check for both 'mission' and 'missions' plural to be safe with common Supabase return structures.
-  const allocatedRC = useMemo(() => {
-    const missionData = submission?.missions || submission?.mission;
-    return missionData?.reward_amount ?? 0;
-  }, [submission]);
+  const missionData = useMemo(() => submission?.missions || submission?.mission, [submission]);
+  const allocatedRC = useMemo(() => missionData?.reward_amount ?? 0, [missionData]);
 
   const checkpoints = useMemo(() => {
-    const missionData = submission?.missions || submission?.mission;
     return missionData?.checkpoints && missionData.checkpoints.length >= 1 
       ? missionData.checkpoints 
       : ["Verify Link Authority", "Quality Control Check", "Tag/Caption Audit"];
-  }, [submission]);
+  }, [missionData]);
   
-  const missionTitle = submission?.missions?.title || submission?.mission?.title || "UNSPECIFIED MISSION";
+  const missionTitle = missionData?.title || "UNSPECIFIED MISSION";
   const agentName = submission?.profiles?.display_name || "AGENT";
 
   const toggleCheck = (index: number) => {
@@ -47,6 +42,32 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
     try {
       if (!supabase) throw new Error("Database terminal unavailable.");
 
+      // 1. Fetch Brand Wallet Balance
+      const { data: brand, error: bError } = await supabase
+        .from('partner_brands')
+        .select('id, reelcoins, name')
+        .eq('id', missionData.brand_id)
+        .single();
+      
+      if (bError) throw bError;
+
+      // 2. Check for Insufficient Funds
+      if ((brand.reelcoins || 0) < allocatedRC) {
+        alert(`⛔ INSUFFICIENT BRAND FUNDS: ${brand.name} only has ${brand.reelcoins} RC. Mission requires ${allocatedRC} RC.`);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Deduct from Brand
+      const { error: deductError } = await supabase
+        .from('partner_brands')
+        .update({ reelcoins: brand.reelcoins - allocatedRC })
+        .eq('id', brand.id);
+      
+      if (deductError) throw deductError;
+
+      // 4. Credit User and mark as approved via RPC or direct updates
+      // Using existing RPC logic which should handle user credit and submission status
       const { data, error } = await supabase.rpc('grant_mission_reward', {
          amount_param: allocatedRC,
          mission_title_param: missionTitle,
@@ -54,7 +75,11 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
          user_id_param: submission.user_id 
       });
 
-      if (error) throw error;
+      if (error) {
+        // Rollback brand deduction on failure (simplified)
+        await supabase.from('partner_brands').update({ reelcoins: brand.reelcoins }).eq('id', brand.id);
+        throw error;
+      }
 
       if (data && data.success === false) {
         throw new Error(data.message || "Unknown Backend Error");
@@ -152,7 +177,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
 
             <div className="mt-8 text-center">
                <p className="text-[8px] font-black uppercase tracking-[0.5em] text-black/20 italic">
-                 Security Sequence: Status(Approved) {"->"} Get(AllocatedRC) {"->"} Transfer(UserNode)
+                 Security Sequence: Status(Approved) {"->"} BrandDeduct({allocatedRC}) {"->"} UserCredit({allocatedRC})
                </p>
             </div>
           </>
