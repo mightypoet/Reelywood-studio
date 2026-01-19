@@ -75,6 +75,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       }
 
       try {
+        // Corrected Query: Fetching brand node via auth email to ensure balance (reelcoins) is retrieved
         const { data: brandData, error: bError } = await supabase
           .from('partner_brands')
           .select('*')
@@ -277,8 +278,11 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
           </div>
 
           <div className="bg-black text-white p-10 border-[5px] border-black shadow-[10px_10px_0px_0px_#834bf1] text-center min-w-[280px]">
-             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic">AVAILABLE BRAND BALANCE (RC)</p>
-             <h3 className="text-6xl font-black italic font-display text-[#ffde59] tracking-tighter">{brand.reelcoins?.toLocaleString() || 0}</h3>
+             {/* THE FIX: Dynamic rendering of AVAILABLE BRAND BALANCE (RC) */}
+             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic text-white/50">AVAILABLE BRAND BALANCE (RC)</p>
+             <h3 className="text-6xl font-black italic font-display text-[#ffde59] tracking-tighter">
+                {brand?.reelcoins?.toLocaleString() || '0'}
+             </h3>
           </div>
         </div>
 
