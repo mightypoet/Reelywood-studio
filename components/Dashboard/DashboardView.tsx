@@ -122,7 +122,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         table: 'missions' 
       }, (payload) => {
         const newM = payload.new;
-        // Logic: Is it explicitly assigned to this user, or is it global?
         const isGlobal = !newM.assigned_to || (Array.isArray(newM.assigned_to) && newM.assigned_to.length === 0);
         const isAssigned = Array.isArray(newM.assigned_to) && newM.assigned_to.includes(currentUser.uid);
         
@@ -249,7 +248,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser); }} />
       )}
 
-      {/* PERSISTENT ALERT MODAL - TRIGGERED ON REALTIME NOTIFY */}
+      {/* PERSISTENT ALERT MODAL */}
       {activeIncomingAlert && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
            <div className="bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] max-w-lg w-full relative overflow-hidden animate-in zoom-in-95 duration-300">
@@ -425,7 +424,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                         const brand = m.partner_brands;
                         
                         const cardBg = isDone 
-                          ? 'bg-emerald-100 border-emerald-500 shadow-emerald-200' 
+                          ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200' 
                           : isPending 
                             ? 'bg-yellow-100 border-yellow-500 shadow-yellow-200' 
                             : 'bg-white border-black shadow-black';
@@ -436,13 +435,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                             ? 'bg-yellow-400 border-yellow-600 text-black shadow-[4px_4px_0px_0px_#000]' 
                             : 'bg-[#834bf1] border-black';
 
-                        const btnText = isDone ? 'MISSION COMPLETED' : isPending ? 'PENDING REVIEW' : 'INITIALIZE MISSION';
+                        const btnText = isDone ? 'VERIFIED' : isPending ? 'PENDING REVIEW' : 'INITIALIZE MISSION';
                         
                         return (
                           <div key={m.id} className={`relative border-[4px] p-8 shadow-[8px_8px_0px_0px] group transition-all flex flex-col overflow-hidden ${cardBg}`}>
                              {isDone && (
                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none z-20 opacity-30 select-none">
-                                 <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-2xl">
+                                 <div className="border-[8px] border-emerald-700 px-6 py-4 rounded-2xl bg-white/20">
                                    <span className="text-4xl font-black uppercase italic tracking-tighter text-emerald-700 font-display whitespace-nowrap">MISSION ACCOMPLISHED</span>
                                  </div>
                                </div>

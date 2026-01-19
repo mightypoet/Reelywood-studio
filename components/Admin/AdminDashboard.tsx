@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
@@ -7,7 +8,7 @@ import {
   Loader2, Activity, Terminal,
   Building2, ListChecks, Clock, X,
   Instagram, Send, FileText, CheckCircle, AlertCircle, 
-  Bell, Home, Menu, ArrowUpRight, ShieldCheck, Wallet, ChevronRight, ArrowLeft
+  Bell, Home, Menu, ArrowUpRight, ShieldCheck, Wallet, ChevronRight, ArrowLeft, History
 } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { VerificationModal } from './VerificationModal';
@@ -159,30 +160,75 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     </div>
   );
 
-  const renderQueue = () => (
-    <div className="space-y-4 animate-in fade-in duration-300">
-      <h3 className="text-xl font-black italic uppercase mb-6 flex items-center gap-3 text-black">
-        <ListChecks className="text-[#834bf1]" /> Transmission Queue
-      </h3>
-      {submissions.filter(s => s.status === 'pending').length === 0 ? (
-        <div className="py-20 text-center opacity-30 italic font-black uppercase text-xs tracking-widest text-black">Grid Quiet... No signals.</div>
-      ) : (
-        submissions.filter(s => s.status === 'pending').map(sub => (
-          <div key={sub.id} className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
-               onClick={() => setSelectedSubmission(sub)}>
-            <div className="flex justify-between items-start mb-3">
-              <span className="bg-slate-100 px-2 py-1 border-2 border-black text-[8px] font-black uppercase tracking-widest text-black">Agent: {sub.profiles?.display_name}</span>
-              <span className="text-[#834bf1] font-black text-xs italic">+{sub.missions?.reward_amount} RC</span>
-            </div>
-            <h4 className="font-black text-sm uppercase leading-tight truncate text-black">{sub.missions?.title}</h4>
-            <div className="flex items-center gap-2 mt-4 text-[9px] font-black text-slate-400 uppercase italic">
-              <Clock size={10} /> {new Date(sub.created_at).toLocaleTimeString()}
-            </div>
+  const renderQueue = () => {
+    const pendingSubmissions = submissions.filter(s => s.status === 'pending');
+    const approvedHistory = submissions.filter(s => s.status === 'approved' || s.status === 'completed').slice(0, 5);
+
+    return (
+      <div className="space-y-12 animate-in fade-in duration-300">
+        <section className="space-y-4">
+          <h3 className="text-xl font-black italic uppercase mb-6 flex items-center gap-3 text-black">
+            <ListChecks className="text-[#834bf1]" /> Transmission Queue
+          </h3>
+          {pendingSubmissions.length === 0 ? (
+            <div className="py-20 text-center opacity-30 italic font-black uppercase text-xs tracking-widest text-black">Grid Quiet... No signals.</div>
+          ) : (
+            pendingSubmissions.map(sub => (
+              <div key={sub.id} className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                  onClick={() => setSelectedSubmission(sub)}>
+                <div className="flex justify-between items-start mb-3">
+                  <span className="bg-slate-100 px-2 py-1 border-2 border-black text-[8px] font-black uppercase tracking-widest text-black">Agent: {sub.profiles?.display_name}</span>
+                  <span className="text-[#834bf1] font-black text-xs italic">+{sub.missions?.reward_amount} RC</span>
+                </div>
+                <h4 className="font-black text-sm uppercase leading-tight truncate text-black">{sub.missions?.title}</h4>
+                <div className="flex items-center gap-2 mt-4 text-[9px] font-black text-slate-400 uppercase italic">
+                  <Clock size={10} /> {new Date(sub.created_at).toLocaleTimeString()}
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+
+        {/* VERIFIED HISTORY SECTION */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-t-4 border-black pt-8 mb-6">
+            <h3 className="text-xl font-black italic uppercase flex items-center gap-3 text-black">
+              <History className="text-emerald-500" /> Verified History
+            </h3>
+            <span className="bg-emerald-100 text-emerald-700 px-2 py-1 border-2 border-emerald-500 text-[8px] font-black uppercase">Recent Logs</span>
           </div>
-        ))
-      )}
-    </div>
-  );
+          
+          <div className="space-y-3">
+            {approvedHistory.length === 0 ? (
+              <p className="text-center py-6 opacity-20 font-black italic text-[10px] uppercase">No logs archived.</p>
+            ) : (
+              approvedHistory.map(sub => (
+                <div key={sub.id} className="bg-emerald-50 border-[3px] border-emerald-500 p-4 flex items-center justify-between opacity-80">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-10 h-10 border-2 border-emerald-600 grayscale overflow-hidden shrink-0">
+                      <img src={sub.profiles?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sub.id}`} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-black text-[10px] uppercase leading-none text-emerald-900 truncate">{sub.profiles?.display_name}</p>
+                      <p className="text-[8px] font-bold text-emerald-600 uppercase mt-1 truncate">{sub.missions?.title}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right hidden sm:block">
+                      <p className="text-[8px] font-black text-emerald-600">+{sub.missions?.reward_amount} RC</p>
+                    </div>
+                    <div className="bg-emerald-500 text-white px-2 py-1 text-[7px] font-black uppercase tracking-widest border border-emerald-600">
+                      VERIFIED
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  };
 
   const renderUserRoster = () => (
     <div className="space-y-4 animate-in fade-in duration-300">
