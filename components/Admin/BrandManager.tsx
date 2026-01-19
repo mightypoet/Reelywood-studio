@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus } from 'lucide-react';
+import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail } from 'lucide-react';
 
 export const BrandManager = () => {
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,7 @@ export const BrandManager = () => {
     location_text: '',
     map_link: '',
     menu_link: '',
-    brand_email: ''
+    brand_email: '' // Added brand_email
   });
 
   const fetchBrands = async () => {
@@ -44,33 +44,6 @@ export const BrandManager = () => {
       console.error("Error fetching brands:", err.message);
     } finally {
       setFetchLoading(false);
-    }
-  };
-
-  const handleFundWallet = async (brand: any) => {
-    const amount = prompt(`Enter RC amount to fund ${brand.name}'s wallet:`);
-    if (!amount || isNaN(Number(amount))) return;
-    
-    // Fix for TS18047: 'supabase' is possibly 'null'
-    if (!supabase) {
-      alert("Database link unavailable.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('partner_brands')
-        .update({ reelcoins: (brand.reelcoins || 0) + Number(amount) })
-        .eq('id', brand.id);
-      
-      if (error) throw error;
-      alert(`✅ Success: ${amount} RC added to ${brand.name}`);
-      fetchBrands();
-    } catch (err: any) {
-      alert("Funding Failed: " + err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -105,7 +78,7 @@ export const BrandManager = () => {
       location_text: brand.location_text,
       map_link: brand.map_link,
       menu_link: brand.menu_link,
-      brand_email: brand.brand_email || ''
+      brand_email: brand.brand_email || '' // Populate brand_email for editing
     });
     setActiveTab('missions');
     fetchBrandDetails(brand.id);
@@ -167,7 +140,7 @@ export const BrandManager = () => {
         fetchBrands();
       } else {
         fetchBrandDetails(selectedBrand.id);
-        fetchBrands();
+        fetchBrands(); // Refresh counts in bg
       }
     } catch (err: any) {
       alert("Purge Failed: " + err.message);
@@ -204,49 +177,36 @@ export const BrandManager = () => {
           brands.map(brand => (
             <div 
               key={brand.id} 
-              className="bg-white border-[4px] border-black p-6 shadow-[8px_8px_0px_0px_#000] flex flex-col group hover:shadow-[16px_16px_0px_0px_#834bf1] transition-all cursor-default"
+              onClick={() => handleSelectBrand(brand)}
+              className="bg-white border-[4px] border-black p-6 shadow-[8px_8px_0px_0px_#000] flex flex-col group hover:shadow-[16px_16px_0px_0px_#834bf1] transition-all cursor-pointer active:scale-[0.98]"
             >
-              <div className="flex gap-6 items-start mb-6 cursor-pointer" onClick={() => handleSelectBrand(brand)}>
+              <div className="flex gap-6 items-start mb-6">
                 <div className="w-16 h-16 bg-slate-50 border-[3px] border-black shrink-0 overflow-hidden shadow-[4px_4px_0px_0px_#000] group-hover:rotate-3 transition-transform">
                   <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-cover" 
                        onError={(e) => {e.currentTarget.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=' + brand.name}}/>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-black text-xl uppercase italic leading-none truncate mb-2 text-black">{brand.name}</h4>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest truncate flex items-center gap-2">
-                      <MapPin size={10} /> {brand.location_text}
-                    </p>
-                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
-                      <Wallet size={10} /> {brand.reelcoins || 0} RC
-                    </p>
-                  </div>
+                  <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest truncate flex items-center gap-2">
+                    <MapPin size={10} /> {brand.location_text}
+                  </p>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 gap-3 mt-auto">
-                 <button 
-                  onClick={() => handleFundWallet(brand)}
-                  className="w-full bg-[#39ff14] text-black border-2 border-black p-3 font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center gap-2"
-                 >
-                   <Plus size={14} strokeWidth={4} />
-                   Fund Wallet
-                 </button>
-                 <div className="grid grid-cols-2 gap-2 text-black" onClick={() => handleSelectBrand(brand)}>
-                   <div className="bg-slate-50 border-2 border-black p-2 text-center cursor-pointer">
-                      <div className="flex items-center justify-center gap-2 text-[#834bf1]">
-                         <Zap size={10} />
-                         <span className="text-sm font-black">{brand.missions?.[0]?.count || 0}</span>
-                      </div>
-                      <p className="text-[6px] font-black uppercase tracking-widest text-black/40">Missions</p>
-                   </div>
-                   <div className="bg-slate-50 border-2 border-black p-2 text-center cursor-pointer">
-                      <div className="flex items-center justify-center gap-2 text-[#ffde59]">
-                         <Gift size={10} fill="currentColor" className="stroke-black stroke-[2px]" />
-                         <span className="text-sm font-black">{brand.rewards?.[0]?.count || 0}</span>
-                      </div>
-                      <p className="text-[6px] font-black uppercase tracking-widest text-black/40">Vouchers</p>
-                   </div>
+              <div className="grid grid-cols-2 gap-2 mt-auto text-black">
+                 <div className="bg-slate-50 border-2 border-black p-3 text-center">
+                    <div className="flex items-center justify-center gap-2 text-[#834bf1]">
+                       <Zap size={12} />
+                       <span className="text-lg font-black">{brand.missions?.[0]?.count || 0}</span>
+                    </div>
+                    <p className="text-[7px] font-black uppercase tracking-widest text-black/40">Missions</p>
+                 </div>
+                 <div className="bg-slate-50 border-2 border-black p-3 text-center">
+                    <div className="flex items-center justify-center gap-2 text-[#ffde59]">
+                       <Gift size={12} fill="currentColor" className="stroke-black stroke-[3px]" />
+                       <span className="text-lg font-black">{brand.rewards?.[0]?.count || 0}</span>
+                    </div>
+                    <p className="text-[7px] font-black uppercase tracking-widest text-black/40">Vouchers</p>
                  </div>
               </div>
             </div>
@@ -268,16 +228,9 @@ export const BrandManager = () => {
                   <h2 className="text-3xl font-black italic uppercase font-display leading-none text-black">
                     {selectedBrand ? selectedBrand.name : 'New Alliance'}
                   </h2>
-                  <div className="flex items-center gap-4 mt-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-black/40 flex items-center gap-2">
-                      <MapPin size={12}/> {formData.location_text || 'PENDING LOCATION'}
-                    </p>
-                    {selectedBrand && (
-                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-2">
-                        <Wallet size={12}/> {selectedBrand.reelcoins || 0} RC
-                      </p>
-                    )}
-                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-black/40 mt-2 flex items-center gap-2">
+                    <MapPin size={12}/> {formData.location_text || 'PENDING LOCATION'}
+                  </p>
                 </div>
               </div>
               <button onClick={handleCloseModal} className="bg-rose-500 text-white p-3 border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
@@ -377,6 +330,7 @@ export const BrandManager = () => {
                            value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                       </div>
                       
+                      {/* Added Brand Login Email Field */}
                       <div>
                         <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-[#834bf1] italic">Brand Login Email (Authorized Partner)</label>
                         <div className="relative">

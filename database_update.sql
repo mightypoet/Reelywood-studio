@@ -1,7 +1,7 @@
 
--- Add reelcoins column to partner_brands table
+-- Add brand_email column to link Firebase users to brand profiles
 ALTER TABLE partner_brands 
-ADD COLUMN reelcoins INTEGER DEFAULT 0;
+ADD COLUMN brand_email TEXT UNIQUE;
 
--- Optional: Add a comment for documentation
-COMMENT ON COLUMN partner_brands.reelcoins IS 'Total Reelcoins balance available for mission rewards';
+-- Create an index for faster lookup during login
+CREATE INDEX idx_partner_brands_email ON partner_brands(brand_email);
