@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../../lib/clients';
-import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, Coins } from 'lucide-react';
+import { Check, X, ExternalLink, ShieldCheck, Loader2, Zap, Coins, AlertCircle } from 'lucide-react';
 
 interface VerificationModalProps {
   submission: any;
@@ -13,9 +14,6 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Trace and fix the data path:
-  // The submission object from AdminDashboard contains joined data.
-  // We check for both 'mission' and 'missions' plural to be safe with common Supabase return structures.
   const allocatedRC = useMemo(() => {
     const missionData = submission?.missions || submission?.mission;
     return missionData?.reward_amount ?? 0;
@@ -30,6 +28,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
   
   const missionTitle = submission?.missions?.title || submission?.mission?.title || "UNSPECIFIED MISSION";
   const agentName = submission?.profiles?.display_name || "AGENT";
+  const brandId = submission?.missions?.brand_id || submission?.mission?.brand_id;
 
   const toggleCheck = (index: number) => {
     const newChecks = [...checks];
@@ -47,6 +46,30 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
     try {
       if (!supabase) throw new Error("Database terminal unavailable.");
 
+      // 1. BRAND ECONOMY CHECK: If mission belongs to a brand, verify funds
+      if (brandId) {
+        const { data: brand, error: brandError } = await supabase
+          .from('partner_brands')
+          .select('reelcoins, name')
+          .eq('id', brandId)
+          .single();
+        
+        if (brandError) throw new Error("Failed to verify Alliance Node funds.");
+        
+        if ((brand.reelcoins || 0) < allocatedRC) {
+          throw new Error(`TRANSACTION FAILED: ${brand.name} has insufficient funds (${brand.reelcoins} RC available).`);
+        }
+
+        // 2. DEBIT BRAND: Deduct reward from brand wallet
+        const { error: debitError } = await supabase
+          .from('partner_brands')
+          .update({ reelcoins: brand.reelcoins - allocatedRC })
+          .eq('id', brandId);
+        
+        if (debitError) throw new Error("Wallet Sync Failure: Could not debit brand node.");
+      }
+
+      // 3. CREDIT USER: RPC handles status update and profile credit
       const { data, error } = await supabase.rpc('grant_mission_reward', {
          amount_param: allocatedRC,
          mission_title_param: missionTitle,
@@ -68,7 +91,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
       
     } catch (err: any) {
       console.error("DISTRIBUTION_FAILURE:", err);
-      alert("Terminal Critical Error: " + err.message);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
