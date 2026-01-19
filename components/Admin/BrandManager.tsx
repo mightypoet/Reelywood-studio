@@ -51,6 +51,12 @@ export const BrandManager = () => {
     const amount = prompt(`Enter RC amount to fund ${brand.name}'s wallet:`);
     if (!amount || isNaN(Number(amount))) return;
     
+    // Fix for TS18047: 'supabase' is possibly 'null'
+    if (!supabase) {
+      alert("Database link unavailable.");
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase
