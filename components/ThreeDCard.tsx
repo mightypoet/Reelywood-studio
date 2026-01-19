@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from 'react';
+import { Wifi } from 'lucide-react';
 
 interface ThreeDCardProps {
   name: string;
@@ -40,102 +41,88 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
 
   return (
     <div 
-      className="relative w-full h-full flex items-center justify-center p-2 sm:p-8"
-      style={{ perspective: '2000px' }}
+      className="relative w-full h-full flex items-center justify-center p-4 sm:p-8"
+      style={{ perspective: '1500px' }}
     >
       <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative w-[280px] h-[440px] sm:w-[350px] sm:h-[550px] transition-transform duration-500 ease-out select-none cursor-default"
+        className="relative w-[280px] h-[460px] sm:w-[320px] sm:h-[520px] transition-transform duration-500 ease-out select-none cursor-default"
         style={{
           transform: `rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
           transformStyle: 'preserve-3d',
         }}
       >
-        {/* CARD BODY - Solid Purple */}
+        {/* CARD BODY - Premium NFC Card Aesthetic */}
         <div 
-          className="absolute inset-0 rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] bg-[#834bf1]"
+          className="absolute inset-0 rounded-[32px] overflow-hidden bg-[#7B3FE4] shadow-[0_30px_60px_rgba(0,0,0,0.4)]"
           style={{ 
             backfaceVisibility: 'hidden', 
             transform: 'translateZ(1px)',
-            border: '1px solid rgba(255,255,255,0.1)'
           }}
         >
-          {/* Subtle Sheen */}
-          <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-white via-transparent to-black pointer-events-none"></div>
-
-          {/* OWL EYES LOGO - Centered */}
+          {/* Abstract Wavy Fingerprint Pattern Layer */}
           <div 
-            className="absolute inset-0 flex flex-col items-center justify-center text-center -translate-y-12"
-            style={{ transform: 'translateZ(40px) translateY(-40px)' }}
-          >
-            <div className="relative w-36 sm:w-44 h-24 sm:h-28 flex items-center justify-center space-x-2">
-              {/* Back Brows/Detail */}
-              <div className="absolute top-2 w-[90%] flex justify-between px-2 opacity-80">
-                 <div className="w-10 h-2 bg-black -rotate-12 rounded-full"></div>
-                 <div className="w-10 h-2 bg-black rotate-12 rounded-full"></div>
-              </div>
+            className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='white' stroke-width='1.5' d='M20,100 Q40,40 100,20 T180,100 T100,180 T20,100 M40,100 Q60,60 100,40 T160,100 T100,160 T40,100 M60,100 Q80,80 100,60 T140,100 T100,140 T60,100'/%3E%3C/svg%3E")`,
+              backgroundSize: '300% 300%',
+              backgroundPosition: 'center',
+            }}
+          ></div>
 
-              {/* Eyes */}
-              <div className="w-16 sm:w-20 h-16 sm:h-20 bg-[#ffde59] border-[3px] border-black rounded-[24px] flex items-center justify-center shadow-[4px_4px_0px_#000] relative overflow-hidden">
-                <div className="w-10 h-10 bg-black rounded-full translate-y-2"></div>
-              </div>
-              <div className="w-16 sm:w-20 h-16 sm:h-20 bg-[#ffde59] border-[3px] border-black rounded-[24px] flex items-center justify-center shadow-[4px_4px_0px_#000] relative overflow-hidden">
-                <div className="w-10 h-10 bg-black rounded-full translate-y-2"></div>
-              </div>
-              
-              {/* Beak */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-2 border-black rotate-45"></div>
+          {/* TOP LEFT: REELYWOOD */}
+          <div className="absolute top-8 left-8" style={{ transform: 'translateZ(30px)' }}>
+            <span className="text-white font-black text-[12px] uppercase tracking-[0.2em] opacity-90">REELYWOOD</span>
+          </div>
+
+          {/* TOP RIGHT: NFC LOGO IMAGE */}
+          <div className="absolute top-8 right-8 w-8 h-8" style={{ transform: 'translateZ(30px)' }}>
+            <img 
+              src="https://izz9qoicna213xwc.public.blob.vercel-storage.com/icons8-nfc-logo-100.png" 
+              alt="NFC Logo" 
+              className="w-full h-full object-contain brightness-0 invert opacity-90"
+            />
+          </div>
+
+          {/* CENTER TOP: ICON MASCOT - DECREASED SPACING */}
+          <div 
+            className="absolute inset-x-0 top-[12%] flex flex-col items-center justify-center"
+            style={{ transform: 'translateZ(50px)' }}
+          >
+            <div className="relative w-44 h-44 flex items-center justify-center -mb-2">
+              <img 
+                src="https://izz9qoicna213xwc.public.blob.vercel-storage.com/icon-Photoroom.png"
+                className="w-full h-full object-contain"
+                alt="Mascot Icon"
+              />
             </div>
 
-            <div className="mt-4 flex flex-col items-center space-y-1">
-              <span className="text-white font-black text-2xl sm:text-3xl tracking-tight uppercase font-display italic">REELY</span>
-              <span className="text-white font-black text-2xl sm:text-3xl tracking-tight uppercase font-display italic leading-none">WOOD</span>
-              <span className="text-white font-bold text-[8px] sm:text-[10px] tracking-[0.4em] uppercase opacity-90 pt-1">STUDIO</span>
+            {/* CREATOR CARD TEXT */}
+            <div className="text-center">
+              <h2 className="text-white font-display text-4xl leading-[0.9] tracking-tight drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
+                CREATOR<br/>CARD
+              </h2>
             </div>
           </div>
 
-          {/* CHIP - Positioned like screenshot */}
+          {/* LOWER CENTER: NFC ICON AND DETAILS */}
           <div 
-            className="absolute bottom-[35%] left-8 w-12 h-10 sm:w-14 sm:h-12 bg-gradient-to-br from-[#c0c0c0] via-[#e8e8e8] to-[#909090] rounded-lg border border-black/10 overflow-hidden"
-            style={{ transform: 'translateZ(20px)' }}
+            className="absolute inset-x-0 bottom-12 flex flex-col items-center text-center"
+            style={{ transform: 'translateZ(40px)' }}
           >
-            <div className="w-full h-full opacity-30 border border-black/20 grid grid-cols-3 grid-rows-3">
-              {[...Array(9)].map((_, i) => <div key={i} className="border-[0.5px] border-black/40"></div>)}
+            <Wifi className="text-white mb-6 rotate-90 opacity-80" size={24} />
+            
+            <div className="space-y-1 mb-8">
+              <p className="text-white/80 font-bold text-[11px] uppercase tracking-[0.4em] leading-tight">INFLUENCE</p>
+              <p className="text-white/80 font-bold text-[11px] uppercase tracking-[0.4em] logic">LOYALTY</p>
+              <p className="text-white font-black text-xl tracking-tight mt-2">
+                @{handle.replace('@', '') || 'Username'}
+              </p>
             </div>
-          </div>
 
-          {/* CARD NUMBERS - Metallic Silver Monospaced */}
-          <div 
-            className="absolute bottom-[24%] left-8 right-8"
-            style={{ transform: 'translateZ(30px)' }}
-          >
-            <p className="text-[#d1d5db] font-mono text-xl sm:text-2xl tracking-[0.15em] italic font-bold drop-shadow-[2px_2px_1px_rgba(0,0,0,0.5)]">
-              1234 5678 9000 0000
-            </p>
-          </div>
-
-          {/* EXPO DATE */}
-          <div 
-            className="absolute bottom-[16%] left-1/2 -translate-x-1/2 flex flex-col items-center"
-            style={{ transform: 'translateZ(25px)' }}
-          >
-            <div className="flex items-center space-x-1 mb-0.5">
-               <span className="text-[7px] sm:text-[8px] font-black text-[#d1d5db] uppercase tracking-tighter opacity-70">EXPO</span>
-               <span className="text-[7px] sm:text-[8px] font-black text-[#d1d5db] uppercase tracking-tighter opacity-70">DATE</span>
-            </div>
-            <span className="text-[#d1d5db] font-mono text-sm sm:text-base tracking-widest font-bold">12/28</span>
-          </div>
-
-          {/* CARDHOLDER NAME */}
-          <div 
-            className="absolute bottom-8 sm:bottom-10 left-8 right-8"
-            style={{ transform: 'translateZ(35px)' }}
-          >
-            <p className="text-[#d1d5db] font-bold text-sm sm:text-lg uppercase tracking-widest truncate drop-shadow-md">
-              {name || "CARDHOLDER NAME"}
-            </p>
+            <p className="text-white/60 font-medium text-[10px] tracking-wider">reelywood.com</p>
           </div>
 
           {/* GLARE OVERLAY */}
@@ -144,8 +131,9 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
             style={{
               background: `radial-gradient(
                 circle at ${glare.x}% ${glare.y}%, 
-                rgba(255,255,255,0.4) 0%, 
-                rgba(255,255,255,0) 60%
+                rgba(255,255,255,0.2) 0%, 
+                rgba(255,255,255,0.05) 30%, 
+                transparent 70%
               )`,
               opacity: glare.opacity,
               transition: 'opacity 0.4s ease'
