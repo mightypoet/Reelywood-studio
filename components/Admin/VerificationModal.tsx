@@ -66,8 +66,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
       
       if (deductError) throw deductError;
 
-      // 4. Credit User and mark as approved via RPC or direct updates
-      // Using existing RPC logic which should handle user credit and submission status
+      // 4. Credit User and mark as approved via existing reward logic
       const { data, error } = await supabase.rpc('grant_mission_reward', {
          amount_param: allocatedRC,
          mission_title_param: missionTitle,
@@ -76,7 +75,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ submission
       });
 
       if (error) {
-        // Rollback brand deduction on failure (simplified)
+        // Simple Rollback brand deduction on failure
         await supabase.from('partner_brands').update({ reelcoins: brand.reelcoins }).eq('id', brand.id);
         throw error;
       }
