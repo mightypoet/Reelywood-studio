@@ -181,7 +181,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     <div className="flex flex-col items-center justify-start min-h-[60vh] py-4 sm:py-8 space-y-8 sm:space-y-12 animate-in zoom-in-95 duration-500">
       {!isApproved ? (
          <div className="bg-[#ffde59] border-[4px] sm:border-[5px] border-black p-8 sm:p-10 text-center shadow-[8px_8px_0px_0px_#000] sm:shadow-[10px_10px_0px_0px_#000] w-full max-w-md mx-auto">
-            <Lock size={40} sm:size={48} className="mx-auto mb-6" strokeWidth={3} />
+            <Lock size={40} className="mx-auto mb-6" strokeWidth={3} />
             <h3 className="text-xl sm:text-2xl font-black uppercase italic font-display">Identity Syncing</h3>
             <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p>
          </div>
@@ -195,11 +195,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           
           <div className="grid grid-cols-2 gap-4 sm:gap-6 w-full max-w-md mx-auto px-2">
             <button className="bg-white border-[3px] sm:border-[4px] border-black py-4 sm:py-5 px-3 sm:px-4 flex flex-col items-center gap-2 sm:gap-3 shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
-              <QrCode size={24} sm:size={28} strokeWidth={3} className="group-hover:rotate-6 transition-transform" />
+              <QrCode size={24} strokeWidth={3} className="group-hover:rotate-6 transition-transform" />
               <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-center">QR Node</span>
             </button>
             <button className="bg-black text-white border-[3px] sm:border-[4px] border-black py-4 sm:py-5 px-3 sm:px-4 flex flex-col items-center gap-2 sm:gap-3 shadow-[4px_4px_0px_0px_#834bf1] sm:shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
-              <Share2 size={24} sm:size={28} strokeWidth={3} className="text-[#ffde59] group-hover:scale-110 transition-transform" />
+              <Share2 size={24} strokeWidth={3} className="text-[#ffde59] group-hover:scale-110 transition-transform" />
               <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-center text-[#ffde59]">Share ID</span>
             </button>
           </div>
@@ -228,7 +228,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 {isDone && (
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] opacity-20 pointer-events-none z-0">
                     <div className="border-[6px] sm:border-[8px] border-emerald-600 px-6 sm:px-8 py-3 sm:py-4 rounded-xl flex flex-col items-center">
-                       <CheckCircle2 size={48} sm:size={64} className="text-emerald-600 mb-2" />
+                       <CheckCircle2 size={48} className="text-emerald-600 mb-2" />
                        <span className="font-display font-black text-2xl sm:text-4xl text-emerald-600 uppercase">VERIFIED</span>
                     </div>
                   </div>
@@ -287,7 +287,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                   <button 
                     onClick={() => handleRedeem(r)}
                     disabled={isProcessing === r.id || isRedeemed || !isApproved}
-                    className={`px-3 sm:px-4 py-2 border-[2px] font-black uppercase text-[7px] sm:text-[8px] tracking-[0.15em] sm:tracking-[0.2em] shadow-[2px_2px_0px_0px_#000] sm:shadow-[3px_3px_0px_0px_#000] transition-all active:scale-95 ${revealedCodes[r.id] ? 'bg-[#39ff14]' : isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}
+                    className={`px-3 sm:px-4 py-2 border-[2px] font-black uppercase text-[7px] tracking-[0.15em] shadow-[2px_2px_0px_0px_#000] transition-all active:scale-95 ${revealedCodes[r.id] ? 'bg-[#39ff14]' : isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}
                   >
                     {revealedCodes[r.id] ? revealedCodes[r.id] : isRedeemed ? 'CLAIMED' : !isApproved ? 'LOCKED' : 'REDEEM'}
                   </button>
@@ -329,9 +329,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
        <button 
           onClick={() => auth.signOut()}
-          className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] font-black uppercase text-[10px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all flex items-center justify-center gap-3 sm:gap-4"
+          className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] font-black uppercase text-[10px] tracking-[0.3em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all flex items-center justify-center gap-3 sm:gap-4"
         >
-          <LogOut size={18} sm:size={20} strokeWidth={3} />
+          <LogOut size={18} strokeWidth={3} />
           <span>TERMINATE SESSION</span>
         </button>
     </div>
@@ -346,7 +346,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       <header className="bg-white border-b-[3px] sm:border-b-4 border-black p-3 sm:p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black text-[#ffde59] flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_#834bf1] rotate-3 shrink-0">
-            <Terminal size={18} sm:size={20} strokeWidth={3} />
+            <Terminal size={18} strokeWidth={3} />
           </div>
           <div>
             <h1 className="text-base sm:text-lg font-black italic uppercase font-display leading-none text-black">REELYWOOD<span className="text-[#834bf1]">HUB</span></h1>
@@ -386,7 +386,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
                   className={`flex flex-col items-center justify-center flex-1 py-2 transition-all active:scale-95 ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : 'text-white/40'}`}>
-            <tab.icon size={18} sm:size={20} strokeWidth={tab.id === activeTab ? 3 : 2} />
+            <tab.icon size={18} strokeWidth={tab.id === activeTab ? 3 : 2} />
             <span className="text-[6px] sm:text-[7px] font-black uppercase mt-1 tracking-widest">{tab.label}</span>
           </button>
         ))}
