@@ -219,17 +219,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         ) : (
           missions.map(m => {
             const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
-            const isDone = ['approved', 'completed'].includes(submission?.status || '');
-            const isPending = ['pending', 'verifying'].includes(submission?.status || '');
+            const isApprovedSub = submission?.status === 'approved' || submission?.status === 'completed';
+            const isPendingSub = submission?.status === 'pending' || submission?.status === 'verifying';
+            const isAnySubmitted = isApprovedSub || isPendingSub;
+            
             const brand = m.partner_brands;
 
             return (
-              <div key={m.id} className={`border-[3px] sm:border-[4px] p-5 sm:p-6 shadow-[4px_4px_0px_0px] sm:shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col transition-all duration-300 ${isDone ? 'bg-[#39ff14]/10 border-emerald-500 shadow-emerald-500/20' : isPending ? 'bg-[#ffde59]/20 border-[#ffde59] shadow-[#ffde59]/20' : 'bg-white border-black shadow-black'}`}>
-                {isDone && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] opacity-20 pointer-events-none z-0">
-                    <div className="border-[6px] sm:border-[8px] border-emerald-600 px-6 sm:px-8 py-3 sm:py-4 rounded-xl flex flex-col items-center">
-                       <CheckCircle2 size={48} className="text-emerald-600 mb-2" />
-                       <span className="font-display font-black text-2xl sm:text-4xl text-emerald-600 uppercase">VERIFIED</span>
+              <div 
+                key={m.id} 
+                className={`border-[3px] sm:border-[4px] p-5 sm:p-6 shadow-[4px_4px_0px_0px] sm:shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col transition-all duration-300 ${
+                  isApprovedSub 
+                    ? 'bg-[#39ff14] border-[#00a300] shadow-[#00a300]' 
+                    : isPendingSub 
+                      ? 'bg-[#ffde59] border-[#d4a017] shadow-[#d4a017]' 
+                      : 'bg-white border-black shadow-black'
+                }`}
+              >
+                {/* VERIFIED STAMP */}
+                {isApprovedSub && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-20 pointer-events-none">
+                    <div className="border-[6px] border-[#006400] px-4 py-2 rounded-xl flex items-center gap-2 bg-[#39ff14]/80 backdrop-blur-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
+                      <CheckCircle2 size={24} className="text-[#006400]" strokeWidth={4} />
+                      <span className="font-display font-black text-2xl text-[#006400] uppercase italic tracking-tighter">VERIFIED</span>
                     </div>
                   </div>
                 )}
@@ -238,18 +250,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">
                     {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} />}
                   </div>
-                  <div className={`px-2 py-1 font-black text-[7px] sm:text-[9px] border-[2px] shadow-[2px_2px_0px_0px_#000] ${isDone ? 'bg-emerald-600 text-white border-emerald-700' : isPending ? 'bg-[#ffde59] text-black border-black' : 'bg-black text-[#ffde59] border-black'}`}>
-                    {isDone ? 'ACCOMPLISHED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
+                  <div className={`px-2 py-1 font-black text-[7px] sm:text-[9px] border-[2px] shadow-[2px_2px_0px_0px_#000] ${
+                    isApprovedSub ? 'bg-black text-[#39ff14] border-black' : isPendingSub ? 'bg-black text-[#ffde59] border-black' : 'bg-black text-[#ffde59] border-black'
+                  }`}>
+                    {isApprovedSub ? 'VERIFIED_ENTRY' : isPendingSub ? 'QC_IN_PROGRESS' : `+${m.reward_amount} RC`}
                   </div>
                 </div>
-                <h4 className={`text-base sm:text-lg font-black uppercase italic font-display leading-tight text-black relative z-10 ${isDone ? 'opacity-40' : ''}`}>{m.title}</h4>
-                <p className={`text-[9px] sm:text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isDone ? 'opacity-40' : ''}`}>{m.description}</p>
+                
+                <h4 className={`text-base sm:text-lg font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'line-through decoration-4 decoration-black/20' : ''}`}>
+                  {m.title}
+                </h4>
+                <p className={`text-[9px] sm:text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-30' : ''}`}>
+                  {m.description}
+                </p>
+                
                 <button 
-                  onClick={() => setSelectedMission(m)}
-                  disabled={isDone || isPending || !isApproved}
-                  className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isDone ? 'bg-emerald-600 border-emerald-700 opacity-50 cursor-not-allowed shadow-none' : isPending ? 'bg-[#ffde59] border-black text-black opacity-60 cursor-wait shadow-none' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
+                  onClick={() => !isAnySubmitted && setSelectedMission(m)}
+                  disabled={isAnySubmitted || !isApproved}
+                  className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${
+                    isApprovedSub 
+                      ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' 
+                      : isPendingSub 
+                        ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' 
+                        : !isApproved 
+                          ? 'bg-slate-300 border-slate-400 cursor-not-allowed shadow-none' 
+                          : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'
+                  }`}
                 >
-                  {!isApproved ? 'LOCKED (SYNC REQ)' : isDone ? 'MISSION COMPLETE' : isPending ? 'QC IN PROGRESS' : 'OPEN BRIEF'}
+                  {!isApproved ? 'LOCKED (SYNC REQ)' : isApprovedSub ? 'MISSION COMPLETED' : isPendingSub ? 'TRANSMISSION CACHED' : 'OPEN BRIEF'}
                 </button>
               </div>
             );
@@ -287,7 +315,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                   <button 
                     onClick={() => handleRedeem(r)}
                     disabled={isProcessing === r.id || isRedeemed || !isApproved}
-                    className={`px-3 sm:px-4 py-2 border-[2px] font-black uppercase text-[7px] tracking-[0.15em] shadow-[2px_2px_0px_0px_#000] transition-all active:scale-95 ${revealedCodes[r.id] ? 'bg-[#39ff14]' : isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}
+                    className={`px-3 sm:px-4 py-2 border-[2px] font-black uppercase text-[7px] sm:text-[8px] tracking-[0.15em] shadow-[2px_2px_0px_0px_#000] transition-all active:scale-95 ${revealedCodes[r.id] ? 'bg-[#39ff14]' : isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}
                   >
                     {revealedCodes[r.id] ? revealedCodes[r.id] : isRedeemed ? 'CLAIMED' : !isApproved ? 'LOCKED' : 'REDEEM'}
                   </button>
@@ -329,7 +357,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
        <button 
           onClick={() => auth.signOut()}
-          className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] font-black uppercase text-[10px] tracking-[0.3em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all flex items-center justify-center gap-3 sm:gap-4"
+          className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] font-black uppercase text-[10px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all flex items-center justify-center gap-3 sm:gap-4"
         >
           <LogOut size={18} strokeWidth={3} />
           <span>TERMINATE SESSION</span>
