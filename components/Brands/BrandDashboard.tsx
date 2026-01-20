@@ -67,7 +67,11 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   };
 
   useEffect(() => {
-    // FIX 1: Use Auth Listener instead of relying on auth.currentUser which might be null on mount
+    /**
+     * FIX 1: USE AUTH LISTENER
+     * Relying on auth.currentUser immediately on mount fails because Firebase
+     * takes time to initialize. onAuthStateChanged guarantees we have the user.
+     */
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user?.email || !supabase) {
         setLoading(false);
@@ -75,17 +79,28 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       }
 
       try {
-        console.log("Syncing Alliance Node for:", user.email);
+        console.log("Syncing Brand Portal for:", user.email);
 
-        // FIX 2: Use .ilike for case-insensitive matching
-        // FIX 3: Explicitly select reelcoins column
+        /**
+         * FIX 2: CASE-INSENSITIVE MATCHING
+         * Admin might enter "Brand@Gmail.com" while user logs in as "brand@gmail.com".
+         * .ilike() handles this mismatch automatically.
+         * 
+         * FIX 3: EXPLICIT SELECT
+         * We explicitly select 'reelcoins' to ensure Supabase returns the balance field.
+         */
         const { data: brandData, error: bError } = await supabase
           .from('partner_brands')
           .select('*, reelcoins')
           .ilike('brand_email', user.email)
           .single();
 
-        if (bError) throw bError;
+        if (bError) {
+          console.error("BRAND_LOOKUP_ERROR:", bError);
+          setLoading(false);
+          return;
+        }
+
         setBrand(brandData);
 
         // Fetch campaign data linked to this brand
@@ -137,9 +152,9 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       <div className="min-h-screen bg-[#f0f0f0] flex items-center justify-center p-6">
         <div className="bg-white border-[6px] border-black p-12 shadow-[20px_20px_0px_0px_#000] max-w-lg text-center space-y-6">
           <Building2 size={64} className="mx-auto text-[#834bf1]" />
-          <h2 className="text-4xl font-black italic uppercase font-display">Access Denied</h2>
+          <h2 className="text-4xl font-black italic uppercase font-display text-black">Access Denied</h2>
           <p className="text-xs font-bold text-black/40 uppercase tracking-widest leading-relaxed">
-            Authorized Personnel Only. Node synchronization failed for this account.
+            Authorized Personnel Only. No Brand account found for {auth.currentUser?.email}.
           </p>
           <button onClick={handleLogout} className="w-full bg-black text-white py-5 font-black uppercase text-xs tracking-widest border-[4px] border-black shadow-[6px_6px_0px_0px_#ffde59]">Return to Studio</button>
         </div>
@@ -147,7 +162,10 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     );
   }
 
-  // FIX 4: Safe rendering of balance using nullish coalescing
+  /**
+   * FIX 4: SAFE RENDERING
+   * Handle potential nulls in the reelcoins field safely with nullish coalescing.
+   */
   const balanceRC = brand?.reelcoins ?? 0;
 
   return (
@@ -194,7 +212,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
                               <img src={sub.profiles?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sub.id}`} className="w-full h-full object-cover" alt="Agent" />
                             </div>
                             <div>
-                              <p className="font-black text-sm uppercase italic">{sub.profiles?.display_name || 'Agent ID: ' + sub.profiles?.id.slice(0, 4)}</p>
+                              <p className="font-black text-sm uppercase italic text-black">{sub.profiles?.display_name || 'Agent ID: ' + sub.profiles?.id.slice(0, 4)}</p>
                               <p className="text-[10px] font-bold text-[#834bf1] uppercase tracking-widest mt-1">@{sub.profiles?.handle || 'unlinked'}</p>
                             </div>
                           </div>
@@ -251,7 +269,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
               )}
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-2xl font-black uppercase italic font-display leading-none">{brand.name}</h1>
+              <h1 className="text-2xl font-black uppercase italic font-display leading-none text-black">{brand.name}</h1>
               <p className="text-[9px] font-black uppercase tracking-[0.4em] text-[#834bf1] mt-1">Alliance Dashboard v4.2</p>
             </div>
           </div>
@@ -259,7 +277,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 bg-[#ffde59] border-[2px] border-black px-3 py-1 shadow-[2px_2px_0px_0px_#000]">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div>
-              <span className="text-[10px] font-black uppercase tracking-widest">Live Sync Active</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-black">Live Sync Active</span>
             </div>
             <button 
               onClick={handleLogout}
@@ -278,14 +296,13 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
               <Flame size={14} className="text-[#ffde59] animate-pulse" />
               Campaign Fidelity Status: High
             </div>
-            <h2 className="text-6xl font-black italic uppercase font-display tracking-tighter leading-none">Campaign <br /><span className="text-[#834bf1]">Performance</span></h2>
+            <h2 className="text-6xl font-black italic uppercase font-display tracking-tighter leading-none text-black">Campaign <br /><span className="text-[#834bf1]">Performance</span></h2>
             <p className="text-sm font-bold uppercase leading-relaxed text-black/50 max-w-md border-l-[6px] border-black pl-6 py-2">
               Real-time monitoring of your creative assets and creator network engagement levels.
             </p>
           </div>
 
           <div className="bg-black text-white p-10 border-[5px] border-black shadow-[10px_10px_0px_0px_#834bf1] text-center min-w-[280px]">
-             {/* THE FIX: Correctly render balanceRC from the explicitly selected reelcoins column */}
              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic text-white/50">AVAILABLE BRAND BALANCE (RC)</p>
              <h3 className="text-6xl font-black italic font-display text-[#ffde59] tracking-tighter">
                {balanceRC.toLocaleString()}
@@ -299,7 +316,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
               <Zap size={24} strokeWidth={3} className="text-black" />
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 mb-2 italic">Active Missions</p>
-            <h3 className="text-4xl font-black italic font-display">{stats.activeMissionsCount} <span className="text-xs opacity-30 text-black">/ {stats.totalMissionsCount}</span></h3>
+            <h3 className="text-4xl font-black italic font-display text-black">{stats.activeMissionsCount} <span className="text-xs opacity-30 text-black">/ {stats.totalMissionsCount}</span></h3>
           </div>
 
           <div className="bg-white p-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all group">
@@ -307,7 +324,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
               <Wallet size={24} strokeWidth={3} />
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 mb-2 italic">RC Distributed</p>
-            <h3 className="text-4xl font-black italic font-display">{stats.rcDistributed.toLocaleString()}</h3>
+            <h3 className="text-4xl font-black italic font-display text-black">{stats.rcDistributed.toLocaleString()}</h3>
           </div>
 
           <div className="bg-white p-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all group">
@@ -315,7 +332,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
               <Users size={24} strokeWidth={3} />
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 mb-2 italic">Creator Signals</p>
-            <h3 className="text-4xl font-black italic font-display">{stats.engagement}</h3>
+            <h3 className="text-4xl font-black italic font-display text-black">{stats.engagement}</h3>
           </div>
 
           <div className="bg-white p-8 border-[4px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all group">
@@ -323,23 +340,23 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
               <TrendingUp size={24} strokeWidth={3} className="text-[#834bf1]" />
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 mb-2 italic">Yield Lift</p>
-            <h3 className="text-4xl font-black italic font-display">14.2%</h3>
+            <h3 className="text-4xl font-black italic font-display text-black">14.2%</h3>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-12">
           <div className="lg:col-span-8 bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#000]">
             <div className="flex items-center justify-between mb-10">
-              <h3 className="text-3xl font-black italic uppercase font-display flex items-center gap-4">
+              <h3 className="text-3xl font-black italic uppercase font-display flex items-center gap-4 text-black">
                 <Activity size={28} className="text-[#834bf1]" /> Mission Activity Log
               </h3>
-              <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 px-3 py-1 border-2 border-black italic">Recent Signals</span>
+              <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 px-3 py-1 border-2 border-black italic text-black">Recent Signals</span>
             </div>
 
             <div className="space-y-10">
               <div className="space-y-6">
                 {activeMissions.length === 0 ? (
-                  <p className="text-center py-10 opacity-20 font-black italic uppercase text-xs">Scanning Grid... No Missions Found.</p>
+                  <p className="text-center py-10 opacity-20 font-black italic uppercase text-xs text-black">Scanning Grid... No Missions Found.</p>
                 ) : (
                   activeMissions.map((m) => (
                     <div key={m.id} className="flex items-center justify-between border-b-4 border-slate-50 pb-8 last:border-0 hover:bg-slate-50 transition-colors px-4 -mx-4 group/row">
@@ -348,7 +365,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
                           <Zap size={24} fill="currentColor" strokeWidth={3} />
                         </div>
                         <div>
-                          <p className="text-sm font-black uppercase italic tracking-tight">{m.title}</p>
+                          <p className="text-sm font-black uppercase italic tracking-tight text-black">{m.title}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[9px] font-black uppercase text-[#834bf1] tracking-widest">BOUNTY: {m.reward_amount} RC</span>
                             <div className="w-1 h-1 bg-black/20 rounded-full"></div>
@@ -375,13 +392,13 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
               {activeRewards.length > 0 && (
                 <div className="pt-8 border-t-[4px] border-black/10">
                    <div className="flex items-center gap-3 mb-8 opacity-40">
-                      <Gift size={16} />
-                      <h4 className="font-black text-[10px] uppercase tracking-widest">Active Voucher Nodes</h4>
+                      <Gift size={16} className="text-black"/>
+                      <h4 className="font-black text-[10px] uppercase tracking-widest text-black">Active Voucher Nodes</h4>
                    </div>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {activeRewards.map(r => (
                         <div key={r.id} className="border-[3px] border-black p-4 bg-slate-50 flex items-center justify-between">
-                           <span className="text-[10px] font-black uppercase italic truncate max-w-[150px]">{r.title}</span>
+                           <span className="text-[10px] font-black uppercase italic truncate max-w-[150px] text-black">{r.title}</span>
                            <span className="text-[9px] font-bold text-emerald-600 bg-white px-2 border-2 border-black">SYNCED</span>
                         </div>
                       ))}
@@ -401,15 +418,15 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
             </div>
 
             <div className="bg-white border-[6px] border-black p-10 shadow-[12px_12px_0px_0px_#834bf1] space-y-6">
-              <h4 className="text-xl font-black uppercase italic font-display flex items-center gap-3">
+              <h4 className="text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
                 <Target size={20} className="text-[#834bf1]" /> Grid Control
               </h4>
               <div className="grid grid-cols-1 gap-4">
-                <button className="flex items-center justify-between w-full bg-slate-50 border-[3px] border-black p-4 font-black uppercase text-[10px] tracking-widest hover:bg-white transition-colors text-left group/action">
+                <button className="flex items-center justify-between w-full bg-slate-50 border-[3px] border-black p-4 font-black uppercase text-[10px] tracking-widest hover:bg-white transition-colors text-left group/action text-black">
                   <span>Authorize Payouts</span>
                   <Maximize2 size={14} className="group-hover/action:translate-x-0.5 group-hover/action:-translate-y-0.5 transition-transform" />
                 </button>
-                <button className="flex items-center justify-between w-full bg-slate-50 border-[3px] border-black p-4 font-black uppercase text-[10px] tracking-widest hover:bg-white transition-colors text-left group/action">
+                <button className="flex items-center justify-between w-full bg-slate-50 border-[3px] border-black p-4 font-black uppercase text-[10px] tracking-widest hover:bg-white transition-colors text-left group/action text-black">
                   <span>Asset Repository</span>
                   <Maximize2 size={14} className="group-hover/action:translate-x-0.5 group-hover/action:-translate-y-0.5 transition-transform" />
                 </button>
