@@ -67,11 +67,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   };
 
   useEffect(() => {
-    /**
-     * FIX 1: USE AUTH LISTENER
-     * Relying on auth.currentUser immediately on mount fails because Firebase
-     * takes time to initialize. onAuthStateChanged guarantees we have the user.
-     */
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user?.email || !supabase) {
         setLoading(false);
@@ -79,16 +74,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       }
 
       try {
-        console.log("Syncing Brand Portal for:", user.email);
-
-        /**
-         * FIX 2: CASE-INSENSITIVE MATCHING
-         * Admin might enter "Brand@Gmail.com" while user logs in as "brand@gmail.com".
-         * .ilike() handles this mismatch automatically.
-         * 
-         * FIX 3: EXPLICIT SELECT
-         * We explicitly select 'reelcoins' to ensure Supabase returns the balance field.
-         */
         const { data: brandData, error: bError } = await supabase
           .from('partner_brands')
           .select('*, reelcoins')
@@ -103,7 +88,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
 
         setBrand(brandData);
 
-        // Fetch campaign data linked to this brand
+        // Fetch missions and rewards
         const [missionsRes, rewardsRes] = await Promise.all([
           supabase.from('missions').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false }),
           supabase.from('rewards').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false })
@@ -115,15 +100,35 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         setActiveMissions(missions);
         setActiveRewards(rewards);
 
+        // --- CALCULATE REAL RC DISTRIBUTED ---
+        let totalDistributed = 0;
+        const missionIds = missions.map(m => m.id);
+
+        if (missionIds.length > 0) {
+          const { data: approvedSubmissions, error: sError } = await supabase
+            .from('submissions')
+            .select('mission_id')
+            .in('mission_id', missionIds)
+            .eq('status', 'approved');
+
+          if (!sError && approvedSubmissions) {
+            approvedSubmissions.forEach(sub => {
+              const mission = missions.find(m => m.id === sub.mission_id);
+              if (mission) {
+                totalDistributed += (mission.reward_amount || 0);
+              }
+            });
+          }
+        }
+
         const activeCount = missions.filter(m => m.status === 'active' || !m.status).length;
-        const totalDist = (missions.length * 1000); 
         const engagementScore = missions.length * 12;
         const estMediaValue = (engagementScore * 1250).toLocaleString();
 
         setStats({
           activeMissionsCount: activeCount,
           totalMissionsCount: missions.length,
-          rcDistributed: totalDist,
+          rcDistributed: totalDistributed, // Real value used here
           engagement: engagementScore,
           mediaValue: `₹${estMediaValue}`
         });
@@ -162,15 +167,10 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     );
   }
 
-  /**
-   * FIX 4: SAFE RENDERING
-   * Handle potential nulls in the reelcoins field safely with nullish coalescing.
-   */
   const balanceRC = brand?.reelcoins ?? 0;
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] text-black font-lexend">
-      {/* MISSION DRILL-DOWN MODAL */}
       {selectedMission && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-4xl max-h-[85vh] border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] relative flex flex-col overflow-hidden animate-in zoom-in-95">
