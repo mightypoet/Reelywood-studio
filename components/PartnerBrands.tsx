@@ -69,7 +69,7 @@ export const PartnerBrands = () => {
                 onClick={() => setSelectedBrand(null)} 
                 className="absolute top-4 right-4 z-[60] bg-black text-white p-2 md:p-3 border-[3px] border-white hover:bg-rose-600 transition-colors shadow-[4px_4px_0px_0px_#000]"
               >
-                <X size={20} md:size={24} strokeWidth={4} />
+                <X size={24} strokeWidth={4} />
               </button>
 
               {/* Cover Container */}
@@ -129,7 +129,7 @@ export const PartnerBrands = () => {
                  {selectedBrand.menu_link && (
                     <a href={selectedBrand.menu_link} target="_blank" rel="noreferrer" className="flex items-center justify-center space-x-4 md:space-x-6 w-full bg-black text-white font-black py-5 md:py-6 text-lg md:text-xl border-[4px] border-black shadow-[8px_8px_0px_0px_#834bf1] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all active:scale-[0.98]">
                        <span className="italic uppercase font-display">View Mission Assets</span>
-                       <ArrowRight size={20} md:size={24} strokeWidth={4} />
+                       <ArrowRight size={24} strokeWidth={4} />
                     </a>
                  )}
               </div>
