@@ -67,24 +67,27 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   };
 
   useEffect(() => {
-    const fetchBrandGrid = async () => {
-      const user = auth.currentUser;
+    // Listen for auth state changes to ensure we have the user
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user?.email || !supabase) {
         setLoading(false);
         return;
       }
 
       try {
-        // Corrected Query: Fetching brand node via auth email to ensure balance (reelcoins) is retrieved
+        console.log("Fetching brand for:", user.email);
+
+        // 1. Fetch Brand Data (Using ilike for case-insensitive match and explicit select)
         const { data: brandData, error: bError } = await supabase
           .from('partner_brands')
-          .select('*')
-          .eq('brand_email', user.email)
+          .select('*, reelcoins')
+          .ilike('brand_email', user.email)
           .single();
 
         if (bError) throw bError;
         setBrand(brandData);
 
+        // 2. Fetch Related Campaign Data
         const [missionsRes, rewardsRes] = await Promise.all([
           supabase.from('missions').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false }),
           supabase.from('rewards').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false })
@@ -110,13 +113,13 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         });
 
       } catch (err) {
-        console.error("BRAND_PORTAL_SYNC_ERROR:", err);
+        console.error("BRAND_SYNC_ERROR:", err);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    fetchBrandGrid();
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
@@ -142,6 +145,9 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       </div>
     );
   }
+
+  // Handle null balance gracefully
+  const balance = brand?.reelcoins ?? 0;
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] text-black font-lexend">
@@ -278,10 +284,10 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
           </div>
 
           <div className="bg-black text-white p-10 border-[5px] border-black shadow-[10px_10px_0px_0px_#834bf1] text-center min-w-[280px]">
-             {/* THE FIX: Dynamic rendering of AVAILABLE BRAND BALANCE (RC) */}
+             {/* THE FIX: Dynamic rendering of AVAILABLE BRAND BALANCE (RC) using nullish coalescing */}
              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic text-white/50">AVAILABLE BRAND BALANCE (RC)</p>
              <h3 className="text-6xl font-black italic font-display text-[#ffde59] tracking-tighter">
-                {brand?.reelcoins?.toLocaleString() || '0'}
+                {balance.toLocaleString()}
              </h3>
           </div>
         </div>
