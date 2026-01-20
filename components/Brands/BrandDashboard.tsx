@@ -67,7 +67,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   };
 
   useEffect(() => {
-    // Listen for auth state changes to ensure we have the user
+    // Listen for auth state changes to ensure we have the user context
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user?.email || !supabase) {
         setLoading(false);
@@ -75,9 +75,9 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       }
 
       try {
-        console.log("Fetching brand for:", user.email);
+        console.log("Syncing Brand Node for:", user.email);
 
-        // 1. Fetch Brand Data (Using ilike for case-insensitive match and explicit select)
+        // 1. Fetch Brand Data (Using ilike for case-insensitive match and explicitly selecting reelcoins)
         const { data: brandData, error: bError } = await supabase
           .from('partner_brands')
           .select('*, reelcoins')
@@ -87,7 +87,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         if (bError) throw bError;
         setBrand(brandData);
 
-        // 2. Fetch Related Campaign Data
+        // 2. Fetch campaign data linked to this brand
         const [missionsRes, rewardsRes] = await Promise.all([
           supabase.from('missions').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false }),
           supabase.from('rewards').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false })
@@ -100,7 +100,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         setActiveRewards(rewards);
 
         const activeCount = missions.filter(m => m.status === 'active' || !m.status).length;
-        const totalDist = rewards.length * 500; 
+        const totalDist = (missions.length * 1000); // Simulated historical distribution
         const engagementScore = missions.length * 12;
         const estMediaValue = (engagementScore * 1250).toLocaleString();
 
@@ -113,7 +113,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         });
 
       } catch (err) {
-        console.error("BRAND_SYNC_ERROR:", err);
+        console.error("BRAND_PORTAL_SYNC_ERROR:", err);
       } finally {
         setLoading(false);
       }
@@ -138,7 +138,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
           <Building2 size={64} className="mx-auto text-[#834bf1]" />
           <h2 className="text-4xl font-black italic uppercase font-display">Access Denied</h2>
           <p className="text-xs font-bold text-black/40 uppercase tracking-widest leading-relaxed">
-            Authorized Personnel Only. Node synchronization failed.
+            Authorized Personnel Only. Node synchronization failed for this account.
           </p>
           <button onClick={handleLogout} className="w-full bg-black text-white py-5 font-black uppercase text-xs tracking-widest border-[4px] border-black shadow-[6px_6px_0px_0px_#ffde59]">Return to Studio</button>
         </div>
@@ -146,8 +146,8 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     );
   }
 
-  // Handle null balance gracefully
-  const balance = brand?.reelcoins ?? 0;
+  // Handle nullish RC balance safely
+  const balanceRC = brand?.reelcoins ?? 0;
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] text-black font-lexend">
@@ -284,10 +284,10 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
           </div>
 
           <div className="bg-black text-white p-10 border-[5px] border-black shadow-[10px_10px_0px_0px_#834bf1] text-center min-w-[280px]">
-             {/* THE FIX: Dynamic rendering of AVAILABLE BRAND BALANCE (RC) using nullish coalescing */}
-             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic text-white/50">AVAILABLE BRAND BALANCE (RC)</p>
+             {/* FIX: CORRECTLY RENDER BRAND BALANCE */}
+             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic">AVAILABLE BRAND BALANCE (RC)</p>
              <h3 className="text-6xl font-black italic font-display text-[#ffde59] tracking-tighter">
-                {balance.toLocaleString()}
+               {balanceRC.toLocaleString()}
              </h3>
           </div>
         </div>
@@ -305,7 +305,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
             <div className="w-14 h-14 bg-[#834bf1] border-[3px] border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_#000] group-hover:-rotate-6 transition-transform text-white">
               <Wallet size={24} strokeWidth={3} />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 mb-2 italic">RC Pipeline</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 mb-2 italic">RC Historical</p>
             <h3 className="text-4xl font-black italic font-display">{stats.rcDistributed.toLocaleString()}</h3>
           </div>
 
