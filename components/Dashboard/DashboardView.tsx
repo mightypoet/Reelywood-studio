@@ -135,40 +135,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const renderHub = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-[#834bf1] p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-white">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-[#834bf1] p-4 sm:p-6 border-[3px] sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] text-white">
           <div className="flex justify-between items-start mb-2">
-            <Wallet size={20} className="opacity-50" />
-            <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1">ASSETS</span>
+            <Wallet size={18} className="opacity-50" />
+            <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-widest bg-white/20 px-1">ASSETS</span>
           </div>
-          <h3 className="text-4xl font-black italic font-display leading-none">{profile?.reelcoins?.toLocaleString() || "0"}</h3>
-          <p className="text-[9px] font-black uppercase tracking-widest mt-1">ReelCoins Available</p>
+          <h3 className="text-3xl sm:text-4xl font-black italic font-display leading-none">{profile?.reelcoins?.toLocaleString() || "0"}</h3>
+          <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest mt-1">ReelCoins</p>
         </div>
-        <div className="bg-[#ffde59] p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-black">
+        <div className="bg-[#ffde59] p-4 sm:p-6 border-[3px] sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] text-black">
           <div className="flex justify-between items-start mb-2">
-            <Zap size={20} className="opacity-50" />
-            <span className="text-[7px] font-black uppercase tracking-widest bg-black/10 px-1">ACTIVE_OPS</span>
+            <Zap size={18} className="opacity-50" />
+            <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-widest bg-black/10 px-1">OPS</span>
           </div>
-          <h3 className="text-4xl font-black italic font-display leading-none">{missions.length}</h3>
-          <p className="text-[9px] font-black uppercase tracking-widest mt-1">Missions in Grid</p>
+          <h3 className="text-3xl sm:text-4xl font-black italic font-display leading-none">{missions.length}</h3>
+          <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest mt-1">Active</p>
         </div>
       </div>
 
-      <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000]">
-        <h4 className="font-black text-xs uppercase tracking-[0.3em] mb-6 flex items-center gap-2 text-black">
+      <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000]">
+        <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] mb-6 flex items-center gap-2 text-black">
           <History size={14} /> Operational Timeline
         </h4>
         <div className="space-y-4">
           {userSubmissions.slice(0, 3).map((sub, i) => (
-            <div key={i} className="flex items-center gap-4 border-b-2 border-slate-50 pb-4 last:border-0">
-              <div className={`w-10 h-10 border-2 border-black flex items-center justify-center shrink-0 ${sub.status === 'approved' ? 'bg-emerald-400' : 'bg-[#ffde59]'}`}>
-                {sub.status === 'approved' ? <CheckCircle2 size={18} /> : <Clock size={18} />}
+            <div key={i} className="flex items-center gap-3 sm:gap-4 border-b-2 border-slate-50 pb-4 last:border-0">
+              <div className={`w-9 h-9 sm:w-10 sm:h-10 border-2 border-black flex items-center justify-center shrink-0 ${sub.status === 'approved' ? 'bg-emerald-400' : 'bg-[#ffde59]'}`}>
+                {sub.status === 'approved' ? <CheckCircle2 size={16} /> : <Clock size={16} />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase truncate">{missions.find(m => m.id === sub.mission_id)?.title || 'Mission Entry'}</p>
-                <p className="text-[8px] font-bold text-slate-400 uppercase">{new Date(sub.created_at).toLocaleDateString()}</p>
+                <p className="text-[9px] sm:text-[10px] font-black uppercase truncate">{missions.find(m => m.id === sub.mission_id)?.title || 'Mission Entry'}</p>
+                <p className="text-[7px] sm:text-[8px] font-bold text-slate-400 uppercase">{new Date(sub.created_at).toLocaleDateString()}</p>
               </div>
-              <span className={`text-[9px] font-black uppercase ${sub.status === 'approved' ? 'text-emerald-600' : 'text-amber-500'}`}>{sub.status}</span>
+              <span className={`text-[8px] sm:text-[9px] font-black uppercase ${sub.status === 'approved' ? 'text-emerald-600' : 'text-amber-500'}`}>{sub.status}</span>
             </div>
           ))}
           {userSubmissions.length === 0 && <p className="text-[9px] font-black uppercase opacity-20 text-center py-4 italic">No recent transmissions.</p>}
@@ -178,29 +178,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   );
 
   const renderCard = () => (
-    <div className="flex flex-col items-center justify-start min-h-[70vh] py-8 space-y-12 animate-in zoom-in-95 duration-500 overflow-hidden">
+    <div className="flex flex-col items-center justify-start min-h-[60vh] py-4 sm:py-8 space-y-8 sm:space-y-12 animate-in zoom-in-95 duration-500">
       {!isApproved ? (
-         <div className="bg-[#ffde59] border-[5px] border-black p-10 text-center shadow-[10px_10px_0px_0px_#000] w-full max-w-md mx-auto">
-            <Lock size={48} className="mx-auto mb-6" strokeWidth={3} />
-            <h3 className="text-2xl font-black uppercase italic font-display">Identity Syncing</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p>
+         <div className="bg-[#ffde59] border-[4px] sm:border-[5px] border-black p-8 sm:p-10 text-center shadow-[8px_8px_0px_0px_#000] sm:shadow-[10px_10px_0px_0px_#000] w-full max-w-md mx-auto">
+            <Lock size={40} sm:size={48} className="mx-auto mb-6" strokeWidth={3} />
+            <h3 className="text-xl sm:text-2xl font-black uppercase italic font-display">Identity Syncing</h3>
+            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p>
          </div>
       ) : (
         <>
-          <div className="w-full max-w-[340px] flex justify-center">
-            <div className="w-full relative" style={{ height: '520px' }}>
+          <div className="w-full max-w-[320px] sm:max-w-[340px] flex justify-center">
+            <div className="w-full relative h-[480px] sm:h-[520px]">
               <ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} />
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-6 w-full max-w-md mx-auto px-4">
-            <button className="bg-white border-[4px] border-black py-5 px-4 flex flex-col items-center gap-3 shadow-[6px_6px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
-              <QrCode size={28} strokeWidth={3} className="group-hover:rotate-6 transition-transform" />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-center">Show QR Node</span>
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 w-full max-w-md mx-auto px-2">
+            <button className="bg-white border-[3px] sm:border-[4px] border-black py-4 sm:py-5 px-3 sm:px-4 flex flex-col items-center gap-2 sm:gap-3 shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
+              <QrCode size={24} sm:size={28} strokeWidth={3} className="group-hover:rotate-6 transition-transform" />
+              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-center">QR Node</span>
             </button>
-            <button className="bg-black text-white border-[4px] border-black py-5 px-4 flex flex-col items-center gap-3 shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
-              <Share2 size={28} strokeWidth={3} className="text-[#ffde59] group-hover:scale-110 transition-transform" />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-center text-[#ffde59]">Share ID</span>
+            <button className="bg-black text-white border-[3px] sm:border-[4px] border-black py-4 sm:py-5 px-3 sm:px-4 flex flex-col items-center gap-2 sm:gap-3 shadow-[4px_4px_0px_0px_#834bf1] sm:shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
+              <Share2 size={24} sm:size={28} strokeWidth={3} className="text-[#ffde59] group-hover:scale-110 transition-transform" />
+              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-center text-[#ffde59]">Share ID</span>
             </button>
           </div>
         </>
@@ -210,10 +210,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const renderMissions = () => (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <h3 className="text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
-        <Zap className="text-[#834bf1]" /> Operational Grid
+      <h3 className="text-lg sm:text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
+        <Zap className="text-[#834bf1]" size={18} /> Operational Grid
       </h3>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {missions.length === 0 ? (
           <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">GRID_SILENT</div>
         ) : (
@@ -224,31 +224,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             const brand = m.partner_brands;
 
             return (
-              <div key={m.id} className={`border-[4px] p-6 shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col transition-all duration-300 ${isDone ? 'bg-[#39ff14]/10 border-emerald-500 shadow-emerald-500/20' : isPending ? 'bg-[#ffde59]/20 border-[#ffde59] shadow-[#ffde59]/20' : 'bg-white border-black shadow-black'}`}>
-                {/* Status Stamp for Verified Missions */}
+              <div key={m.id} className={`border-[3px] sm:border-[4px] p-5 sm:p-6 shadow-[4px_4px_0px_0px] sm:shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col transition-all duration-300 ${isDone ? 'bg-[#39ff14]/10 border-emerald-500 shadow-emerald-500/20' : isPending ? 'bg-[#ffde59]/20 border-[#ffde59] shadow-[#ffde59]/20' : 'bg-white border-black shadow-black'}`}>
                 {isDone && (
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] opacity-20 pointer-events-none z-0">
-                    <div className="border-[8px] border-emerald-600 px-8 py-4 rounded-xl flex flex-col items-center">
-                       <CheckCircle2 size={64} className="text-emerald-600 mb-2" />
-                       <span className="font-display font-black text-4xl text-emerald-600 uppercase">VERIFIED</span>
+                    <div className="border-[6px] sm:border-[8px] border-emerald-600 px-6 sm:px-8 py-3 sm:py-4 rounded-xl flex flex-col items-center">
+                       <CheckCircle2 size={48} sm:size={64} className="text-emerald-600 mb-2" />
+                       <span className="font-display font-black text-2xl sm:text-4xl text-emerald-600 uppercase">VERIFIED</span>
                     </div>
                   </div>
                 )}
 
                 <div className="flex justify-between items-start mb-4 relative z-10">
-                  <div className="w-12 h-12 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">
-                    {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Building2 size={20} />}
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">
+                    {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} />}
                   </div>
-                  <div className={`px-2 py-1 font-black text-[9px] border-[2px] shadow-[2px_2px_0px_0px_#000] ${isDone ? 'bg-emerald-600 text-white border-emerald-700' : isPending ? 'bg-[#ffde59] text-black border-black' : 'bg-black text-[#ffde59] border-black'}`}>
-                    {isDone ? 'MISSION_ACCOMPLISHED' : isPending ? 'VERIFICATION_PENDING' : `+${m.reward_amount} RC`}
+                  <div className={`px-2 py-1 font-black text-[7px] sm:text-[9px] border-[2px] shadow-[2px_2px_0px_0px_#000] ${isDone ? 'bg-emerald-600 text-white border-emerald-700' : isPending ? 'bg-[#ffde59] text-black border-black' : 'bg-black text-[#ffde59] border-black'}`}>
+                    {isDone ? 'ACCOMPLISHED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
                   </div>
                 </div>
-                <h4 className={`text-lg font-black uppercase italic font-display leading-tight text-black relative z-10 ${isDone ? 'opacity-40' : ''}`}>{m.title}</h4>
-                <p className={`text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isDone ? 'opacity-40' : ''}`}>{m.description}</p>
+                <h4 className={`text-base sm:text-lg font-black uppercase italic font-display leading-tight text-black relative z-10 ${isDone ? 'opacity-40' : ''}`}>{m.title}</h4>
+                <p className={`text-[9px] sm:text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isDone ? 'opacity-40' : ''}`}>{m.description}</p>
                 <button 
                   onClick={() => setSelectedMission(m)}
                   disabled={isDone || isPending || !isApproved}
-                  className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isDone ? 'bg-emerald-600 border-emerald-700 opacity-50 cursor-not-allowed shadow-none' : isPending ? 'bg-[#ffde59] border-black text-black opacity-60 cursor-wait shadow-none' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
+                  className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isDone ? 'bg-emerald-600 border-emerald-700 opacity-50 cursor-not-allowed shadow-none' : isPending ? 'bg-[#ffde59] border-black text-black opacity-60 cursor-wait shadow-none' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
                 >
                   {!isApproved ? 'LOCKED (SYNC REQ)' : isDone ? 'MISSION COMPLETE' : isPending ? 'QC IN PROGRESS' : 'OPEN BRIEF'}
                 </button>
@@ -262,8 +261,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const renderPerks = () => (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <h3 className="text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
-        <Gift className="text-[#ffde59] fill-current stroke-black stroke-2" /> Reward Node
+      <h3 className="text-lg sm:text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
+        <Gift className="text-[#ffde59] fill-current stroke-black stroke-2" size={18} /> Reward Node
       </h3>
       <div className="space-y-4">
         {rewards.length === 0 ? (
@@ -273,22 +272,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             const isRedeemed = myRedemptions.includes(String(r.id)) || !!revealedCodes[r.id];
             const brand = r.partner_brands;
             return (
-              <div key={r.id} className={`border-[4px] p-5 flex items-center justify-between gap-4 shadow-[5px_5px_0px_0px] relative overflow-hidden ${isRedeemed ? 'bg-slate-200 border-slate-400 shadow-none' : 'bg-white border-black shadow-[#ffde59]'}`}>
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-12 h-12 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">
-                     {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Gift size={20} />}
+              <div key={r.id} className={`border-[3px] sm:border-[4px] p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] sm:shadow-[5px_5px_0px_0px] relative overflow-hidden transition-all duration-300 ${isRedeemed ? 'bg-slate-200 border-slate-400 shadow-none' : 'bg-white border-black shadow-[#ffde59]'}`}>
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">
+                     {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Gift size={18} />}
                   </div>
                   <div className="min-w-0">
-                    <h4 className={`text-sm font-black uppercase italic truncate ${isRedeemed ? 'line-through text-slate-400' : 'text-black'}`}>{r.title}</h4>
-                    <p className="text-[9px] font-black uppercase text-black/30 tracking-widest">{brand?.name || 'Reelywood'}</p>
+                    <h4 className={`text-xs sm:text-sm font-black uppercase italic truncate ${isRedeemed ? 'line-through text-slate-400' : 'text-black'}`}>{r.title}</h4>
+                    <p className="text-[7px] sm:text-[9px] font-black uppercase text-black/30 tracking-widest">{brand?.name || 'Reelywood'}</p>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <span className={`text-lg font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span>
+                <div className="flex flex-col items-end gap-1 sm:gap-2 shrink-0">
+                  <span className={`text-base sm:text-lg font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span>
                   <button 
                     onClick={() => handleRedeem(r)}
                     disabled={isProcessing === r.id || isRedeemed || !isApproved}
-                    className={`px-4 py-2 border-[2px] font-black uppercase text-[8px] tracking-[0.2em] shadow-[3px_3px_0px_0px_#000] ${revealedCodes[r.id] ? 'bg-[#39ff14]' : isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}
+                    className={`px-3 sm:px-4 py-2 border-[2px] font-black uppercase text-[7px] sm:text-[8px] tracking-[0.15em] sm:tracking-[0.2em] shadow-[2px_2px_0px_0px_#000] sm:shadow-[3px_3px_0px_0px_#000] transition-all active:scale-95 ${revealedCodes[r.id] ? 'bg-[#39ff14]' : isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}
                   >
                     {revealedCodes[r.id] ? revealedCodes[r.id] : isRedeemed ? 'CLAIMED' : !isApproved ? 'LOCKED' : 'REDEEM'}
                   </button>
@@ -302,26 +301,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   );
 
   const renderSync = () => (
-    <div className="space-y-10 animate-in slide-in-from-bottom-5 duration-500">
-       <div className="bg-white border-[4px] border-black p-6 flex items-center gap-6 shadow-[6px_6px_0px_0px_#000]">
-          <div className="w-16 h-16 bg-slate-100 border-[3px] border-black overflow-hidden shadow-[3px_3px_0px_0px_#834bf1]">
+    <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500">
+       <div className="bg-white border-[3px] sm:border-[4px] border-black p-5 sm:p-6 flex items-center gap-4 sm:gap-6 shadow-[6px_6px_0px_0px_#000]">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 border-[2px] sm:border-[3px] border-black overflow-hidden shadow-[2px_2px_0px_0px_#834bf1] sm:shadow-[3px_3px_0px_0px_#834bf1]">
             <img src={currentUser?.photoURL || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
           </div>
-          <div>
-             <h3 className="text-xl font-black uppercase italic text-black">{profile?.display_name || "AGENT"}</h3>
-             <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest">{currentUser?.email}</p>
+          <div className="min-w-0">
+             <h3 className="text-lg sm:text-xl font-black uppercase italic text-black truncate">{profile?.display_name || "AGENT"}</h3>
+             <p className="text-[8px] sm:text-[10px] font-bold text-black/40 uppercase tracking-widest truncate">{currentUser?.email}</p>
           </div>
        </div>
 
-       <div className="space-y-4">
-          <button className="w-full bg-white border-[3px] border-black p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest group text-black">
-             <div className="flex items-center gap-4">
+       <div className="space-y-3 sm:space-y-4">
+          <button className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
+             <div className="flex items-center gap-3 sm:gap-4">
                <Settings size={18} /> Edit Sync Profile
              </div>
              <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </button>
-          <button className="w-full bg-white border-[3px] border-black p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest group text-black">
-             <div className="flex items-center gap-4">
+          <button className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
+             <div className="flex items-center gap-3 sm:gap-4">
                <Target size={18} /> Support Transmission
              </div>
              <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -330,9 +329,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
        <button 
           onClick={() => auth.signOut()}
-          className="w-full bg-rose-500 text-white border-[4px] border-black py-6 shadow-[8px_8px_0px_0px_#000] font-black uppercase text-xs tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4"
+          className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] font-black uppercase text-[10px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all flex items-center justify-center gap-3 sm:gap-4"
         >
-          <LogOut size={20} strokeWidth={3} />
+          <LogOut size={18} sm:size={20} strokeWidth={3} />
           <span>TERMINATE SESSION</span>
         </button>
     </div>
@@ -344,32 +343,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />
       )}
 
-      <header className="bg-white border-b-4 border-black p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-black text-[#ffde59] flex items-center justify-center border-2 border-black shadow-[3px_3px_0px_0px_#834bf1] rotate-3">
-            <Terminal size={20} strokeWidth={3} />
+      <header className="bg-white border-b-[3px] sm:border-b-4 border-black p-3 sm:p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black text-[#ffde59] flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_#834bf1] rotate-3 shrink-0">
+            <Terminal size={18} sm:size={20} strokeWidth={3} />
           </div>
           <div>
-            <h1 className="text-lg font-black italic uppercase font-display leading-none text-black">REELYWOOD<span className="text-[#834bf1]">HUB</span></h1>
-            <p className="text-[7px] font-black uppercase tracking-[0.3em] opacity-30">Agent Access Node v4.5</p>
+            <h1 className="text-base sm:text-lg font-black italic uppercase font-display leading-none text-black">REELYWOOD<span className="text-[#834bf1]">HUB</span></h1>
+            <p className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] opacity-30">Agent Node v4.5</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 bg-[#ffde59] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000]">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="hidden sm:flex items-center gap-2 bg-[#ffde59] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000]">
             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
             <span className="text-[8px] font-black uppercase text-black">LIVE_SYNC_OK</span>
           </div>
           <button 
             onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-            className="p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black"
+            className="p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
           >
             <Bell size={18} />
           </button>
         </div>
       </header>
 
-      <main className="p-6 max-w-2xl mx-auto">
+      <main className="p-4 sm:p-6 max-w-2xl mx-auto">
         {activeTab === 'hub' && renderHub()}
         {activeTab === 'card' && renderCard()}
         {activeTab === 'missions' && renderMissions()}
@@ -377,24 +376,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         {activeTab === 'sync' && renderSync()}
       </main>
 
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-black border-4 border-white p-2 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
+      <nav className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-[92%] sm:w-[95%] max-w-md bg-black border-[3px] sm:border-4 border-white p-1 sm:p-2 flex items-center justify-between shadow-[0_15px_40px_rgba(0,0,0,0.4)] sm:shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
         {[
           { id: 'hub', icon: Home, label: 'HUB' },
-          { id: 'card', icon: CreditCard, label: 'ID CARD' },
+          { id: 'card', icon: CreditCard, label: 'CARD' },
           { id: 'missions', icon: Zap, label: 'MISSIONS' },
           { id: 'perks', icon: Gift, label: 'PERKS' },
           { id: 'sync', icon: User, label: 'SYNC' }
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex flex-col items-center justify-center flex-1 py-2 transition-all ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : 'text-white/40'}`}>
-            <tab.icon size={20} strokeWidth={tab.id === activeTab ? 3 : 2} />
-            <span className="text-[7px] font-black uppercase mt-1 tracking-widest">{tab.label}</span>
+                  className={`flex flex-col items-center justify-center flex-1 py-2 transition-all active:scale-95 ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : 'text-white/40'}`}>
+            <tab.icon size={18} sm:size={20} strokeWidth={tab.id === activeTab ? 3 : 2} />
+            <span className="text-[6px] sm:text-[7px] font-black uppercase mt-1 tracking-widest">{tab.label}</span>
           </button>
         ))}
       </nav>
       
-      <footer className="text-center pt-10 pb-20 opacity-10">
-        <p className="text-[8px] font-black uppercase tracking-[0.6em] text-black">PRODUCTION_NODE_v4.5.0 • END_TO_END_ENCRYPTED</p>
+      <footer className="text-center pt-8 sm:pt-10 pb-24 sm:pb-20 opacity-10">
+        <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.4em] sm:tracking-[0.6em] text-black">PRODUCTION_NODE_v4.5.0 • ENCRYPTED</p>
       </footer>
     </div>
   );
