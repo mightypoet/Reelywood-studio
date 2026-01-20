@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
@@ -66,7 +67,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   };
 
   useEffect(() => {
-    // Listen for auth state changes to ensure we have the user context
+    // FIX 1: Use Auth Listener instead of relying on auth.currentUser which might be null on mount
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user?.email || !supabase) {
         setLoading(false);
@@ -74,9 +75,10 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       }
 
       try {
-        console.log("Syncing Brand Node for:", user.email);
+        console.log("Syncing Alliance Node for:", user.email);
 
-        // FIX: Using ilike for case-insensitive match and explicitly selecting reelcoins
+        // FIX 2: Use .ilike for case-insensitive matching
+        // FIX 3: Explicitly select reelcoins column
         const { data: brandData, error: bError } = await supabase
           .from('partner_brands')
           .select('*, reelcoins')
@@ -145,7 +147,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     );
   }
 
-  // Handle nullish RC balance safely
+  // FIX 4: Safe rendering of balance using nullish coalescing
   const balanceRC = brand?.reelcoins ?? 0;
 
   return (
@@ -283,7 +285,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
           </div>
 
           <div className="bg-black text-white p-10 border-[5px] border-black shadow-[10px_10px_0px_0px_#834bf1] text-center min-w-[280px]">
-             {/* FIX: CORRECTLY RENDER BRAND BALANCE */}
+             {/* THE FIX: Correctly render balanceRC from the explicitly selected reelcoins column */}
              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-50 mb-4 italic text-white/50">AVAILABLE BRAND BALANCE (RC)</p>
              <h3 className="text-6xl font-black italic font-display text-[#ffde59] tracking-tighter">
                {balanceRC.toLocaleString()}
@@ -304,7 +306,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
             <div className="w-14 h-14 bg-[#834bf1] border-[3px] border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_#000] group-hover:-rotate-6 transition-transform text-white">
               <Wallet size={24} strokeWidth={3} />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 mb-2 italic">RC Pipeline</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/40 mb-2 italic">RC Distributed</p>
             <h3 className="text-4xl font-black italic font-display">{stats.rcDistributed.toLocaleString()}</h3>
           </div>
 
