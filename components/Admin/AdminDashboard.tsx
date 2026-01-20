@@ -39,6 +39,7 @@ const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad1020
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'home' | 'queue' | 'users' | 'brands' | 'menu'>('home');
+  const [nodeTab, setNodeTab] = useState<'creators' | 'brands'>('creators');
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [notify, setNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   
@@ -110,7 +111,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
       if (s.data) setSubmissions(s.data);
       if (b.data) {
         setBrands(b.data);
-        // Extract brand emails for identification
         const emails = b.data.map(brand => brand.brand_email).filter(Boolean);
         setBrandEmails(emails);
       }
@@ -133,16 +133,19 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setTimeout(() => setNotify(null), 4000);
   };
 
+  // Derived Filtered Lists
+  const brandNodes = users.filter(u => brandEmails.includes(u.email));
+  const creatorNodes = users.filter(u => !brandEmails.includes(u.email));
+
   const renderHome = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Node Type Counters */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-[#834bf1] p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-white">
           <div className="flex justify-between items-start mb-2">
             <Users size={20} className="opacity-50" />
             <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1">AGENT_POOL</span>
           </div>
-          <h3 className="text-4xl font-black italic font-display leading-none">{users.length}</h3>
+          <h3 className="text-4xl font-black italic font-display leading-none">{creatorNodes.length}</h3>
           <p className="text-[9px] font-black uppercase tracking-widest mt-1">Creator Nodes</p>
         </div>
         <div className="bg-[#ffde59] p-6 border-4 border-black shadow-[6px_6px_0px_0px_#000] text-black">
@@ -150,7 +153,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <Building2 size={20} className="opacity-50" />
             <span className="text-[7px] font-black uppercase tracking-widest bg-black/10 px-1">BRAND_NODES</span>
           </div>
-          <h3 className="text-4xl font-black italic font-display leading-none">{brands.length}</h3>
+          <h3 className="text-4xl font-black italic font-display leading-none">{brandNodes.length}</h3>
           <p className="text-[9px] font-black uppercase tracking-widest mt-1">Alliance Partners</p>
         </div>
       </div>
@@ -264,59 +267,86 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     );
   };
 
-  const renderUserRoster = () => (
-    <div className="space-y-4 animate-in fade-in duration-300">
-      <div className="bg-[#834bf1] p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] mb-8">
-        <h3 className="text-white font-black uppercase italic tracking-tighter text-xl">Personnel Roster</h3>
-        <p className="text-white/40 font-black text-[9px] uppercase tracking-[0.4em]">Managing {users.length} Active Agents</p>
-      </div>
-      
-      <div className="relative mb-8">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-        <input className="w-full bg-white border-4 border-black p-4 pl-12 font-bold text-xs uppercase tracking-widest focus:bg-[#834bf1] focus:text-white focus:outline-none text-black transition-colors" placeholder="Search Agent ID..." />
-      </div>
+  const renderUserRoster = () => {
+    const currentList = nodeTab === 'creators' ? creatorNodes : brandNodes;
 
-      <div className="space-y-4">
-        {users.map(u => {
-          const isBrand = brandEmails.includes(u.email);
-          
-          return (
-            <div key={u.id} className={`bg-white border-4 p-4 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] active:scale-[0.98] transition-all cursor-pointer group hover:bg-slate-50 ${isBrand ? 'border-[#0047AB] bg-[#e0fdff]/30' : 'border-black'}`}
-                onClick={() => setSelectedAgent(u)}>
-              <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 border-[3px] overflow-hidden shadow-[3px_3px_0px_0px_#000] group-hover:-rotate-3 transition-transform ${isBrand ? 'border-[#0047AB] bg-[#0047AB]' : 'border-black bg-[#834bf1]'}`}>
-                  {u.photo_url ? (
-                    <img src={u.photo_url} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white">
-                      {isBrand ? <Building2 size={24} /> : <Users size={24} />}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[7px] font-black text-white px-1 border border-black uppercase ${isBrand ? 'bg-[#0047AB]' : 'bg-[#834bf1]'}`}>
-                      {isBrand ? 'PARTNER_BRAND' : 'AGENT_NODE'}
-                    </span>
-                    <h4 className="font-black text-sm uppercase leading-none text-black">{u.display_name}</h4>
+    return (
+      <div className="space-y-4 animate-in fade-in duration-300">
+        <div className="bg-[#834bf1] p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] mb-8">
+          <h3 className="text-white font-black uppercase italic tracking-tighter text-xl">Personnel Roster</h3>
+          <p className="text-white/40 font-black text-[9px] uppercase tracking-[0.4em]">Managing {users.length} Active Nodes</p>
+        </div>
+        
+        {/* Node Tab Switcher */}
+        <div className="flex border-4 border-black bg-white mb-8 shadow-[6px_6px_0px_0px_#000]">
+           <button 
+             onClick={() => setNodeTab('creators')}
+             className={`flex-1 py-4 font-black uppercase text-[10px] tracking-[0.3em] transition-all flex items-center justify-center gap-2 ${nodeTab === 'creators' ? 'bg-[#ffde59] text-black' : 'bg-white text-black/30'}`}
+           >
+             <Users size={16} />
+             CREATORS ({creatorNodes.length})
+           </button>
+           <button 
+             onClick={() => setNodeTab('brands')}
+             className={`flex-1 py-4 font-black uppercase text-[10px] tracking-[0.3em] transition-all flex items-center justify-center gap-2 ${nodeTab === 'brands' ? 'bg-[#0047AB] text-white' : 'bg-white text-black/30'}`}
+           >
+             <Building2 size={16} />
+             BRANDS ({brandNodes.length})
+           </button>
+        </div>
+        
+        <div className="relative mb-8">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input className="w-full bg-white border-4 border-black p-4 pl-12 font-bold text-xs uppercase tracking-widest focus:bg-[#834bf1] focus:text-white focus:outline-none text-black transition-colors" placeholder={`Search ${nodeTab === 'creators' ? 'Agent' : 'Brand'} ID...`} />
+        </div>
+
+        <div className="space-y-4">
+          {currentList.map(u => {
+            const isBrand = brandEmails.includes(u.email);
+            
+            return (
+              <div key={u.id} className={`bg-white border-4 p-4 flex items-center justify-between shadow-[6px_6px_0px_0px_#000] active:scale-[0.98] transition-all cursor-pointer group hover:bg-slate-50 ${isBrand ? 'border-[#0047AB] bg-[#e0fdff]/30' : 'border-black'}`}
+                  onClick={() => setSelectedAgent(u)}>
+                <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 border-[3px] overflow-hidden shadow-[3px_3px_0px_0px_#000] group-hover:-rotate-3 transition-transform ${isBrand ? 'border-[#0047AB] bg-[#0047AB]' : 'border-black bg-[#834bf1]'}`}>
+                    {u.photo_url ? (
+                      <img src={u.photo_url} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white">
+                        {isBrand ? <Building2 size={24} /> : <Users size={24} />}
+                      </div>
+                    )}
                   </div>
-                  <p className={`text-[10px] font-black uppercase tracking-widest mt-1.5 italic ${isBrand ? 'text-[#0047AB]' : 'text-[#834bf1]'}`}>
-                    {isBrand ? (u.handle ? `@${u.handle}` : '[CORPORATE_NODE]') : `@${u.handle || 'unlinked'}`}
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[7px] font-black text-white px-1 border border-black uppercase ${isBrand ? 'bg-[#0047AB]' : 'bg-[#834bf1]'}`}>
+                        {isBrand ? 'PARTNER_BRAND' : 'AGENT_NODE'}
+                      </span>
+                      <h4 className="font-black text-sm uppercase leading-none text-black">{u.display_name}</h4>
+                    </div>
+                    <p className={`text-[10px] font-black uppercase tracking-widest mt-1.5 italic ${isBrand ? 'text-[#0047AB]' : 'text-[#834bf1]'}`}>
+                      {isBrand ? (u.handle ? `@${u.handle}` : '[CORPORATE_NODE]') : `@${u.handle || 'unlinked'}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right flex flex-col items-end gap-1">
+                  <span className="block font-black text-sm text-black italic leading-none">{u.reelcoins} RC</span>
+                  <div className={`text-[7px] font-black uppercase px-2 py-0.5 border-2 border-black ${isBrand ? 'bg-[#00d4ff] text-black border-[#0047AB]' : u.card_status === 'approved' ? 'bg-[#39ff14]' : 'bg-[#ffde59]'}`}>
+                    {isBrand ? 'AUTHORIZED' : u.card_status}
+                  </div>
                 </div>
               </div>
-              <div className="text-right flex flex-col items-end gap-1">
-                <span className="block font-black text-sm text-black italic leading-none">{u.reelcoins} RC</span>
-                <div className={`text-[7px] font-black uppercase px-2 py-0.5 border-2 border-black ${isBrand ? 'bg-[#00d4ff] text-black border-[#0047AB]' : u.card_status === 'approved' ? 'bg-[#39ff14]' : 'bg-[#ffde59]'}`}>
-                  {isBrand ? 'AUTHORIZED' : u.card_status}
-                </div>
-              </div>
+            );
+          })}
+          {currentList.length === 0 && (
+            <div className="py-20 text-center border-4 border-dashed border-black/10 text-black/20 font-black uppercase text-xs italic tracking-widest">
+              No {nodeTab} nodes found in grid.
             </div>
-          );
-        })}
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderMenu = () => (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -416,8 +446,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         {[
           { id: 'home', icon: Home, label: 'HUB' },
           { id: 'queue', icon: ListChecks, label: 'QC' },
-          { id: 'users', icon: Users, label: 'AGENTS' },
-          { id: 'brands', icon: Building2, label: 'BRANDS' },
+          { id: 'users', icon: Users, label: 'NODES' },
+          { id: 'brands', icon: Building2, label: 'ALLIANCE' },
           { id: 'menu', icon: Menu, label: 'OPS' }
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
