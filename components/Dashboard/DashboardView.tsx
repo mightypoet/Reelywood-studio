@@ -178,26 +178,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   );
 
   const renderCard = () => (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-10 animate-in zoom-in-95 duration-500">
+    <div className="flex flex-col items-center justify-start min-h-[70vh] py-8 space-y-12 animate-in zoom-in-95 duration-500 overflow-hidden">
       {!isApproved ? (
-         <div className="bg-[#ffde59] border-[5px] border-black p-10 text-center shadow-[10px_10px_0px_0px_#000] w-full">
+         <div className="bg-[#ffde59] border-[5px] border-black p-10 text-center shadow-[10px_10px_0px_0px_#000] w-full max-w-md mx-auto">
             <Lock size={48} className="mx-auto mb-6" strokeWidth={3} />
             <h3 className="text-2xl font-black uppercase italic font-display">Identity Syncing</h3>
             <p className="text-[10px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p>
          </div>
       ) : (
         <>
-          <div className="w-full max-w-[340px] aspect-[4/5]">
-            <ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} />
+          <div className="w-full max-w-[340px] flex justify-center">
+            <div className="w-full relative" style={{ height: '520px' }}>
+              <ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 w-full">
-            <button className="bg-white border-[4px] border-black p-4 flex flex-col items-center gap-2 shadow-[6px_6px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
-              <QrCode size={24} strokeWidth={3} />
-              <span className="text-[8px] font-black uppercase tracking-widest">Show QR Node</span>
+          
+          <div className="grid grid-cols-2 gap-6 w-full max-w-md mx-auto px-4">
+            <button className="bg-white border-[4px] border-black py-5 px-4 flex flex-col items-center gap-3 shadow-[6px_6px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
+              <QrCode size={28} strokeWidth={3} className="group-hover:rotate-6 transition-transform" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-center">Show QR Node</span>
             </button>
-            <button className="bg-black text-white border-[4px] border-black p-4 flex flex-col items-center gap-2 shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
-              <Share2 size={24} strokeWidth={3} />
-              <span className="text-[8px] font-black uppercase tracking-widest text-[#ffde59]">Share ID</span>
+            <button className="bg-black text-white border-[4px] border-black py-5 px-4 flex flex-col items-center gap-3 shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
+              <Share2 size={28} strokeWidth={3} className="text-[#ffde59] group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-center text-[#ffde59]">Share ID</span>
             </button>
           </div>
         </>
