@@ -224,23 +224,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             const brand = m.partner_brands;
 
             return (
-              <div key={m.id} className={`border-[4px] p-6 shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col ${isDone ? 'bg-emerald-50 border-emerald-500 shadow-emerald-200' : isPending ? 'bg-yellow-50 border-yellow-500 shadow-yellow-200' : 'bg-white border-black shadow-black'}`}>
-                <div className="flex justify-between items-start mb-4">
+              <div key={m.id} className={`border-[4px] p-6 shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col transition-all duration-300 ${isDone ? 'bg-[#39ff14]/10 border-emerald-500 shadow-emerald-500/20' : isPending ? 'bg-[#ffde59]/20 border-[#ffde59] shadow-[#ffde59]/20' : 'bg-white border-black shadow-black'}`}>
+                {/* Status Stamp for Verified Missions */}
+                {isDone && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] opacity-20 pointer-events-none z-0">
+                    <div className="border-[8px] border-emerald-600 px-8 py-4 rounded-xl flex flex-col items-center">
+                       <CheckCircle2 size={64} className="text-emerald-600 mb-2" />
+                       <span className="font-display font-black text-4xl text-emerald-600 uppercase">VERIFIED</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-start mb-4 relative z-10">
                   <div className="w-12 h-12 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">
                     {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Building2 size={20} />}
                   </div>
-                  <div className={`px-2 py-1 font-black text-[9px] border-[2px] ${isDone ? 'bg-emerald-600 text-white border-emerald-700' : isPending ? 'bg-yellow-400 text-black border-yellow-600' : 'bg-black text-[#ffde59] border-black'}`}>
-                    {isDone ? 'VERIFIED' : isPending ? 'PENDING' : `+${m.reward_amount} RC`}
+                  <div className={`px-2 py-1 font-black text-[9px] border-[2px] shadow-[2px_2px_0px_0px_#000] ${isDone ? 'bg-emerald-600 text-white border-emerald-700' : isPending ? 'bg-[#ffde59] text-black border-black' : 'bg-black text-[#ffde59] border-black'}`}>
+                    {isDone ? 'MISSION_ACCOMPLISHED' : isPending ? 'VERIFICATION_PENDING' : `+${m.reward_amount} RC`}
                   </div>
                 </div>
-                <h4 className="text-lg font-black uppercase italic font-display leading-tight text-black">{m.title}</h4>
-                <p className="text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2">{m.description}</p>
+                <h4 className={`text-lg font-black uppercase italic font-display leading-tight text-black relative z-10 ${isDone ? 'opacity-40' : ''}`}>{m.title}</h4>
+                <p className={`text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isDone ? 'opacity-40' : ''}`}>{m.description}</p>
                 <button 
                   onClick={() => setSelectedMission(m)}
                   disabled={isDone || isPending || !isApproved}
-                  className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px] text-white ${isDone ? 'bg-emerald-600 border-emerald-700' : isPending ? 'bg-yellow-400 border-yellow-600 text-black' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed' : 'bg-[#834bf1] border-black'}`}
+                  className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isDone ? 'bg-emerald-600 border-emerald-700 opacity-50 cursor-not-allowed shadow-none' : isPending ? 'bg-[#ffde59] border-black text-black opacity-60 cursor-wait shadow-none' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'}`}
                 >
-                  {!isApproved ? 'LOCKED (SYNC REQ)' : isDone ? 'COMPLETED' : isPending ? 'REVIEWING' : 'OPEN BRIEF'}
+                  {!isApproved ? 'LOCKED (SYNC REQ)' : isDone ? 'MISSION COMPLETE' : isPending ? 'QC IN PROGRESS' : 'OPEN BRIEF'}
                 </button>
               </div>
             );
