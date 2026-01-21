@@ -19,6 +19,10 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
   const [existingSubmission, setExistingSubmission] = useState<any>(null);
   const [initialFetchLoading, setInitialFetchLoading] = useState(true);
 
+  // ROBUST IMAGE LOGIC
+  const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1614726365723-49cfae927832?q=80&w=2574&auto=format&fit=crop';
+  const coverImage = mission.cover_url || mission.image_url || mission.banner_url || FALLBACK_IMAGE;
+
   useEffect(() => {
     const checkStatus = async () => {
       if (!supabase || !mission.id || !user.uid) return;
@@ -126,53 +130,67 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
         </header>
 
         {/* SCROLLABLE CONTENT */}
-        <main className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-8 bg-[#fdfdfd] custom-scrollbar">
-          {/* Mission Title Area */}
-          <div className="space-y-4">
-            <div className="inline-block bg-[#834bf1] text-white font-black text-[9px] uppercase tracking-[0.4em] px-3 py-1 border-[2px] border-black">
-              Deployment Briefing
-            </div>
-            <h1 className="text-4xl sm:text-5xl font-black italic uppercase font-display leading-[0.9] tracking-tighter">
-              {mission.title}
-            </h1>
-            <p className="flex items-center gap-2 text-[10px] font-black text-black/50 uppercase tracking-widest italic">
+        <main className="flex-1 overflow-y-auto custom-scrollbar bg-[#fdfdfd]">
+          {/* HERO IMAGE SECTION */}
+          <div className="relative w-full h-48 sm:h-64 md:h-72 border-b-[4px] border-black overflow-hidden bg-slate-100">
+             <img 
+               src={coverImage} 
+               alt="Mission Visual" 
+               className="w-full h-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-700"
+               onError={(e) => {
+                 (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
+               }}
+             />
+             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+             <div className="absolute bottom-6 left-6 right-6">
+                <div className="inline-block bg-[#834bf1] text-white font-black text-[9px] uppercase tracking-[0.4em] px-3 py-1 border-[2px] border-black mb-2">
+                  Deployment Briefing
+                </div>
+                <h1 className="text-3xl sm:text-5xl font-black italic uppercase font-display leading-[0.9] tracking-tighter text-white drop-shadow-[2px_2px_0px_#000]">
+                  {mission.title}
+                </h1>
+             </div>
+          </div>
+
+          <div className="p-6 sm:p-10 space-y-8">
+            <div className="flex items-center gap-2 text-[10px] font-black text-black/50 uppercase tracking-widest italic">
               <MapPin size={12} className="text-[#834bf1]" strokeWidth={3} />
               {mission.location || brand?.location_text || "Global Node"}
-            </p>
-          </div>
-
-          {/* Classification Stamp */}
-          <div className="relative py-4">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none rotate-[-12deg] z-0">
-               <span className="text-8xl font-black uppercase font-display border-[12px] border-black px-8 py-2">CLASSIFIED</span>
             </div>
-            
-            <div className="relative z-10 space-y-3">
-              <div className="flex items-center gap-2 text-black/30">
-                <Info size={14} strokeWidth={3} />
-                <span className="text-[9px] font-black uppercase tracking-[0.3em]">Operational Intel</span>
+
+            {/* Classification Stamp */}
+            <div className="relative py-4">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none rotate-[-12deg] z-0">
+                 <span className="text-8xl font-black uppercase font-display border-[12px] border-black px-8 py-2">CLASSIFIED</span>
               </div>
-              <p className="text-base font-bold text-black/80 leading-relaxed border-l-[6px] border-[#ffde59] pl-6 italic">
-                {mission.description || "Initialize brand-aligned content production. Ensure lighting and framing adhere to studio high-fidelity standards."}
-              </p>
-            </div>
-          </div>
-
-          {/* Checklist */}
-          <div className="space-y-6">
-            <h3 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2">
-              <ListIcon className="text-[#834bf1]" size={16} strokeWidth={3} />
-              Execution Checklist
-            </h3>
-            <div className="grid gap-3">
-              {checkpoints.map((pt, i) => (
-                <div key={i} className="flex items-center gap-4 bg-white border-[3px] border-black p-4 shadow-[4px_4px_0px_0px_#000]">
-                  <div className="w-8 h-8 bg-slate-50 border-2 border-black flex items-center justify-center shrink-0">
-                    {i === 0 ? <Camera size={14} /> : i === 1 ? <Share2 size={14} /> : <Zap size={14} />}
-                  </div>
-                  <span className="text-[11px] font-black uppercase tracking-tight text-black/70">{pt}</span>
+              
+              <div className="relative z-10 space-y-3">
+                <div className="flex items-center gap-2 text-black/30">
+                  <Info size={14} strokeWidth={3} />
+                  <span className="text-[9px] font-black uppercase tracking-[0.3em]">Operational Intel</span>
                 </div>
-              ))}
+                <p className="text-base font-bold text-black/80 leading-relaxed border-l-[6px] border-[#ffde59] pl-6 italic">
+                  {mission.description || "Initialize brand-aligned content production. Ensure lighting and framing adhere to studio high-fidelity standards."}
+                </p>
+              </div>
+            </div>
+
+            {/* Checklist */}
+            <div className="space-y-6">
+              <h3 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2 text-black">
+                <ListIcon className="text-[#834bf1]" size={16} strokeWidth={3} />
+                Execution Checklist
+              </h3>
+              <div className="grid gap-3">
+                {checkpoints.map((pt, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-white border-[3px] border-black p-4 shadow-[4px_4px_0px_0px_#000]">
+                    <div className="w-8 h-8 bg-slate-50 border-2 border-black flex items-center justify-center shrink-0">
+                      {i === 0 ? <Camera size={14} /> : i === 1 ? <Share2 size={14} /> : <Zap size={14} />}
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-tight text-black/70">{pt}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -193,8 +211,8 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                   {isApproved ? <CheckCircle2 className="text-emerald-600" strokeWidth={3} /> : <Clock className="animate-pulse" />}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-black uppercase italic leading-none">{isApproved ? 'Bounty Credited' : 'Review in Progress'}</p>
-                  <p className="text-[9px] font-bold opacity-50 uppercase truncate mt-1">{link}</p>
+                  <p className="text-xs font-black uppercase italic leading-none text-black">{isApproved ? 'Bounty Credited' : 'Review in Progress'}</p>
+                  <p className="text-[9px] font-bold opacity-50 uppercase truncate mt-1 text-black">{link}</p>
                 </div>
               </div>
               <div className="bg-black text-white px-3 py-1.5 text-[8px] font-black uppercase tracking-widest border-2 border-white">
@@ -213,7 +231,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                     placeholder="PASTE REEL / STORY LINK..."
                     value={link}
                     onChange={(e) => setLink(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-[#f4f4f4] border-[3px] border-black font-black text-[11px] uppercase tracking-widest focus:bg-white focus:outline-none focus:ring-0 transition-all shadow-[4px_4px_0px_0px_#000] focus:shadow-none placeholder:text-black/20"
+                    className="w-full pl-12 pr-4 py-4 bg-[#f4f4f4] border-[3px] border-black font-black text-[11px] uppercase tracking-widest focus:bg-white focus:outline-none focus:ring-0 transition-all shadow-[4px_4px_0px_0px_#000] focus:shadow-none placeholder:text-black/20 text-black"
                   />
                 </div>
                 <button 
