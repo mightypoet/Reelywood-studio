@@ -11,7 +11,7 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => {
-  const MASCOT_ICON = "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/icon-Photoroom.png";
+  const MASCOT_ICON = "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/5.png";
 
   return (
     <section 

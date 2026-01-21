@@ -4,7 +4,7 @@ import { supabase } from '../../lib/clients';
 import { 
   X, MapPin, Link as LinkIcon, CheckCircle2, 
   ShieldCheck, Loader2, Building2, AlertCircle, 
-  Clock, Zap, Camera, Share2, Info
+  Clock, Zap, Camera, Share2, Info, ExternalLink
 } from 'lucide-react';
 
 interface MissionModalProps {
@@ -86,6 +86,9 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
   const status = existingSubmission?.status;
   const isApproved = status === 'approved' || status === 'completed';
 
+  const missionAddress = mission.location || brand?.location_text || "Global Node";
+  const mapLink = mission.map_link || brand?.map_link;
+
   return (
     <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 transition-all duration-300">
       {/* Backdrop for desktop click-to-close */}
@@ -131,48 +134,58 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
 
         {/* SCROLLABLE CONTENT */}
         <main className="flex-1 overflow-y-auto custom-scrollbar bg-[#fdfdfd]">
-          {/* HERO IMAGE SECTION */}
-          <div className="relative w-full h-48 sm:h-64 md:h-72 border-b-[4px] border-black overflow-hidden bg-slate-100">
+          {/* HERO IMAGE SECTION - FULL WIDTH FILL */}
+          <div className="relative w-full h-64 sm:h-80 md:h-[400px] border-b-[4px] border-black overflow-hidden bg-slate-200">
              <img 
                src={coverImage} 
                alt="Mission Visual" 
-               className="w-full h-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-700"
+               className="w-full h-full object-cover transition-all duration-700"
                onError={(e) => {
                  (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
                }}
              />
-             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-             <div className="absolute bottom-6 left-6 right-6">
-                <div className="inline-block bg-[#834bf1] text-white font-black text-[9px] uppercase tracking-[0.4em] px-3 py-1 border-[2px] border-black mb-2">
+             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+             <div className="absolute bottom-8 left-8 right-8">
+                <div className="inline-block bg-[#834bf1] text-white font-black text-[9px] uppercase tracking-[0.4em] px-3 py-1 border-[2px] border-black mb-3">
                   Deployment Briefing
                 </div>
-                <h1 className="text-3xl sm:text-5xl font-black italic uppercase font-display leading-[0.9] tracking-tighter text-white drop-shadow-[2px_2px_0px_#000]">
+                <h1 className="text-4xl sm:text-6xl font-black italic uppercase font-display leading-[0.85] tracking-tighter text-white drop-shadow-[3px_3px_0px_#000]">
                   {mission.title}
                 </h1>
              </div>
           </div>
 
-          <div className="p-6 sm:p-10 space-y-8">
-            <div className="flex items-center gap-2 text-[10px] font-black text-black/50 uppercase tracking-widest italic">
-              <MapPin size={12} className="text-[#834bf1]" strokeWidth={3} />
-              {mission.location || brand?.location_text || "Global Node"}
+          <div className="p-6 sm:p-10 space-y-10">
+            {/* Address with Map Link */}
+            <div className="flex items-start gap-3">
+              <MapPin size={16} className="text-[#834bf1] mt-1 shrink-0" strokeWidth={3} />
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-black/40 block">Operational Venue</span>
+                {mapLink ? (
+                  <a 
+                    href={mapLink} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="text-xs sm:text-sm font-black text-black underline decoration-2 underline-offset-4 decoration-[#ffde59] hover:text-[#834bf1] transition-colors flex items-center gap-2"
+                  >
+                    {missionAddress}
+                    <ExternalLink size={12} strokeWidth={3} />
+                  </a>
+                ) : (
+                  <span className="text-xs sm:text-sm font-black text-black uppercase tracking-tight italic">{missionAddress}</span>
+                )}
+              </div>
             </div>
 
-            {/* Classification Stamp */}
-            <div className="relative py-4">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none rotate-[-12deg] z-0">
-                 <span className="text-8xl font-black uppercase font-display border-[12px] border-black px-8 py-2">CLASSIFIED</span>
+            {/* Operational Intel Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-black/30">
+                <Info size={14} strokeWidth={3} />
+                <span className="text-[9px] font-black uppercase tracking-[0.3em]">Operational Intel</span>
               </div>
-              
-              <div className="relative z-10 space-y-3">
-                <div className="flex items-center gap-2 text-black/30">
-                  <Info size={14} strokeWidth={3} />
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em]">Operational Intel</span>
-                </div>
-                <p className="text-base font-bold text-black/80 leading-relaxed border-l-[6px] border-[#ffde59] pl-6 italic">
-                  {mission.description || "Initialize brand-aligned content production. Ensure lighting and framing adhere to studio high-fidelity standards."}
-                </p>
-              </div>
+              <p className="text-base sm:text-lg font-bold text-black leading-relaxed border-l-[8px] border-[#ffde59] pl-6 sm:pl-8 py-1 italic bg-slate-50">
+                {mission.description || "Initialize brand-aligned content production. Ensure lighting and framing adhere to studio high-fidelity standards."}
+              </p>
             </div>
 
             {/* Checklist */}
@@ -181,13 +194,13 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                 <ListIcon className="text-[#834bf1]" size={16} strokeWidth={3} />
                 Execution Checklist
               </h3>
-              <div className="grid gap-3">
-                {checkpoints.map((pt, i) => (
-                  <div key={i} className="flex items-center gap-4 bg-white border-[3px] border-black p-4 shadow-[4px_4px_0px_0px_#000]">
-                    <div className="w-8 h-8 bg-slate-50 border-2 border-black flex items-center justify-center shrink-0">
-                      {i === 0 ? <Camera size={14} /> : i === 1 ? <Share2 size={14} /> : <Zap size={14} />}
+              <div className="grid gap-4">
+                {checkpoints.map((pt: string, i: number) => (
+                  <div key={i} className="flex items-center gap-4 bg-white border-[3px] border-black p-5 shadow-[5px_5px_0px_0px_#000]">
+                    <div className="w-10 h-10 bg-slate-50 border-2 border-black flex items-center justify-center shrink-0">
+                      {i === 0 ? <Camera size={18} /> : i === 1 ? <Share2 size={18} /> : <Zap size={18} />}
                     </div>
-                    <span className="text-[11px] font-black uppercase tracking-tight text-black/70">{pt}</span>
+                    <span className="text-[11px] sm:text-xs font-black uppercase tracking-tight text-black leading-tight">{pt}</span>
                   </div>
                 ))}
               </div>
@@ -195,11 +208,11 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
           </div>
 
           {/* Spacer for sticky footer on mobile */}
-          <div className="h-24 sm:h-0" />
+          <div className="h-28 sm:h-0" />
         </main>
 
         {/* STICKY ACTION FOOTER */}
-        <footer className="sticky bottom-0 z-50 bg-white border-t-[4px] border-black p-6 pb-8 sm:pb-6 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+        <footer className="sticky bottom-0 z-50 bg-white border-t-[4px] border-black p-6 pb-8 sm:pb-6 shadow-[0_-10px_30px_rgba(0,0,0,0.1)]">
           {initialFetchLoading ? (
             <div className="flex justify-center py-4">
               <Loader2 className="animate-spin text-[#834bf1]" />
@@ -220,7 +233,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
               </div>
             </div>
           ) : (
-            <div className="space-y-4 max-w-2xl mx-auto">
+            <div className="space-y-4 max-w-3xl mx-auto">
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-black/30">
@@ -231,13 +244,13 @@ export const MissionModal: React.FC<MissionModalProps> = ({ mission, user, onClo
                     placeholder="PASTE REEL / STORY LINK..."
                     value={link}
                     onChange={(e) => setLink(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-[#f4f4f4] border-[3px] border-black font-black text-[11px] uppercase tracking-widest focus:bg-white focus:outline-none focus:ring-0 transition-all shadow-[4px_4px_0px_0px_#000] focus:shadow-none placeholder:text-black/20 text-black"
+                    className="w-full pl-12 pr-4 py-4 bg-[#f4f4f4] border-[3px] border-black font-black text-[11px] uppercase tracking-widest focus:bg-white focus:outline-none focus:ring-0 transition-all shadow-[5px_5px_0px_0px_#000] focus:shadow-none placeholder:text-black/20 text-black"
                   />
                 </div>
                 <button 
                   onClick={handleSubmit}
                   disabled={loading || !link}
-                  className={`w-full sm:w-auto px-8 py-4 border-[3px] border-black font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:grayscale ${loading ? 'bg-slate-200' : 'bg-[#834bf1] text-white hover:bg-[#7239e2]'}`}
+                  className={`w-full sm:w-auto px-10 py-4 border-[3px] border-black font-black uppercase text-xs tracking-[0.2em] shadow-[5px_5px_0px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:grayscale ${loading ? 'bg-slate-200' : 'bg-[#834bf1] text-white hover:bg-[#7239e2]'}`}
                 >
                   {loading ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} fill="currentColor" />}
                   <span>Initialize Submission</span>
