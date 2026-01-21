@@ -76,12 +76,12 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     
     setIsRequesting(true);
     try {
+      // NOTE: 'requirements' column is missing from DB schema, using description to store brief
       const { error } = await supabase.from('missions').insert([{
         brand_id: brand.id,
         title: requestForm.title,
-        description: requestForm.description,
+        description: `${requestForm.description}\n\nRequirements: ${requestForm.requirements}`,
         reward_amount: parseInt(requestForm.reward_amount),
-        requirements: requestForm.requirements,
         status: 'pending_approval'
       }]);
 
