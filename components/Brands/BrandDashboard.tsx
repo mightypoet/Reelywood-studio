@@ -30,7 +30,7 @@ interface BrandDashboardProps {
   onBack?: () => void;
 }
 
-type TabType = 'overview' | 'missions' | 'inbox' | 'profile';
+type TabType = 'overview' | 'campaigns' | 'inbox' | 'profile';
 
 export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
@@ -158,41 +158,32 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     );
   }
 
-  if (!brand) {
-    return (
-      <div className="min-h-screen bg-[#f0f0f0] flex items-center justify-center p-6">
-        <div className="bg-white border-[6px] border-black p-10 shadow-[16px_16px_0px_0px_#000] max-w-lg text-center space-y-6">
-          <Building2 size={64} className="mx-auto text-[#0047AB]" />
-          <h2 className="text-3xl font-black italic uppercase font-display text-black">Access Denied</h2>
-          <p className="text-xs font-bold text-black/40 uppercase tracking-widest leading-relaxed">
-            No Brand account found for {auth.currentUser?.email}.
-          </p>
-          <button onClick={handleLogout} className="w-full bg-black text-white py-5 font-black uppercase text-xs tracking-widest border-[4px] border-black shadow-[6px_6px_0px_0px_#00ffcc]">Return to Studio</button>
-        </div>
-      </div>
-    );
-  }
-
   const renderOverview = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-black text-white p-6 border-[4px] border-black shadow-[8px_8px_0px_0px_#00ffcc] relative overflow-hidden">
+      {/* Wallet Card */}
+      <div className="bg-[#0047AB] text-white p-6 border-[4px] border-black shadow-[8px_8px_0px_0px_#00ffcc] relative overflow-hidden">
         <div className="relative z-10">
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#00ffcc] mb-2 italic">Available Balance (RC)</p>
-          <h3 className="text-5xl font-black italic font-display tracking-tighter text-[#ffde59]">
+          <div className="flex justify-between items-start mb-8">
+            <div className="bg-white/20 px-2 py-1 border border-white/30 text-[8px] font-black uppercase tracking-widest">Master Node</div>
+            <Building2 size={24} className="text-[#00ffcc]" />
+          </div>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#00ffcc] mb-2 italic">Available Brand Balance (RC)</p>
+          <h3 className="text-5xl font-black italic font-display tracking-tighter">
             {brand.reelcoins?.toLocaleString() || "0"}
           </h3>
         </div>
-        <div className="absolute -right-4 -bottom-4 opacity-10">
-            <Building2 size={120} />
+        <div className="absolute -right-4 -bottom-4 opacity-5">
+            <Target size={140} />
         </div>
       </div>
 
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
         {[
             { label: 'Active Ops', val: stats.activeMissionsCount, icon: Zap, color: '#0047AB' },
-            { label: 'RC Pipeline', val: stats.rcDistributed, icon: Wallet, color: '#00ffcc' },
-            { label: 'Signals', val: stats.engagement, icon: Users, color: '#000000' },
-            { label: 'Yield Lift', val: '14.2%', icon: TrendingUp, color: '#834bf1' }
+            { label: 'RC Deployed', val: stats.rcDistributed, icon: Wallet, color: '#00ffcc' },
+            { label: 'Network Signals', val: stats.engagement, icon: Users, color: '#000000' },
+            { label: 'Growth Lift', val: '14.2%', icon: TrendingUp, color: '#0047AB' }
         ].map((item, i) => (
             <div key={i} className="bg-white p-5 border-[3px] border-black shadow-[4px_4px_0px_0px_#000]">
                 <item.icon size={18} style={{ color: item.color }} strokeWidth={3} className="mb-3" />
@@ -202,40 +193,40 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         ))}
       </div>
 
-      <div className="bg-[#00ffcc] border-[4px] border-black p-6 shadow-[6px_6px_0px_0px_#000] text-black">
+      <div className="bg-white border-[4px] border-black p-6 shadow-[6px_6px_0px_0px_#0047AB] text-black">
         <h4 className="text-lg font-black italic uppercase font-display flex items-center gap-3 mb-4">
-          <Flame size={18} className="animate-pulse" /> Alliance Brief
+          <Flame size={18} className="text-[#00ffcc] fill-current" /> System Intel
         </h4>
-        <p className="text-xs font-bold leading-relaxed tracking-tight italic border-l-4 border-black pl-4">
-          "Production metrics indicate high resonance for cinematic pan shots. Recommend deploying a new 'Symmetry Module' for Kolkata nodes."
+        <p className="text-xs font-bold leading-relaxed tracking-tight italic border-l-4 border-[#00ffcc] pl-4">
+          "Performance metrics indicate peak creator activity in Sector 7. Deploying additional incentive modules recommended for Q4 coverage."
         </p>
       </div>
     </div>
   );
 
-  const renderMissions = () => (
+  const renderCampaigns = () => (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-black uppercase italic font-display">Mission Nodes</h3>
-        <button className="bg-black text-[#00ffcc] p-2 border-2 border-black shadow-[2px_2px_0px_0px_#0047AB]">
+        <h3 className="text-xl font-black uppercase italic font-display">Campaign Grid</h3>
+        <button className="bg-[#0047AB] text-white p-2 border-2 border-black shadow-[2px_2px_0px_0px_#00ffcc]">
           <Plus size={20} />
         </button>
       </div>
       <div className="space-y-4">
         {activeMissions.length === 0 ? (
-          <div className="py-20 text-center opacity-20 italic font-black uppercase text-xs">No active transmissions.</div>
+          <div className="py-20 text-center border-4 border-dashed border-black/10 opacity-30 italic font-black uppercase text-xs">Grid Silent.</div>
         ) : (
           activeMissions.map((m) => (
             <div key={m.id} className="bg-white border-[3px] border-black p-5 shadow-[4px_4px_0px_0px_#000]">
               <div className="flex justify-between items-start mb-4">
-                <div className="bg-black text-white px-2 py-0.5 text-[7px] font-black uppercase border border-black italic">ACTIVE_NODE</div>
-                <span className="text-[#0047AB] font-black text-sm italic">+{m.reward_amount} RC</span>
+                <div className="bg-black text-white px-2 py-0.5 text-[7px] font-black uppercase border border-black italic">DEPLOYED_SYNC</div>
+                <span className="text-[#0047AB] font-black text-sm italic">+{m.reward_amount} RC Pool</span>
               </div>
-              <h4 className="font-black text-sm uppercase italic mb-2">{m.title}</h4>
+              <h4 className="font-black text-sm uppercase italic mb-2 leading-tight">{m.title}</h4>
               <p className="text-[9px] font-bold text-black/40 uppercase mb-5 line-clamp-2">{m.description}</p>
               <button 
                 onClick={() => { setSelectedMission(m); fetchMissionSubmissions(m.id); }}
-                className="w-full bg-[#0047AB] text-white py-3 border-[2px] border-black shadow-[3px_3px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                className="w-full bg-[#0047AB] text-white py-3 border-[2px] border-black shadow-[3px_3px_0px_0px_#00ffcc] font-black uppercase text-[10px] tracking-widest active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
               >
                 Sync Applicants
               </button>
@@ -249,18 +240,18 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   const renderInbox = () => (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <h3 className="text-xl font-black uppercase italic font-display flex items-center gap-3">
-        <Inbox size={20} className="text-[#0047AB]" /> Signal Log
+        <Inbox size={20} className="text-[#0047AB]" /> Transmission Log
       </h3>
       <div className="space-y-4">
         {activeMissions.map((m) => (
-          <div key={m.id} className="flex items-center justify-between border-b-[3px] border-slate-100 pb-5 px-1">
+          <div key={m.id} className="flex items-center justify-between border-b-[3px] border-slate-100 pb-5 px-1 hover:bg-slate-50">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-black text-[#00ffcc] border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center shrink-0">
-                <Zap size={18} fill="currentColor" />
+              <div className="w-10 h-10 bg-black text-[#00ffcc] border-2 border-black shadow-[3px_3px_0px_0px_#0047AB] flex items-center justify-center shrink-0">
+                <Activity size={18} />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-black uppercase italic truncate text-black">{m.title}</p>
-                <p className="text-[8px] font-bold text-[#0047AB] uppercase tracking-widest mt-1">NEW_SIGNALS_WAITING</p>
+                <p className="text-[8px] font-bold text-[#0047AB] uppercase tracking-widest mt-1 italic">Authorized Signal Waiting</p>
               </div>
             </div>
             <button 
@@ -271,14 +262,15 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
             </button>
           </div>
         ))}
+        {activeMissions.length === 0 && <p className="py-20 text-center opacity-20 italic text-xs font-black uppercase">No incoming transmissions.</p>}
       </div>
     </div>
   );
 
   const renderProfile = () => (
     <div className="space-y-8 animate-in slide-in-from-bottom-5 duration-500 pb-20">
-      <div className="bg-white border-[4px] border-black p-6 flex items-center gap-6 shadow-[6px_6px_0px_0px_#000]">
-        <div className="w-16 h-16 bg-white border-[3px] border-black shadow-[3px_3px_0px_0px_#0047AB] overflow-hidden p-1 shrink-0">
+      <div className="bg-white border-[4px] border-black p-6 flex items-center gap-6 shadow-[6px_6px_0px_0px_#0047AB]">
+        <div className="w-16 h-16 bg-white border-[3px] border-black shadow-[3px_3px_0px_0px_#00ffcc] overflow-hidden p-1 shrink-0">
           <img src={brand.logo_url} className="w-full h-full object-contain" alt="Logo" />
         </div>
         <div className="min-w-0">
@@ -288,15 +280,15 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       </div>
 
       <div className="space-y-3">
-        <button className="w-full bg-white border-[3px] border-black p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest group">
+        <button className="w-full bg-white border-[3px] border-black p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest active:translate-x-1 active:shadow-none transition-all">
           <div className="flex items-center gap-4">
-            <Target size={18} className="text-[#0047AB]" /> Authorize Payouts
+            <Wallet size={18} className="text-[#0047AB]" /> Funding Portal
           </div>
           <ChevronRight size={14} className="opacity-20" />
         </button>
-        <button className="w-full bg-white border-[3px] border-black p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest group">
+        <button className="w-full bg-white border-[3px] border-black p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest active:translate-x-1 active:shadow-none transition-all">
           <div className="flex items-center gap-4">
-            <Activity size={18} className="text-[#0047AB]" /> Campaign Assets
+            <Target size={18} className="text-[#0047AB]" /> Authorized Syncs
           </div>
           <ChevronRight size={14} className="opacity-20" />
         </button>
@@ -304,7 +296,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
 
       <button 
         onClick={handleLogout}
-        className="w-full bg-rose-500 text-white border-[4px] border-black py-6 shadow-[8px_8px_0px_0px_#000] font-black uppercase text-xs tracking-[0.4em] italic flex items-center justify-center gap-4"
+        className="w-full bg-rose-500 text-white border-[4px] border-black py-6 shadow-[8px_8px_0px_0px_#000] font-black uppercase text-xs tracking-[0.4em] italic flex items-center justify-center gap-4 active:scale-95 transition-all"
       >
         <LogOut size={20} strokeWidth={3} />
         <span>Terminate Session</span>
@@ -313,13 +305,13 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] pb-24">
-      {/* Full-Screen Mobile Sheet Modal */}
+    <div className="min-h-screen bg-[#f9f9f9] pb-24 font-lexend">
+      {/* Modal - Full Screen Mobile Sheet */}
       {selectedMission && (
         <div className="fixed inset-0 z-[1000] bg-white animate-in slide-in-from-bottom duration-500 flex flex-col">
           <header className="bg-[#0047AB] p-6 text-white border-b-[6px] border-black flex justify-between items-center sticky top-0">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.4em] mb-1 text-[#00ffcc]">Applicant Data Sync</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.4em] mb-1 text-[#00ffcc]">Applicant Sync Node</p>
               <h2 className="text-xl font-black italic uppercase font-display leading-tight truncate max-w-[250px]">{selectedMission.title}</h2>
             </div>
             <button onClick={() => setSelectedMission(null)} className="bg-black text-white p-2 border-2 border-white shadow-[4px_4px_0px_0px_#000]">
@@ -327,16 +319,16 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
             </button>
           </header>
 
-          <div className="flex-1 overflow-y-auto p-6 bg-[#f0f0f0] custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
             {modalLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Loader2 className="animate-spin text-[#0047AB]" size={48} />
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Decrypting Applicant Roster...</p>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Decrypting Applicant Feed...</p>
               </div>
             ) : missionSubmissions.length === 0 ? (
               <div className="py-20 text-center border-4 border-dashed border-black/10">
                 <Users size={48} className="mx-auto mb-4 opacity-10" />
-                <p className="text-xs font-black uppercase tracking-widest text-black/20 text-center">No transmissions received for this mission.</p>
+                <p className="text-xs font-black uppercase tracking-widest text-black/20 text-center">No Signals Detected.</p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -367,7 +359,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* Main App Content */}
+      {/* Sticky Header */}
       <header className="bg-white border-b-[4px] border-black sticky top-0 z-50 px-5 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 border-2 border-black shadow-[2px_2px_0px_0px_#0047AB] p-1 bg-white overflow-hidden">
@@ -377,7 +369,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
             <h1 className="text-sm font-black uppercase italic leading-none">{brand.name}</h1>
             <div className="flex items-center gap-1.5 mt-0.5">
                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-               <span className="text-[7px] font-black uppercase tracking-widest opacity-40">NODE_v4.2_ONLINE</span>
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-40">AUTHORIZED_ALLIANCE_NODE</span>
             </div>
           </div>
         </div>
@@ -386,18 +378,19 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         </button>
       </header>
 
+      {/* Main Container */}
       <main className="p-6 max-w-lg mx-auto">
         {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'missions' && renderMissions()}
+        {activeTab === 'campaigns' && renderCampaigns()}
         {activeTab === 'inbox' && renderInbox()}
         {activeTab === 'profile' && renderProfile()}
       </main>
 
-      {/* Fixed Bottom Navigation Bar */}
+      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-[200] bg-white border-t-[4px] border-black px-4 py-2 pb-6 flex items-center justify-around shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         {[
           { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
-          { id: 'missions', icon: Zap, label: 'Missions' },
+          { id: 'campaigns', icon: Zap, label: 'Campaigns' },
           { id: 'inbox', icon: Activity, label: 'Inbox' },
           { id: 'profile', icon: Building2, label: 'Profile' }
         ].map(tab => (
@@ -415,7 +408,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       </nav>
 
       <footer className="text-center pt-8 pb-32 opacity-10">
-        <p className="text-[8px] font-black uppercase tracking-[0.5em]">Alliance Network v4.2.0 • Mobile Node</p>
+        <p className="text-[8px] font-black uppercase tracking-[0.5em]">Alliance Network v4.5 • Partner Portal</p>
       </footer>
     </div>
   );
