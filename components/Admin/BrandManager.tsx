@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus } from 'lucide-react';
+import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload } from 'lucide-react';
 
 export const BrandManager = () => {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [brands, setBrands] = useState<any[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<any>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -68,6 +69,33 @@ export const BrandManager = () => {
   useEffect(() => {
     fetchBrands();
   }, []);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !supabase) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `brands/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      const { data, error: uploadError } = await supabase.storage
+        .from('brand-assets')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('brand-assets')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({ ...prev, logo_url: publicUrl }));
+    } catch (error: any) {
+      alert("Logo Upload Failed: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSelectBrand = (brand: any) => {
     setSelectedBrand(brand);
@@ -381,9 +409,21 @@ export const BrandManager = () => {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Logo Asset URL</label>
-                          <input type="url" className={inputStyle} placeholder="https://..." 
-                             value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} required />
+                          <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Logo Identity</label>
+                          <div className="flex gap-2">
+                             <label className="flex-1 cursor-pointer">
+                               <div className={`flex items-center justify-center gap-3 ${inputStyle} bg-slate-50 border-dashed border-[#834bf1] hover:bg-[#834bf1]/10`}>
+                                 {uploading ? <Loader2 size={16} className="animate-spin text-[#834bf1]" /> : <Upload size={16} className="text-[#834bf1]" />}
+                                 <span className="text-[10px] uppercase tracking-widest text-black/60">{uploading ? 'Processing...' : 'Upload Logo'}</span>
+                                 <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={uploading} />
+                               </div>
+                             </label>
+                             {formData.logo_url && (
+                               <div className="w-14 h-14 border-[3px] border-black bg-white flex items-center justify-center p-1 shrink-0">
+                                 <img src={formData.logo_url} className="w-full h-full object-contain" alt="Logo Preview" />
+                               </div>
+                             )}
+                          </div>
                         </div>
                         <div>
                           <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Cover Asset URL</label>
@@ -407,7 +447,7 @@ export const BrandManager = () => {
                   </div>
 
                   <div className="flex gap-4 pt-6 border-t-[4px] border-black">
-                    <button type="submit" disabled={loading} className="flex-1 py-6 bg-[#834bf1] text-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] font-black text-sm uppercase tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4">
+                    <button type="submit" disabled={loading || uploading} className="flex-1 py-6 bg-[#834bf1] text-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] font-black text-sm uppercase tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 disabled:opacity-50">
                        {loading ? <Loader2 className="animate-spin" /> : <Save size={20} strokeWidth={3} />} 
                        <span>{selectedBrand ? "Sync Node Data" : "Initialize New Alliance"}</span>
                     </button>
