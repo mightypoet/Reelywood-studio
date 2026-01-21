@@ -106,6 +106,8 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
     });
   };
 
+  const MASCOT_ICON = "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/icon-Photoroom.png";
+
   return (
     <section 
       className="relative min-h-screen flex flex-col bg-white dark:bg-[#0a0a0a] transition-colors overflow-x-hidden"
@@ -135,8 +137,12 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
               <div className="flex items-start pt-8 max-w-2xl relative">
                 <div className="absolute left-0 top-0 bottom-0 w-[10px] bg-[#ffde59] border-l-[3px] border-black"></div>
                 <div className="ml-8 flex gap-6">
-                  <div className="shrink-0 w-16 h-16 bg-[#834bf1] border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center text-white">
-                    <Bot size={32} strokeWidth={2.5} />
+                  <div className="shrink-0 w-16 h-16 bg-[#834bf1] border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center text-white overflow-hidden p-2">
+                    <img 
+                      src={MASCOT_ICON} 
+                      alt="Mascot Icon"
+                      className="w-full h-full object-contain scale-110"
+                    />
                   </div>
                   <p className="text-lg md:text-xl text-black/70 dark:text-white/70 font-black uppercase italic tracking-tight leading-tight">
                     Architecting digital dominance through human-AI synergy. Surgical execution for the modern SME.

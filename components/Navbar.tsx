@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, LogOut, Sun, Moon, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
     }
   };
 
-  const LOGO_IMAGE = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Black%20and%20White%20Modern%20Streetwear%20Sport%20Logo.png";
+  const LOGO_VIDEO = "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/OWLLOGO.mp4";
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] px-2 sm:px-4 pt-4 sm:pt-6 pointer-events-none">
@@ -45,7 +46,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
             onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-black bg-white overflow-hidden flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform hover:scale-105">
-               <img src={LOGO_IMAGE} alt="Reelywood Logo" className="w-full h-full object-cover" />
+               <video 
+                src={LOGO_VIDEO} 
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
+                className="w-full h-full object-cover"
+               />
             </div>
             <span className="font-black text-xs sm:text-sm tracking-tight uppercase text-black font-display italic">
               REELYWOOD

@@ -80,7 +80,7 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
           {/* TOP RIGHT: NFC LOGO IMAGE */}
           <div className="absolute top-8 right-8 w-8 h-8" style={{ transform: 'translateZ(30px)' }}>
             <img 
-              src="https://izz9qoicna213xwc.public.blob.vercel-storage.com/icons8-nfc-logo-100.png" 
+              src="https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/icons8-nfc-logo-100.png" 
               alt="NFC Logo" 
               className="w-full h-full object-contain brightness-0 invert opacity-90"
             />
@@ -93,7 +93,7 @@ export const ThreeDCard: React.FC<ThreeDCardProps> = ({ name, handle }) => {
           >
             <div className="relative w-44 h-44 flex items-center justify-center -mb-2">
               <img 
-                src="https://izz9qoicna213xwc.public.blob.vercel-storage.com/icon-Photoroom.png"
+                src="https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/icon-Photoroom.png"
                 className="w-full h-full object-contain"
                 alt="Mascot Icon"
               />
