@@ -10,112 +10,13 @@ interface HeroProps {
   onDashboardClick: () => void;
 }
 
-interface PhysicalShape {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  type: 'circle' | 'square' | 'triangle';
-  color: string;
-  rotation: number;
-  rv: number;
-  opacity: number;
-}
-
 export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const shapesRef = useRef<PhysicalShape[]>([]);
-  const requestRef = useRef<number>(0);
-  const isMobileRef = useRef(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      isMobileRef.current = window.innerWidth < 768;
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-
-    const colors = ['#834bf1', '#ffde59', '#000000', '#ffffff'];
-    const types: ('circle' | 'square' | 'triangle')[] = ['circle', 'square', 'triangle'];
-
-    const spawnShape = (x: number, y: number, isBurst = false) => {
-      const maxShapes = isMobileRef.current ? 15 : 40;
-      const newShape: PhysicalShape = {
-        x, y,
-        vx: (Math.random() - 0.5) * (isBurst ? 15 : 8),
-        vy: isBurst ? (Math.random() - 0.5) * 15 : (Math.random() * -5),
-        size: isMobileRef.current ? Math.random() * 15 + 10 : Math.random() * 25 + 15,
-        type: types[Math.floor(Math.random() * types.length)],
-        color: colors[Math.floor(Math.random() * colors.length)],
-        rotation: Math.random() * Math.PI * 2,
-        rv: (Math.random() - 0.5) * 0.1,
-        opacity: 0.9
-      };
-      shapesRef.current.push(newShape);
-      if (shapesRef.current.length > maxShapes) shapesRef.current.shift();
-    };
-
-    const autoSpawnInterval = setInterval(() => {
-      if (isMobileRef.current) spawnShape(Math.random() * canvas.width, -50);
-    }, 800);
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const gravity = 0.2;
-      const friction = 0.99;
-      const bounce = 0.6;
-
-      shapesRef.current.forEach((s) => {
-        s.vy += gravity; s.vx *= friction; s.vy *= friction;
-        s.x += s.vx; s.y += s.vy; s.rotation += s.rv;
-        if (s.y + s.size > canvas.height) { s.y = canvas.height - s.size; s.vy *= -bounce; }
-        if (s.x - s.size < 0) { s.x = s.size; s.vx *= -bounce; } 
-        else if (s.x + s.size > canvas.width) { s.x = canvas.width - s.size; s.vx *= -bounce; }
-        ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.rotation); ctx.globalAlpha = s.opacity; ctx.fillStyle = s.color; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.beginPath();
-        if (s.type === 'circle') ctx.arc(0, 0, s.size, 0, Math.PI * 2);
-        else if (s.type === 'square') ctx.rect(-s.size, -s.size, s.size * 2, s.size * 2);
-        else if (s.type === 'triangle') { ctx.moveTo(0, -s.size); ctx.lineTo(s.size, s.size); ctx.lineTo(-s.size, s.size); ctx.closePath(); }
-        ctx.fill(); ctx.stroke(); ctx.restore();
-      });
-      requestRef.current = requestAnimationFrame(animate);
-    };
-
-    requestRef.current = requestAnimationFrame(animate);
-    return () => { cancelAnimationFrame(requestRef.current); window.removeEventListener('resize', handleResize); window.removeEventListener('resize', checkMobile); clearInterval(autoSpawnInterval); };
-  }, []);
-
-  const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
-    const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const y = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    shapesRef.current.forEach(s => {
-      const dx = s.x - x; const dy = s.y - y; const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 300) { const force = (300 - dist) / 15; const angle = Math.atan2(dy, dx); s.vx += Math.cos(angle) * force; s.vy += Math.sin(angle) * force; }
-    });
-  };
-
   const MASCOT_ICON = "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/icon-Photoroom.png";
 
   return (
     <section 
       className="relative min-h-screen flex flex-col bg-white dark:bg-[#0a0a0a] transition-colors overflow-x-hidden"
-      onMouseDown={handleInteraction}
-      onTouchStart={handleInteraction}
     >
-      <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none" />
-
       <div className="flex-1 flex items-center relative z-10 pt-32 pb-12">
         <div className="max-w-7xl mx-auto px-6 w-full">
           <div className="max-w-4xl space-y-12">

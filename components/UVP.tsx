@@ -27,48 +27,48 @@ export const UVP: React.FC = () => {
     {
       category: "Intelligence",
       title: "Resourceful Assets",
-      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/5.png",
+      src: "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/5.png",
       content: (
         <DummyContent 
           title="Optimized Impact through Innovation."
           body="We develop digital assets that work 24/7. From custom AI wrappers to high-conversion landing pages, our focus is on building tools that reduce operational drag while maximizing market capture."
-          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/5.png"
+          image="https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/5.png"
         />
       ),
     },
     {
       category: "Performance",
       title: "Effective Marketing",
-      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/6.png",
+      src: "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/6.png",
       content: (
         <DummyContent 
           title="Data-Driven Scalability."
           body="Marketing isn't a guessing game. Our performance stack leverages advanced attribution and behavioral analytics to ensure every rupee spent on Meta, Google, or TikTok results in measurable growth."
-          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/6.png"
+          image="https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/6.png"
         />
       ),
     },
     {
       category: "Connection",
       title: "Empathic Approach",
-      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/7.png",
+      src: "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/7.png",
       content: (
         <DummyContent 
           title="Understanding the Human behind the Click."
           body="In an AI world, empathy is the ultimate competitive advantage. We dive into customer psychology to create narratives that resonate on a personal level, fostering long-term brand loyalty."
-          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/7.png"
+          image="https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/7.png"
         />
       ),
     },
     {
       category: "Vision",
       title: "Limitless Passion",
-      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/8.png",
+      src: "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/8.png",
       content: (
         <DummyContent 
           title="Obsessed with Brand Evolution."
           body="We don't settle for 'good enough'. Our team is constantly experimenting with the latest in tech and creative direction to keep your brand at the absolute forefront of your industry."
-          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/8.png"
+          image="https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/8.png"
         />
       ),
     },
