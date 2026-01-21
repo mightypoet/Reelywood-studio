@@ -7,6 +7,14 @@ BEGIN
   END IF;
 END $$;
 
+-- Fix for "Could not find the 'status' column of 'missions'"
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='missions' AND column_name='status') THEN
+    ALTER TABLE missions ADD COLUMN status TEXT DEFAULT 'active';
+  END IF;
+END $$;
+
 -- Optional: Create a transaction log for brand funding to track admin top-ups
 CREATE TABLE IF NOT EXISTS brand_funding_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
