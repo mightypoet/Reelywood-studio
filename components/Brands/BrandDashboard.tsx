@@ -28,7 +28,8 @@ import {
   Home,
   User,
   History,
-  LayoutGrid
+  LayoutGrid,
+  Send
 } from 'lucide-react';
 
 interface BrandDashboardProps {
@@ -46,6 +47,15 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionSubmissions, setMissionSubmissions] = useState<any[]>([]);
   const [modalLoading, setModalLoading] = useState(false);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
+
+  const [requestForm, setRequestForm] = useState({
+    title: '',
+    description: '',
+    reward_amount: '',
+    requirements: ''
+  });
 
   const [stats, setStats] = useState({
     activeMissionsCount: 0,
@@ -58,6 +68,33 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   const handleLogout = async () => {
     await auth.signOut();
     if (onBack) onBack();
+  };
+
+  const handleRequestMission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !brand) return;
+    
+    setIsRequesting(true);
+    try {
+      const { error } = await supabase.from('missions').insert([{
+        brand_id: brand.id,
+        title: requestForm.title,
+        description: requestForm.description,
+        reward_amount: parseInt(requestForm.reward_amount),
+        requirements: requestForm.requirements,
+        status: 'pending_approval'
+      }]);
+
+      if (error) throw error;
+      
+      alert("MISSION_REQUEST_CACHED: Reelywood Admin will verify deployment shortly.");
+      setRequestModalOpen(false);
+      setRequestForm({ title: '', description: '', reward_amount: '', requirements: '' });
+    } catch (err: any) {
+      alert("SYNC_ERROR: " + err.message);
+    } finally {
+      setIsRequesting(false);
+    }
   };
 
   const fetchMissionSubmissions = async (missionId: string) => {
@@ -102,7 +139,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         setBrand(brandData);
 
         const [missionsRes, rewardsRes] = await Promise.all([
-          supabase.from('missions').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false }),
+          supabase.from('missions').select('*').eq('brand_id', brandData.id).neq('status', 'pending_approval').order('created_at', { ascending: false }),
           supabase.from('rewards').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false })
         ]);
 
@@ -244,9 +281,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         <h3 className="text-lg sm:text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
           <Zap className="text-[#ffde59]" size={18} /> Mission Control
         </h3>
-        <button className="bg-black text-[#ffde59] p-2 border-2 border-black shadow-[2px_2px_0px_0px_#834bf1] active:translate-x-0.5 active:translate-y-0.5">
-          <Plus size={20} />
-        </button>
       </div>
       <div className="space-y-4 sm:space-y-6">
         {activeMissions.length === 0 ? (
@@ -358,7 +392,68 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] pb-32 font-lexend">
-      {/* Modal - Full Screen Mobile Sheet */}
+      {/* FAB Button */}
+      {activeTab === 'campaigns' && (
+        <button 
+          onClick={() => setRequestModalOpen(true)}
+          className="fixed bottom-24 right-6 sm:bottom-32 sm:right-10 z-[110] bg-black text-white p-4 border-[4px] border-black shadow-[6px_6px_0px_0px_#ffde59] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-90 transition-all"
+        >
+          <Plus size={32} strokeWidth={4} />
+        </button>
+      )}
+
+      {/* Request Modal */}
+      {requestModalOpen && (
+        <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-lg border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] p-8 md:p-12 relative overflow-hidden animate-in zoom-in-95 duration-300">
+            <button onClick={() => setRequestModalOpen(false)} className="absolute top-6 right-6 bg-black text-white p-2 border-2 border-white hover:bg-rose-500 transition-colors shadow-[4px_4px_0px_0px_#000]">
+              <X size={20} strokeWidth={4} />
+            </button>
+            <h2 className="text-3xl font-black italic uppercase font-display mb-8">Request Mission</h2>
+            
+            <form onSubmit={handleRequestMission} className="space-y-6">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">Protocol Title</label>
+                <input required type="text" placeholder="e.g. VISUAL CAPTURE: MENU" 
+                       className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all"
+                       value={requestForm.title} onChange={e => setRequestForm({...requestForm, title: e.target.value})} />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">Reward Amount (RC)</label>
+                  <input required type="number" placeholder="500" 
+                         className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all"
+                         value={requestForm.reward_amount} onChange={e => setRequestForm({...requestForm, reward_amount: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">Requirements</label>
+                  <input required type="text" placeholder="Tag @brand, 1 Reel" 
+                         className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all"
+                         value={requestForm.requirements} onChange={e => setRequestForm({...requestForm, requirements: e.target.value})} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">Briefing Details</label>
+                <textarea required rows={4} placeholder="Define mission parameters..." 
+                          className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all resize-none"
+                          value={requestForm.description} onChange={e => setRequestForm({...requestForm, description: e.target.value})} />
+              </div>
+
+              <button 
+                disabled={isRequesting}
+                className="w-full bg-black text-white py-5 border-[4px] border-black shadow-[8px_8px_0px_0px_#834bf1] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4"
+              >
+                {isRequesting ? <Loader2 className="animate-spin" /> : <Send size={18} />}
+                SYNC REQUEST
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Applicant Sync Modal */}
       {selectedMission && (
         <div className="fixed inset-0 z-[1000] bg-white animate-in slide-in-from-bottom duration-500 flex flex-col">
           <header className="bg-[#ffde59] p-6 text-black border-b-[6px] border-black flex justify-between items-center sticky top-0">

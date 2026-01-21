@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload } from 'lucide-react';
+import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload, Check } from 'lucide-react';
 
 export const BrandManager = () => {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [brands, setBrands] = useState<any[]>([]);
+  const [pendingMissions, setPendingMissions] = useState<any[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<any>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [activeTab, setActiveTab] = useState<'missions' | 'vouchers' | 'settings'>('missions');
@@ -49,6 +50,41 @@ export const BrandManager = () => {
     }
   };
 
+  const fetchPendingMissions = async () => {
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('missions')
+        .select('*, partner_brands(*)')
+        .eq('status', 'pending_approval')
+        .order('created_at', { ascending: false });
+      
+      if (data) setPendingMissions(data);
+    } catch (err) {
+      console.error("Error fetching pending missions:", err);
+    }
+  };
+
+  const handleApproveMission = async (missionId: string) => {
+    if (!supabase || !window.confirm("Authorize this mission for live deployment?")) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({ status: 'active' })
+        .eq('id', missionId);
+      
+      if (error) throw error;
+      alert("MISSION_AUTHORIZED: Operational grid updated.");
+      fetchPendingMissions();
+      fetchBrands();
+    } catch (err: any) {
+      alert("Authorization Failed: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchBrandDetails = async (brandId: string) => {
     if (!supabase) return;
     setDetailLoading(true);
@@ -68,6 +104,7 @@ export const BrandManager = () => {
 
   useEffect(() => {
     fetchBrands();
+    fetchPendingMissions();
   }, []);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,6 +241,43 @@ export const BrandManager = () => {
 
   return (
     <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      {/* Mission Request Queue Section */}
+      <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#834bf1] text-black">
+        <h3 className="text-2xl font-black italic uppercase font-display mb-6 flex items-center gap-3">
+          <Zap className="text-[#834bf1]" /> MISSION REQUEST QUEUE
+        </h3>
+        <div className="space-y-4">
+          {pendingMissions.length === 0 ? (
+            <div className="py-10 text-center border-4 border-dashed border-black/10 text-black/20 font-black uppercase text-xs italic tracking-widest">
+              QUEUE_SILENT: No pending mission requests.
+            </div>
+          ) : (
+            pendingMissions.map(m => (
+              <div key={m.id} className="bg-slate-50 border-[3px] border-black p-4 flex items-center justify-between shadow-[4px_4px_0px_0px_#000]">
+                <div className="flex items-center gap-6 min-w-0">
+                  <div className="w-12 h-12 bg-white border-2 border-black shadow-[2px_2px_0px_0px_#000] p-1 shrink-0">
+                    <img src={m.partner_brands?.logo_url} className="w-full h-full object-contain" onError={e => e.currentTarget.src='https://api.dicebear.com/7.x/identicon/svg?seed='+m.partner_brands?.name} />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-black text-sm uppercase italic truncate">{m.title}</h4>
+                    <p className="text-[10px] font-bold text-[#834bf1] uppercase tracking-widest">
+                      {m.partner_brands?.name} • Bounty: {m.reward_amount} RC
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleApproveMission(m.id)}
+                  disabled={loading}
+                  className="bg-[#39ff14] text-black p-3 border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                >
+                  <Check size={20} strokeWidth={4} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#000] flex flex-col md:flex-row justify-between items-center gap-6 text-black">
         <div>
           <h2 className="text-3xl font-black italic uppercase font-display text-black">Alliance Network</h2>
