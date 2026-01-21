@@ -75,12 +75,12 @@ export const UVP: React.FC = () => {
     {
       category: "SME Focus",
       title: "Tailored Growth",
-      src: "https://izz9qoicna213xwc.public.blob.vercel-storage.com/6.png",
+      src: "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/7.png",
       content: (
         <DummyContent 
           title="Big Agency Results, Lean Pricing."
           body="Specifically designed for SMEs, our packages provide the technical and creative horsepower of a multinational agency at a fraction of the overhead. Your success is our primary KPI."
-          image="https://izz9qoicna213xwc.public.blob.vercel-storage.com/6.png"
+          image="https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/7.png"
         />
       ),
     },

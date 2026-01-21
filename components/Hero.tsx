@@ -28,7 +28,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             <div className="space-y-4">
               <h1 className="flex flex-col text-7xl md:text-9xl lg:text-[140px] font-black text-black dark:text-white leading-[0.8] tracking-tighter font-display uppercase italic">
                 <span>Scale</span>
-                <span className="text-[#834bf1]">Automate</span>
+                <span className="text-black dark:text-white">Automate</span>
                 <div className="flex items-center">
                   <span>Dominate</span>
                   <Sparkles className="ml-4 text-[#ffde59] hidden md:block" size={48} />
