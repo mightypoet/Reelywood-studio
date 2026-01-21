@@ -76,12 +76,14 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     
     setIsRequesting(true);
     try {
+      // Concatenate requirements into description as a fallback if the requirements column is missing
+      // But we explicitly send the 'status' field which is required for the admin approval workflow.
       const { error } = await supabase.from('missions').insert([{
         brand_id: brand.id,
         title: requestForm.title,
-        description: `${requestForm.description}\n\nRequirements: ${requestForm.requirements}`,
+        description: `${requestForm.description}${requestForm.requirements ? `\n\nREQUIREMENTS:\n${requestForm.requirements}` : ''}`,
         reward_amount: parseInt(requestForm.reward_amount),
-        status: 'pending_approval' // Ensuring this matches the new schema column
+        status: 'pending_approval'
       }]);
 
       if (error) throw error;
@@ -89,10 +91,40 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
       alert("MISSION_REQUEST_CACHED: Reelywood Admin will verify deployment shortly.");
       setRequestModalOpen(false);
       setRequestForm({ title: '', description: '', reward_amount: '', requirements: '' });
+      
+      // Refresh current tab data if needed
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        if(user) fetchBrandData(user.email!);
+      });
     } catch (err: any) {
-      alert("SYNC_ERROR: " + err.message + "\n\nTip: Ensure you have run the latest SQL update in the Supabase SQL Editor to add the 'status' column.");
+      console.error("SYNC_ERROR_DETAIL:", err);
+      alert(`SYNC_ERROR: ${err.message}\n\nTIP: If you see 'status column not found', please run the SQL provided in the database_update.sql file within your Supabase SQL Editor to synchronize the schema.`);
     } finally {
       setIsRequesting(false);
+    }
+  };
+
+  const fetchBrandData = async (email: string) => {
+    if (!supabase) return;
+    try {
+      const { data: brandData, error: bError } = await supabase
+        .from('partner_brands')
+        .select('*, reelcoins')
+        .ilike('brand_email', email)
+        .single();
+
+      if (bError) throw bError;
+      setBrand(brandData);
+
+      const [missionsRes, rewardsRes] = await Promise.all([
+        supabase.from('missions').select('*').eq('brand_id', brandData.id).neq('status', 'pending_approval').order('created_at', { ascending: false }),
+        supabase.from('rewards').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false })
+      ]);
+
+      setActiveMissions(missionsRes.data || []);
+      setActiveRewards(rewardsRes.data || []);
+    } catch (err) {
+      console.error("DATA_FETCH_ERROR:", err);
     }
   };
 
@@ -121,70 +153,8 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         setLoading(false);
         return;
       }
-
-      try {
-        const { data: brandData, error: bError } = await supabase
-          .from('partner_brands')
-          .select('*, reelcoins')
-          .ilike('brand_email', user.email)
-          .single();
-
-        if (bError) {
-          console.error("BRAND_LOOKUP_ERROR:", bError);
-          setLoading(false);
-          return;
-        }
-
-        setBrand(brandData);
-
-        const [missionsRes, rewardsRes] = await Promise.all([
-          supabase.from('missions').select('*').eq('brand_id', brandData.id).neq('status', 'pending_approval').order('created_at', { ascending: false }),
-          supabase.from('rewards').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false })
-        ]);
-
-        const missions = missionsRes.data || [];
-        const rewards = rewardsRes.data || [];
-        
-        setActiveMissions(missions);
-        setActiveRewards(rewards);
-
-        let totalDistributed = 0;
-        const missionIds = missions.map(m => m.id);
-
-        if (missionIds.length > 0) {
-          const { data: approvedSubmissions, error: sError } = await supabase
-            .from('submissions')
-            .select('mission_id')
-            .in('mission_id', missionIds)
-            .eq('status', 'approved');
-
-          if (!sError && approvedSubmissions) {
-            approvedSubmissions.forEach(sub => {
-              const mission = missions.find(m => m.id === sub.mission_id);
-              if (mission) {
-                totalDistributed += (mission.reward_amount || 0);
-              }
-            });
-          }
-        }
-
-        const activeCount = missions.filter(m => m.status === 'active' || !m.status).length;
-        const engagementScore = missions.length * 12;
-        const estMediaValue = (engagementScore * 1250).toLocaleString();
-
-        setStats({
-          activeMissionsCount: activeCount,
-          totalMissionsCount: missions.length,
-          rcDistributed: totalDistributed,
-          engagement: engagementScore,
-          mediaValue: `₹${estMediaValue}`
-        });
-
-      } catch (err) {
-        console.error("BRAND_PORTAL_SYNC_ERROR:", err);
-      } finally {
-        setLoading(false);
-      }
+      await fetchBrandData(user.email);
+      setLoading(false);
     });
 
     return () => unsubscribe();
