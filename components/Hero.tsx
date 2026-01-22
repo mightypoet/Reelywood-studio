@@ -28,16 +28,16 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             <div className="space-y-4">
               <h1 className="flex flex-col text-7xl md:text-9xl lg:text-[140px] font-black text-black dark:text-white leading-[0.8] tracking-tighter font-display uppercase italic">
                 <span>Scale</span>
-                <span className="text-black dark:text-white">Automate</span>
+                <span className="text-[#834bf1]">Automate</span>
                 <div className="flex items-center">
                   <span>Dominate</span>
                   <Sparkles className="ml-4 text-[#ffde59] hidden md:block" size={48} />
                 </div>
               </h1>
               
-              <div className="flex items-start pt-8 max-w-2xl relative">
-                <div className="absolute left-0 top-0 bottom-0 w-[10px] bg-[#ffde59] border-l-[3px] border-black"></div>
-                <div className="ml-8 flex gap-6">
+              <div className="flex items-start pt-6 max-w-2xl relative">
+                <div className="flex items-center gap-0">
+                  <div className="w-[12px] h-16 bg-[#ffde59] border-y-[3px] border-l-[3px] border-black"></div>
                   <div className="shrink-0 w-16 h-16 bg-[#834bf1] border-[4px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center text-white overflow-hidden p-2">
                     <img 
                       src={MASCOT_ICON} 
@@ -45,6 +45,8 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
                       className="w-full h-full object-contain scale-110"
                     />
                   </div>
+                </div>
+                <div className="ml-6 flex-1">
                   <p className="text-lg md:text-xl text-black/70 dark:text-white/70 font-black uppercase italic tracking-tight leading-tight">
                     Architecting digital dominance through human-AI synergy. Surgical execution for the modern SME.
                   </p>

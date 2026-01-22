@@ -13,7 +13,7 @@ export const CreatorVerse: React.FC<CreatorVerseProps> = ({ onEnterUniverse }) =
   const [useFallback, setUseFallback] = useState(false);
   const [hasError, setHasError] = useState(false);
   
-  const primarySrc = "https://mc2szw5s8xk9lkkh.public.blob.vercel-storage.com/creator%20verse%201";
+  const primarySrc = "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/20251226_1630_01kdd4yq96ftmr77ypf2nm8gzy%20(1).webm";
   const fallbackSrc = "https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-lighting-dancing-40030-large.mp4";
 
   useEffect(() => {

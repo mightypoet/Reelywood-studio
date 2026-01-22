@@ -106,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
                 onClick={onAuthClick}
                 className="bg-white text-black px-3 sm:px-4 h-10 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[10px] font-black uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
               >
-                Login
+                LOGIN
               </button>
             )}
 
