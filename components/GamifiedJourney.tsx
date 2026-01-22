@@ -23,7 +23,7 @@ const LevelCard: React.FC<LevelCardProps> = ({ level, title, desc, color, textCo
             {level}
           </div>
           <div className={`w-12 h-12 md:w-16 md:h-16 bg-white border-[3px] md:border-[4px] border-black flex items-center justify-center ${textColor} shadow-[3px_3px_0px_0px_#000] md:shadow-[4px_4px_0px_0px_#000] group-hover:rotate-12 transition-transform`}>
-            {React.cloneElement(icon as React.ReactElement, { className: "w-6 h-6 md:w-8 md:h-8" })}
+            {React.cloneElement(icon as React.ReactElement<any>, { className: "w-6 h-6 md:w-8 md:h-8" })}
           </div>
         </div>
         
