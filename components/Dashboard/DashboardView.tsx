@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
+import { useSoundNotification } from '../../hooks/useSoundNotification';
 
 interface DashboardViewProps {
   onBack: () => void;
@@ -36,6 +37,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
+  // Sound Notification Integration
+  const { playSound } = useSoundNotification();
+  const prevMissionCount = useRef(0);
+  const prevRewardCount = useRef(0);
+
   const fetchOperationalGrid = useCallback(async (user: FirebaseUser) => {
     if (!supabase) return;
 
@@ -52,14 +58,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         .from('missions')
         .select('*, partner_brands(*)');
 
+      let currentMissions: any[] = [];
       if (allMissions) {
-        const filtered = allMissions.filter(m => {
+        currentMissions = allMissions.filter(m => {
           if (m.assigned_to?.includes('DRAFT')) return false;
           const isGlobal = !m.assigned_to || (Array.isArray(m.assigned_to) && m.assigned_to.length === 0);
           const isAssigned = Array.isArray(m.assigned_to) && (m.assigned_to.includes(user.uid) || m.assigned_to.includes(profileData?.id));
           return isGlobal || isAssigned;
         });
-        setMissions(filtered);
+        setMissions(currentMissions);
       }
 
       const [rRes, sRes, redRes] = await Promise.all([
@@ -68,24 +75,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         supabase.from('user_rewards').select('reward_id').eq('user_id', user.uid)
       ]);
 
+      let currentRewards: any[] = [];
       if (rRes.data) {
-        const filteredRewards = rRes.data.filter(r => {
+        currentRewards = rRes.data.filter(r => {
           const isGlobal = !r.assigned_to || (Array.isArray(r.assigned_to) && r.assigned_to.length === 0);
-          const isAssigned = Array.isArray(r.assigned_to) && r.assigned_to.includes(user.uid);
+          const isAssigned = Array.isArray(r.assigned_to) && (r.assigned_to.includes(user.uid));
           return isGlobal || isAssigned;
         });
-        setRewards(filteredRewards);
+        setRewards(currentRewards);
       }
       
       if (sRes.data) setUserSubmissions(sRes.data);
       if (redRes.data) setMyRedemptions(redRes.data.map((r: any) => String(r.reward_id)));
+
+      // Trigger sound if items increased (after initial load)
+      if (prevMissionCount.current > 0 && currentMissions.length > prevMissionCount.current) {
+        playSound();
+      } else if (prevRewardCount.current > 0 && currentRewards.length > prevRewardCount.current) {
+        playSound();
+      }
+
+      // Update refs for next fetch
+      prevMissionCount.current = currentMissions.length;
+      prevRewardCount.current = currentRewards.length;
 
     } catch (err) {
       console.error("GRID_SYNC_FAILURE:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [playSound]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
