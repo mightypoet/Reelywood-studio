@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Mail, Phone, Globe, Instagram, Twitter, Linkedin, Lock } from 'lucide-react';
+import { Mail, Phone, Instagram, Linkedin, Lock } from 'lucide-react';
 
 interface FooterProps {
   onAdminClick?: () => void;
@@ -59,7 +60,6 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
             <div>
               <h4 className="font-black text-black dark:text-white mb-8 text-xs uppercase tracking-widest bg-[#834bf1] text-white inline-block px-2 border border-black dark:border-white">Labs</h4>
               <ul className="space-y-4 text-black dark:text-white text-sm font-bold uppercase tracking-wide">
-                <li><div className="flex items-center space-x-2"><span className="opacity-40">Dorky.ai</span><span className="text-[8px] bg-black text-white px-1.5 py-0.5 rounded font-black">BETA</span></div></li>
                 <li><button onClick={onAdminClick} className="hover:text-[#834bf1] dark:hover:text-[#ffde59] flex items-center space-x-2">
                   <Lock size={12} />
                   <span>Terminal</span>

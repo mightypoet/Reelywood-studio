@@ -11,10 +11,9 @@ import { UVP } from './components/UVP';
 import { BrandDNA } from './components/BrandDNA';
 import { Pricing } from './components/Pricing';
 import { ExpertiseSection } from './components/ExpertiseSection';
-import { Leaderboard } from './components/Leaderboard';
+import { GamifiedJourney } from './components/GamifiedJourney';
 import { CreatorVerse } from './components/CreatorVerse';
 import { Engagement } from './components/Engagement';
-import { DorkyProject } from './components/DorkyProject';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 import { AuthView } from './components/AuthView';
@@ -26,7 +25,6 @@ import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { BrandDashboard } from './components/Brands/BrandDashboard';
 import { AcademyView } from './components/AcademyView';
 import { DashboardView } from './components/Dashboard/DashboardView';
-import { AIAssistant } from './components/AIAssistant';
 
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
 
@@ -150,17 +148,13 @@ const MainContent: React.FC = () => {
         <UVP />
         <BrandDNA />
         <ExpertiseSection />
-        <Leaderboard />
+        <GamifiedJourney />
         <CreatorVerse onEnterUniverse={() => setView('dashboard')} />
         <Engagement />
-        <DorkyProject />
         <Pricing />
         <CTA />
       </main>
       <Footer onAdminClick={() => setView('admin-login')} />
-      <div className="fixed bottom-8 left-8 z-[100]">
-        <AIAssistant />
-      </div>
       <ScrollToTop />
     </div>
   );
