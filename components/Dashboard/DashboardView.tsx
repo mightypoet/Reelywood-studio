@@ -8,7 +8,8 @@ import {
   Lock, X, Bell, Clock, Zap, Gift,
   Target, TrendingUp, Maximize2, Building2,
   LayoutDashboard, CreditCard, Share2, QrCode, Settings,
-  ChevronRight, Activity, Terminal, History, Home, Menu
+  ChevronRight, Activity, Terminal, History, Home, Menu,
+  Camera, Save, Pencil
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
@@ -36,6 +37,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+  // Edit Profile States
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editHandle, setEditHandle] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Sound Notification Integration
   const { playSound } = useSoundNotification();
@@ -141,9 +151,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     }
   };
 
+  const startEditing = () => {
+    setEditName(profile?.display_name || '');
+    setEditHandle(profile?.handle || '');
+    setEditBio(profile?.bio || '');
+    setIsEditing(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!supabase || !currentUser) return;
+    setIsUploading(true);
+    try {
+      let photoUrl = profile?.photo_url;
+
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${currentUser.uid}/${Date.now()}_avatar.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+        
+        photoUrl = publicUrl;
+      }
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          display_name: editName,
+          handle: editHandle,
+          bio: editBio,
+          photo_url: photoUrl
+        })
+        .eq('firebase_uid', currentUser.uid);
+
+      if (updateError) throw updateError;
+
+      await fetchOperationalGrid(currentUser);
+      setIsEditing(false);
+      setAvatarFile(null);
+      setPreviewUrl(null);
+      alert("PROFILE_SYNCED: Identity node updated.");
+    } catch (err: any) {
+      alert("SYNC_FAILURE: " + err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-8">
+      <div className="min-h-[100dvh] bg-white flex flex-col items-center justify-center space-y-8">
         <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
         <p className="text-[12px] font-black uppercase tracking-[0.6em] text-black animate-pulse">Syncing Node...</p>
       </div>
@@ -197,7 +269,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   );
 
   const renderCard = () => (
-    <div className="flex flex-col items-center justify-start min-h-[60vh] py-4 sm:py-8 space-y-8 sm:space-y-12 animate-in zoom-in-95 duration-500">
+    <div className="flex flex-col items-center justify-start min-h-[60dvh] py-4 sm:py-8 space-y-8 sm:space-y-12 animate-in zoom-in-95 duration-500">
       {!isApproved ? (
          <div className="bg-[#ffde59] border-[4px] sm:border-[5px] border-black p-8 sm:p-10 text-center shadow-[8px_8px_0px_0px_#000] sm:shadow-[10px_10px_0px_0px_#000] w-full max-w-md mx-auto">
             <Lock size={40} className="mx-auto mb-6" strokeWidth={3} />
@@ -258,7 +330,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 {/* VERIFIED STAMP */}
                 {isApprovedSub && (
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-20 pointer-events-none">
-                    <div className="border-[6px] border-[#006400] px-4 py-2 rounded-xl flex items-center gap-2 bg-[#39ff14]/80 backdrop-blur-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
+                    <div className="border-[6px] border-[#006400] px-4 py-2 rounded-xl flex items-center gap-2 bg-[#39ff14]/80 backdrop-blur-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                       <CheckCircle2 size={24} className="text-[#006400]" strokeWidth={4} />
                       <span className="font-display font-black text-2xl text-[#006400] uppercase italic tracking-tighter">VERIFIED</span>
                     </div>
@@ -349,48 +421,131 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const renderSync = () => (
     <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500">
-       <div className="bg-white border-[3px] sm:border-[4px] border-black p-5 sm:p-6 flex items-center gap-4 sm:gap-6 shadow-[6px_6px_0px_0px_#000]">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 border-[2px] sm:border-[3px] border-black overflow-hidden shadow-[2px_2px_0px_0px_#834bf1] sm:shadow-[3px_3px_0px_0px_#834bf1]">
-            <img src={currentUser?.photoURL || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
-          </div>
-          <div className="min-w-0">
-             <h3 className="text-lg sm:text-xl font-black uppercase italic text-black truncate">{profile?.display_name || "AGENT"}</h3>
-             <p className="text-[8px] sm:text-[10px] font-bold text-black/40 uppercase tracking-widest truncate">{currentUser?.email}</p>
-          </div>
-       </div>
-
-       <div className="space-y-3 sm:space-y-4">
-          <button className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
-             <div className="flex items-center gap-3 sm:gap-4">
-               <Settings size={18} /> Edit Sync Profile
+       {isEditing ? (
+         <div className="bg-white border-[3px] sm:border-[4px] border-black p-6 sm:p-10 shadow-[8px_8px_0px_0px_#000] space-y-8">
+           <div className="flex flex-col items-center gap-6">
+             <div className="relative group cursor-pointer" onClick={() => document.getElementById('avatar-input')?.click()}>
+               <div className="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 border-[4px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#834bf1] relative">
+                 <img src={previewUrl || profile?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
+                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                   <Camera size={24} />
+                 </div>
+               </div>
+               <input id="avatar-input" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+               <div className="absolute -bottom-2 -right-2 bg-[#ffde59] border-2 border-black p-1.5 shadow-[2px_2px_0px_0px_#000]">
+                 <Pencil size={14} />
+               </div>
              </div>
-             <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-          </button>
-          <button className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
-             <div className="flex items-center gap-3 sm:gap-4">
-               <Target size={18} /> Support Transmission
-             </div>
-             <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-          </button>
-       </div>
+             <p className="text-[8px] font-black uppercase tracking-[0.3em] text-black/40">Tap Image to Change Node Asset</p>
+           </div>
 
-       <button 
-          onClick={() => auth.signOut()}
-          className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] font-black uppercase text-[10px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all flex items-center justify-center gap-3 sm:gap-4"
-        >
-          <LogOut size={18} strokeWidth={3} />
-          <span>TERMINATE SESSION</span>
-        </button>
+           <div className="space-y-6">
+             <div>
+               <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Identity Name</label>
+               <input 
+                 value={editName} 
+                 onChange={e => setEditName(e.target.value)}
+                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none" 
+                 placeholder="AGENT NAME"
+               />
+             </div>
+             <div>
+               <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Protocol Handle</label>
+               <input 
+                 value={editHandle} 
+                 onChange={e => setEditHandle(e.target.value)}
+                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none" 
+                 placeholder="@handle"
+               />
+             </div>
+             <div>
+               <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Operational Bio</label>
+               <textarea 
+                 value={editBio} 
+                 onChange={e => setEditBio(e.target.value)}
+                 rows={3}
+                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm uppercase tracking-tight focus:bg-white transition-all outline-none resize-none" 
+                 placeholder="MISSION PARAMETERS & INTEL..."
+               />
+             </div>
+           </div>
+
+           <div className="flex gap-4">
+             <button 
+               onClick={() => setIsEditing(false)}
+               className="flex-1 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all"
+             >
+               Abort Sync
+             </button>
+             <button 
+               disabled={isUploading}
+               onClick={handleSaveProfile}
+               className="flex-1 py-4 bg-[#834bf1] text-white border-[3px] border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center gap-2"
+             >
+               {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+               Commit Changes
+             </button>
+           </div>
+         </div>
+       ) : (
+         <>
+           <div className="bg-white border-[3px] sm:border-[4px] border-black p-5 sm:p-6 flex items-center gap-4 sm:gap-6 shadow-[6px_6px_0px_0px_#000]">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 border-[2px] sm:border-[3px] border-black overflow-hidden shadow-[2px_2px_0px_0px_#834bf1] sm:shadow-[3px_3px_0px_0px_#834bf1]">
+                <img src={profile?.photo_url || currentUser?.photoURL || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
+              </div>
+              <div className="min-w-0">
+                 <h3 className="text-lg sm:text-xl font-black uppercase italic text-black truncate">{profile?.display_name || "AGENT"}</h3>
+                 <p className="text-[8px] sm:text-[10px] font-bold text-black/40 uppercase tracking-widest truncate">{currentUser?.email}</p>
+                 <p className="text-[9px] font-black text-[#834bf1] mt-1">{profile?.handle ? `@${profile.handle}` : 'unlinked'}</p>
+              </div>
+           </div>
+
+           {profile?.bio && (
+             <div className="bg-white border-[3px] border-black p-5 shadow-[4px_4px_0px_0px_#ffde59]">
+               <h4 className="text-[8px] font-black uppercase tracking-widest text-black/40 mb-2">Operational Bio</h4>
+               <p className="text-[10px] font-bold uppercase tracking-tight leading-relaxed">{profile.bio}</p>
+             </div>
+           )}
+
+           <div className="space-y-3 sm:space-y-4">
+              <button 
+                onClick={startEditing}
+                className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              >
+                 <div className="flex items-center gap-3 sm:gap-4">
+                   <Settings size={18} /> Edit Sync Profile
+                 </div>
+                 <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
+                 <div className="flex items-center gap-3 sm:gap-4">
+                   <Target size={18} /> Support Transmission
+                 </div>
+                 <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+           </div>
+         </>
+       )}
+
+       {!isEditing && (
+         <button 
+            onClick={() => auth.signOut()}
+            className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] font-black uppercase text-[10px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all flex items-center justify-center gap-3 sm:gap-4"
+          >
+            <LogOut size={18} strokeWidth={3} />
+            <span>TERMINATE SESSION</span>
+          </button>
+       )}
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32 font-lexend">
+    <div className="min-h-[100dvh] bg-slate-50 font-lexend flex flex-col overflow-x-hidden">
       {selectedMission && (
         <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />
       )}
 
-      <header className="bg-white border-b-[3px] sm:border-b-4 border-black p-3 sm:p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md">
+      <header className="bg-white border-b-[3px] sm:border-b-4 border-black p-3 sm:p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md shrink-0">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black text-[#ffde59] flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_#834bf1] rotate-3 shrink-0">
             <Terminal size={18} strokeWidth={3} />
@@ -415,7 +570,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </header>
 
-      <main className="p-4 sm:p-6 max-w-2xl mx-auto">
+      <main 
+        className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full pb-44 overflow-y-auto" 
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {activeTab === 'hub' && renderHub()}
         {activeTab === 'card' && renderCard()}
         {activeTab === 'missions' && renderMissions()}
@@ -423,7 +581,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         {activeTab === 'sync' && renderSync()}
       </main>
 
-      <nav className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-[92%] sm:w-[95%] max-w-md bg-black border-[3px] sm:border-4 border-white p-1 sm:p-2 flex items-center justify-between shadow-[0_15px_40px_rgba(0,0,0,0.4)] sm:shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
+      <nav className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[92%] sm:w-[95%] max-w-md bg-black border-[3px] sm:border-4 border-white p-1 sm:p-2 pb-[calc(4px+env(safe-area-inset-bottom))] flex items-center justify-between shadow-[0_15px_40px_rgba(0,0,0,0.4)] sm:shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
         {[
           { id: 'hub', icon: Home, label: 'HUB' },
           { id: 'card', icon: CreditCard, label: 'CARD' },
@@ -439,7 +597,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         ))}
       </nav>
       
-      <footer className="text-center pt-8 sm:pt-10 pb-24 sm:pb-20 opacity-10">
+      <footer className="text-center pt-8 sm:pt-10 pb-44 sm:pb-40 opacity-10 shrink-0">
         <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.4em] sm:tracking-[0.6em] text-black">PRODUCTION_NODE_v4.5.0 • ENCRYPTED</p>
       </footer>
     </div>

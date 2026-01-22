@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/clients';
 import { 
   X, Wallet, Zap, Gift, CheckCircle, 
   TrendingUp, Clock, ShieldCheck, Plus, 
-  Minus, Loader2, Instagram, MapPin, AlertCircle, Ban, Image as ImageIcon, Type
+  Minus, Loader2, Instagram, MapPin, AlertCircle, Ban, Image as ImageIcon, Type, RotateCcw, Trash2
 } from 'lucide-react';
 import { Profile } from './AdminDashboard';
 
@@ -21,6 +22,7 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustDesc, setAdjustDesc] = useState('');
   const [adjustImage, setAdjustImage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchAgentIntel();
@@ -55,8 +57,6 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
     const amount = type === 'credit' ? Number(adjustAmount) : -Number(adjustAmount);
     
     try {
-      // Ensure parameter names match the SQL function and use 'user_id' instead of 'user_uid' if the RPC or table requires it.
-      // Based on the bug report, the database uses user_id.
       const { error } = await supabase.rpc('adjust_user_balance', {
         target_uid: agent.firebase_uid,
         amount_delta: amount,
@@ -75,6 +75,49 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
       alert("Terminal Sync Failure: " + err.message);
     } finally {
       setAdjusting(false);
+    }
+  };
+
+  const handleResetUserWallet = async () => {
+    if (!supabase) return;
+    if (!window.confirm(`Are you sure you want to RESET ${agent.display_name}'s wallet to 0 RC?`)) return;
+
+    setAdjusting(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ reelcoins: 0 })
+        .eq('id', agent.id);
+
+      if (error) throw error;
+      alert("USER_WALLET_RESET: Balance cleared.");
+      onClose(); // Force refresh via parent
+    } catch (err: any) {
+      alert("Reset Error: " + err.message);
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
+  const handleDeleteAgent = async () => {
+    if (!supabase) return;
+    if (!window.confirm("🚨 WARNING: This will permanently delete this agent node from the system. This action is irreversible.")) return;
+
+    setIsDeleting(true);
+    try {
+      // Deleting profile directly
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', agent.id);
+
+      if (error) throw error;
+      alert("NODE_PURGED: Personnel record deleted successfully.");
+      onClose();
+    } catch (err: any) {
+      alert("Purge Failure: " + err.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -149,7 +192,16 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
              <h4 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2 italic">
                <Wallet size={16} /> Asset Ledger
              </h4>
-             <span className="text-xl font-black text-emerald-600 italic font-display">{agent.reelcoins} RC</span>
+             <div className="flex items-center gap-4">
+               <button 
+                 onClick={handleResetUserWallet}
+                 className="flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-600 border-[2px] border-rose-200 text-[8px] font-black uppercase tracking-widest hover:bg-rose-200 transition-all"
+               >
+                 <RotateCcw size={10} strokeWidth={4} />
+                 Reset Wallet
+               </button>
+               <span className="text-xl font-black text-emerald-600 italic font-display">{agent.reelcoins} RC</span>
+             </div>
           </div>
           
           <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
@@ -227,26 +279,36 @@ export const AgentDetailView: React.FC<AgentDetailViewProps> = ({ agent, onClose
           </div>
         </div>
 
-        <button 
-          onClick={handleToggleStatus}
-          disabled={statusUpdating}
-          className={`w-full py-6 border-[4px] border-black font-black uppercase text-sm tracking-[0.4em] italic shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-[0.98] disabled:opacity-50
-            ${isApproved 
-              ? 'bg-white text-rose-600 hover:bg-rose-50' 
-              : 'bg-[#39ff14] text-black hover:bg-[#32e012]'
-            }`}
-        >
-          {statusUpdating ? (
-            <Loader2 className="animate-spin" size={24} />
-          ) : (
-            <>
-              {isApproved ? <Ban size={20} /> : <ShieldCheck size={20} />}
-              <span>{isApproved ? 'SUSPEND NODE ACCESS' : 'VERIFY & ACTIVATE NODE'}</span>
-            </>
-          )}
-        </button>
+        <div className="space-y-4">
+          <button 
+            onClick={handleToggleStatus}
+            disabled={statusUpdating}
+            className={`w-full py-6 border-[4px] border-black font-black uppercase text-sm tracking-[0.4em] italic shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-[0.98] disabled:opacity-50
+              ${isApproved 
+                ? 'bg-white text-rose-600 hover:bg-rose-50' 
+                : 'bg-[#39ff14] text-black hover:bg-[#32e012]'
+              }`}
+          >
+            {statusUpdating ? (
+              <Loader2 className="animate-spin" size={24} />
+            ) : (
+              <>
+                {isApproved ? <Ban size={20} /> : <ShieldCheck size={20} />}
+                <span>{isApproved ? 'SUSPEND NODE ACCESS' : 'VERIFY & ACTIVATE NODE'}</span>
+              </>
+            )}
+          </button>
 
-        <p className="mt-6 text-center text-[8px] font-black uppercase tracking-[0.5em] text-black/20 italic">
+          <button 
+            onClick={handleDeleteAgent}
+            disabled={isDeleting}
+            className="w-full py-5 bg-rose-600 text-white border-[4px] border-black font-black uppercase text-xs tracking-[0.4em] italic shadow-[8px_8px_0px_0px_#000] hover:bg-rose-700 hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-[0.98] disabled:opacity-50"
+          >
+            {isDeleting ? <Loader2 className="animate-spin" /> : <><Trash2 size={18} strokeWidth={3} /> DELETE AGENT NODE</>}
+          </button>
+        </div>
+
+        <p className="mt-8 text-center text-[8px] font-black uppercase tracking-[0.5em] text-black/20 italic">
           Identity Sync Protocol • Reelywood Terminal v4.2.1
         </p>
       </div>

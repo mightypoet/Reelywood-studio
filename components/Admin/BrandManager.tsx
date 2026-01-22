@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload, Check } from 'lucide-react';
+import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload, Check, RotateCcw } from 'lucide-react';
 
 export const BrandManager = () => {
   const [loading, setLoading] = useState(false);
@@ -174,6 +174,27 @@ export const BrandManager = () => {
     }
   };
 
+  const handleResetBalance = async (e: React.MouseEvent, brand: any) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to RESET ${brand.name}'s wallet to 0 RC?`)) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase!
+        .from('partner_brands')
+        .update({ reelcoins: 0 })
+        .eq('id', brand.id);
+      
+      if (error) throw error;
+      alert("WALLET_RESET_SUCCESSFUL: Ledger synchronized to 0.");
+      fetchBrands();
+    } catch (err: any) {
+      alert("Reset Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCloseModal = () => {
     setSelectedBrand(null);
     setIsCreatingNew(false);
@@ -315,12 +336,20 @@ export const BrandManager = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
                     <h4 className="font-black text-xl uppercase italic leading-none truncate mb-2 text-black">{brand.name}</h4>
-                    <button 
-                      onClick={(e) => handleFundBrand(e, brand)}
-                      className="p-1.5 bg-[#ffde59] border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
-                    >
-                      <Wallet size={14} strokeWidth={3} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={(e) => handleFundBrand(e, brand)}
+                        className="p-1.5 bg-[#ffde59] border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                      >
+                        <Wallet size={14} strokeWidth={3} />
+                      </button>
+                      <button 
+                        onClick={(e) => handleResetBalance(e, brand)}
+                        className="p-1.5 bg-rose-500 text-white border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                      >
+                        <RotateCcw size={14} strokeWidth={3} />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest truncate flex items-center gap-2">
                     <Wallet size={10} /> {brand.reelcoins?.toLocaleString() || 0} RC
