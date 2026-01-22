@@ -81,18 +81,18 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             <div className="space-y-8 md:space-y-12">
               {/* Step 1 */}
               <div className="flex items-center gap-4 md:gap-8 group/step">
-                <div className="w-14 h-14 md:w-20 md:h-20 bg-white border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-6 shrink-0">
+                <div className="w-14 h-14 md:w-20 md:h-20 bg-white border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-6 shrink-0 transition-transform group-hover/step:rotate-0">
                   <Gamepad2 className="w-7 h-7 md:w-10 md:h-10" />
                 </div>
                 <div>
                   <p className="text-[8px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] opacity-60 text-black mb-1">MISSION: SUMMER DROP</p>
-                  <button className="bg-black text-white px-3 py-1 text-[8px] md:text-sm font-black uppercase border-[2px] md:border-[4px] border-white">PRESS START</button>
+                  <button className="bg-black text-white px-3 py-1 text-[8px] md:text-sm font-black uppercase border-[2px] md:border-[4px] border-white transition-colors hover:bg-white hover:text-black">PRESS START</button>
                 </div>
               </div>
 
               {/* Step 2 */}
               <div className="flex items-center gap-4 md:gap-8 group/step">
-                <div className="w-14 h-14 md:w-20 md:h-20 bg-[#ffde59] border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] -rotate-6 shrink-0">
+                <div className="w-14 h-14 md:w-20 md:h-20 bg-[#ffde59] border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] -rotate-6 shrink-0 transition-transform group-hover/step:rotate-0">
                   <Smartphone className="w-7 h-7 md:w-10 md:h-10" />
                 </div>
                 <p className="text-base md:text-3xl font-black uppercase italic leading-[0.9] text-black">DEPLOY CONTENT <br className="hidden md:block" /> + CARD LINK</p>
@@ -125,7 +125,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
         <div className="bg-black w-full md:w-48 lg:w-72 flex items-center justify-center relative py-12 md:py-0 overflow-visible z-30 border-y-[4px] md:border-y-0 border-black">
           <div className="absolute inset-0 bg-[#834bf1] opacity-5 animate-pulse md:hidden"></div>
           
-          <div className="relative group scale-75 sm:scale-90 md:scale-100">
+          <div className="relative group scale-75 sm:scale-90 md:scale-100 transition-transform hover:scale-105">
             <div className="w-48 sm:w-72 h-64 sm:h-[450px] bg-black border-[6px] md:border-[10px] border-black shadow-[15px_15px_0px_0px_#834bf1] md:shadow-[25px_25px_0px_0px_#834bf1] flex flex-col">
               <div className="flex-1 bg-[#834bf1] m-2 sm:m-4 border-[4px] md:border-[6px] border-black p-4 sm:p-6 flex flex-col justify-between overflow-hidden">
                 <div className="w-full h-2 bg-black/30 rounded-full"></div>
@@ -161,7 +161,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             <div className="space-y-8 md:space-y-12 w-full max-w-lg flex flex-col items-end">
               {/* Step 1 */}
               <div className="flex items-center gap-4 md:gap-8 group/step flex-row-reverse">
-                <div className="w-14 h-14 md:w-20 md:h-20 bg-white border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-3 shrink-0">
+                <div className="w-14 h-14 md:w-20 md:h-20 bg-white border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-3 shrink-0 transition-transform group-hover/step:rotate-0">
                   <div className="w-6 h-1 bg-black rotate-90 rounded-full"></div>
                 </div>
                 <div className="text-right">
@@ -172,7 +172,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
 
               {/* Step 2 */}
               <div className="flex items-center gap-4 md:gap-8 group/step flex-row-reverse w-full">
-                <div className="w-14 h-14 md:w-20 md:h-20 bg-[#ffde59] border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-6 shrink-0">
+                <div className="w-14 h-14 md:w-20 md:h-20 bg-[#ffde59] border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-6 shrink-0 transition-transform group-hover/step:rotate-0">
                   <Target className="w-7 h-7 md:w-10 md:h-10" />
                 </div>
                 <div className="flex-1 bg-black border-[3px] md:border-[5px] border-black p-3 sm:p-6 text-center relative overflow-hidden h-16 sm:h-24 flex flex-col justify-center">
@@ -183,7 +183,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
 
               {/* Step 3 (High Score) */}
               <div className="relative pt-2 w-full">
-                <div className="bg-black text-white border-[4px] md:border-[6px] border-black p-4 sm:p-8 shadow-[8px_8px_0px_0px_#3b82f6] md:shadow-[15px_15px_0px_0px_#3b82f6] relative overflow-hidden">
+                <div className="bg-black text-white border-[4px] md:border-[6px] border-black p-4 sm:p-8 shadow-[8px_8px_0px_0px_#3b82f6] md:shadow-[15px_15px_0px_0px_#3b82f6] relative overflow-hidden transition-transform hover:scale-[1.02]">
                   <div className="flex justify-between items-center mb-3 md:mb-6 border-b-2 border-white/10 pb-2 md:pb-4">
                     <span className="font-black text-[8px] md:text-xs uppercase tracking-[0.2em]">HIGH SCORE LEADERBOARD</span>
                     <Trophy className="text-[#ec4899] shrink-0 w-5 h-5 md:w-8 md:h-8" />
@@ -261,16 +261,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
         .animate-flicker {
           animation: flicker 2s infinite;
         }
-        @media (hover: hover) {
-          .group:hover {
-            animation: jitter 0.1s infinite;
-          }
-        }
-        @keyframes jitter {
-          0% { transform: translate(0,0); }
-          50% { transform: translate(-2px, 1px); }
-          100% { transform: translate(1px, -1px); }
-        }
+        
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
