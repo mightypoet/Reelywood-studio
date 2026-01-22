@@ -55,7 +55,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
           
           <div className="pt-4 md:pt-6">
             <div className="inline-flex items-center space-x-2 md:space-x-4 bg-black text-white px-4 md:px-8 py-3 md:py-4 border-[3px] md:border-[4px] border-black shadow-[4px_4px_0px_0px_#834bf1] md:shadow-[8px_8px_0px_0px_#834bf1]">
-               <Gamepad2 className="animate-bounce shrink-0" size={20} md:size={28} />
+               <Gamepad2 className="animate-bounce shrink-0 w-5 h-5 md:w-7 md:h-7" />
                <p className="text-[10px] md:text-2xl font-black uppercase tracking-widest italic leading-none">
                  WELCOME TO THE CREATOR COMMERCE ARCADE
                </p>
@@ -82,7 +82,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
               {/* Step 1 */}
               <div className="flex items-center gap-4 md:gap-8 group/step">
                 <div className="w-14 h-14 md:w-20 md:h-20 bg-white border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-6 shrink-0">
-                  <Gamepad2 size={28} md:size={40} />
+                  <Gamepad2 className="w-7 h-7 md:w-10 md:h-10" />
                 </div>
                 <div>
                   <p className="text-[8px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] opacity-60 text-black mb-1">MISSION: SUMMER DROP</p>
@@ -93,7 +93,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
               {/* Step 2 */}
               <div className="flex items-center gap-4 md:gap-8 group/step">
                 <div className="w-14 h-14 md:w-20 md:h-20 bg-[#ffde59] border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] -rotate-6 shrink-0">
-                  <Smartphone size={28} md:size={40} />
+                  <Smartphone className="w-7 h-7 md:w-10 md:h-10" />
                 </div>
                 <p className="text-base md:text-3xl font-black uppercase italic leading-[0.9] text-black">DEPLOY CONTENT <br className="hidden md:block" /> + CARD LINK</p>
               </div>
@@ -103,7 +103,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
                 <div className="bg-white border-[4px] md:border-[6px] border-black p-4 md:p-8 shadow-[8px_8px_0px_0px_#000] md:shadow-[15px_15px_0px_0px_#000] relative overflow-hidden">
                   <div className="flex justify-between items-center mb-4 md:mb-6">
                     <span className="font-black text-[9px] md:text-sm uppercase tracking-widest text-black">LOOT DROP ACTIVE</span>
-                    <Coins className="text-[#22c55e] animate-bounce shrink-0" size={20} md:size={32} />
+                    <Coins className="text-[#22c55e] animate-bounce shrink-0 w-5 h-5 md:w-8 md:h-8" />
                   </div>
                   <div className="flex items-baseline gap-2 md:gap-3">
                     <span className="text-4xl md:text-7xl font-black text-black italic font-display">+{rcCount.toLocaleString()}</span>
@@ -130,7 +130,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
               <div className="flex-1 bg-[#834bf1] m-2 sm:m-4 border-[4px] md:border-[6px] border-black p-4 sm:p-6 flex flex-col justify-between overflow-hidden">
                 <div className="w-full h-2 bg-black/30 rounded-full"></div>
                 <div className="text-center py-4 sm:py-10">
-                  <Monitor className="mx-auto text-white mb-2 sm:mb-4 animate-pulse" size={32} md:size={64} />
+                  <Monitor className="mx-auto text-white mb-2 sm:mb-4 animate-pulse w-8 h-8 md:w-16 md:h-16" />
                   <p className="text-[8px] md:text-[11px] font-black text-white uppercase tracking-[0.2em] leading-tight">
                     THE TRANSACTION <br/> ENGINE
                   </p>
@@ -173,7 +173,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
               {/* Step 2 */}
               <div className="flex items-center gap-4 md:gap-8 group/step flex-row-reverse w-full">
                 <div className="w-14 h-14 md:w-20 md:h-20 bg-[#ffde59] border-[4px] md:border-[6px] border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-6 shrink-0">
-                  <Target size={28} md:size={40} />
+                  <Target className="w-7 h-7 md:w-10 md:h-10" />
                 </div>
                 <div className="flex-1 bg-black border-[3px] md:border-[5px] border-black p-3 sm:p-6 text-center relative overflow-hidden h-16 sm:h-24 flex flex-col justify-center">
                    <p className="text-[8px] md:text-sm font-black text-[#3b82f6] uppercase tracking-[0.1em]">REAL-TIME SALES TRACKING</p>
@@ -186,7 +186,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
                 <div className="bg-black text-white border-[4px] md:border-[6px] border-black p-4 sm:p-8 shadow-[8px_8px_0px_0px_#3b82f6] md:shadow-[15px_15px_0px_0px_#3b82f6] relative overflow-hidden">
                   <div className="flex justify-between items-center mb-3 md:mb-6 border-b-2 border-white/10 pb-2 md:pb-4">
                     <span className="font-black text-[8px] md:text-xs uppercase tracking-[0.2em]">HIGH SCORE LEADERBOARD</span>
-                    <Trophy className="text-[#ec4899] shrink-0" size={20} md:size={32} />
+                    <Trophy className="text-[#ec4899] shrink-0 w-5 h-5 md:w-8 md:h-8" />
                   </div>
                   <div className="space-y-2 md:space-y-4">
                     <div className="flex justify-between items-center text-xs md:text-lg font-black italic">
@@ -227,7 +227,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             className="w-full md:w-auto group relative bg-[#834bf1] text-white px-8 md:px-14 py-6 md:py-10 border-[4px] md:border-[8px] border-black shadow-[6px_6px_0px_0px_#ffde59] md:shadow-[15px_15px_0px_0px_#ffde59] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all active:scale-95"
           >
             <span className="text-base sm:text-2xl md:text-4xl font-black uppercase font-display italic flex items-center justify-center gap-3 md:gap-6">
-              CREATORS: JOIN <ArrowRight size={24} md:size={48} strokeWidth={5}/>
+              CREATORS: JOIN <ArrowRight className="w-6 h-6 md:w-12 md:h-12" strokeWidth={5}/>
             </span>
           </button>
 
@@ -247,7 +247,7 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
             className="w-full md:w-auto group relative bg-[#3b82f6] text-white px-8 md:px-14 py-6 md:py-10 border-[4px] md:border-[8px] border-black shadow-[6px_6px_0px_0px_#834bf1] md:shadow-[15px_15px_0px_0px_#834bf1] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all active:scale-95"
           >
             <span className="text-base sm:text-2xl md:text-4xl font-black uppercase font-display italic flex items-center justify-center gap-3 md:gap-6">
-              BRANDS: START <Zap size={24} md:size={48} fill="white" />
+              BRANDS: START <Zap className="w-6 h-6 md:w-12 md:h-12" fill="white" />
             </span>
           </button>
         </div>
