@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload, Check, RotateCcw } from 'lucide-react';
+import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload, Check, RotateCcw, Link as LinkIcon } from 'lucide-react';
 
 export const BrandManager = () => {
   const [loading, setLoading] = useState(false);
@@ -15,6 +15,10 @@ export const BrandManager = () => {
   const [brandMissions, setBrandMissions] = useState<any[]>([]);
   const [brandVouchers, setBrandVouchers] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Asset method toggles
+  const [logoMethod, setLogoMethod] = useState<'file' | 'link'>('file');
+  const [coverMethod, setCoverMethod] = useState<'file' | 'link'>('link');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -107,14 +111,15 @@ export const BrandManager = () => {
     fetchPendingMissions();
   }, []);
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logo_url' | 'cover_image_url') => {
     const file = e.target.files?.[0];
     if (!file || !supabase) return;
 
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `brands/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const folder = field === 'logo_url' ? 'logos' : 'covers';
+      const fileName = `brands/${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       
       const { data, error: uploadError } = await supabase.storage
         .from('brand-assets')
@@ -126,9 +131,9 @@ export const BrandManager = () => {
         .from('brand-assets')
         .getPublicUrl(fileName);
 
-      setFormData(prev => ({ ...prev, logo_url: publicUrl }));
+      setFormData(prev => ({ ...prev, [field]: publicUrl }));
     } catch (error: any) {
-      alert("Logo Upload Failed: " + error.message);
+      alert("Asset Upload Failed: " + error.message);
     } finally {
       setUploading(false);
     }
@@ -485,9 +490,9 @@ export const BrandManager = () => {
               )}
 
               {activeTab === 'settings' && (
-                <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in duration-300">
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-12 animate-in fade-in duration-300">
+                  <div className="grid md:grid-cols-2 gap-10">
+                    <div className="space-y-8">
                       <div>
                         <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Brand Identity Name</label>
                         <input type="text" className={inputStyle} placeholder="Identity Node Name" 
@@ -510,46 +515,96 @@ export const BrandManager = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Logo Identity</label>
-                          <div className="flex gap-2">
-                             <label className="flex-1 cursor-pointer">
-                               <div className={`flex items-center justify-center gap-3 ${inputStyle} bg-slate-50 border-dashed border-[#834bf1] hover:bg-[#834bf1]/10`}>
-                                 {uploading ? <Loader2 size={16} className="animate-spin text-[#834bf1]" /> : <Upload size={16} className="text-[#834bf1]" />}
-                                 <span className="text-[10px] uppercase tracking-widest text-black/60">{uploading ? 'Processing...' : 'Upload Logo'}</span>
-                                 <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={uploading} />
-                               </div>
-                             </label>
-                             {formData.logo_url && (
-                               <div className="w-14 h-14 border-[3px] border-black bg-white flex items-center justify-center p-1 shrink-0">
-                                 <img src={formData.logo_url} className="w-full h-full object-contain" alt="Logo Preview" />
-                               </div>
-                             )}
+                      {/* LOGO MANAGEMENT */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="block font-black text-[10px] uppercase tracking-[0.3em] text-black/40 italic">Logo Identity</label>
+                          <div className="flex bg-slate-100 border-2 border-black p-0.5">
+                            <button type="button" onClick={() => setLogoMethod('file')} className={`px-2 py-1 text-[8px] font-black uppercase transition-all ${logoMethod === 'file' ? 'bg-black text-white' : 'text-black/40'}`}>FILE</button>
+                            <button type="button" onClick={() => setLogoMethod('link')} className={`px-2 py-1 text-[8px] font-black uppercase transition-all ${logoMethod === 'link' ? 'bg-black text-white' : 'text-black/40'}`}>URL</button>
                           </div>
                         </div>
-                        <div>
-                          <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Cover Asset URL</label>
-                          <input type="url" className={inputStyle} placeholder="https://..." 
-                             value={formData.cover_image_url} onChange={e => setFormData({...formData, cover_image_url: e.target.value})} required />
+                        
+                        <div className="flex gap-4 items-start">
+                          <div className="flex-1">
+                            {logoMethod === 'file' ? (
+                              <label className="cursor-pointer">
+                                <div className={`flex items-center justify-center gap-3 ${inputStyle} bg-slate-50 border-dashed border-[#834bf1] hover:bg-[#834bf1]/10`}>
+                                  {uploading ? <Loader2 size={16} className="animate-spin text-[#834bf1]" /> : <Upload size={16} className="text-[#834bf1]" />}
+                                  <span className="text-[10px] uppercase tracking-widest text-black/60">{uploading ? 'Processing...' : 'Upload Logo'}</span>
+                                  <input type="file" className="hidden" accept="image/*" onChange={e => handleAssetUpload(e, 'logo_url')} disabled={uploading} />
+                                </div>
+                              </label>
+                            ) : (
+                              <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-black/40">
+                                  <LinkIcon size={14} />
+                                </div>
+                                <input type="url" className={`${inputStyle} pl-12`} placeholder="https://..." 
+                                  value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} />
+                              </div>
+                            )}
+                          </div>
+                          {formData.logo_url && (
+                            <div className="w-16 h-16 border-[3px] border-black bg-white flex items-center justify-center p-2 shrink-0 shadow-[4px_4px_0px_0px_#000]">
+                              <img src={formData.logo_url} className="w-full h-full object-contain" alt="Logo Preview" />
+                            </div>
+                          )}
                         </div>
                       </div>
+
+                      {/* COVER IMAGE MANAGEMENT */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="block font-black text-[10px] uppercase tracking-[0.3em] text-black/40 italic">Cover Asset</label>
+                          <div className="flex bg-slate-100 border-2 border-black p-0.5">
+                            <button type="button" onClick={() => setCoverMethod('file')} className={`px-2 py-1 text-[8px] font-black uppercase transition-all ${coverMethod === 'file' ? 'bg-black text-white' : 'text-black/40'}`}>FILE</button>
+                            <button type="button" onClick={() => setCoverMethod('link')} className={`px-2 py-1 text-[8px] font-black uppercase transition-all ${coverMethod === 'link' ? 'bg-black text-white' : 'text-black/40'}`}>URL</button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                           {coverMethod === 'file' ? (
+                              <label className="cursor-pointer block w-full">
+                                <div className={`flex items-center justify-center gap-3 ${inputStyle} bg-slate-50 border-dashed border-black/20 hover:bg-black/5`}>
+                                  {uploading ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
+                                  <span className="text-[10px] uppercase tracking-widest text-black/60">{uploading ? 'Processing...' : 'Upload Cover Photo'}</span>
+                                  <input type="file" className="hidden" accept="image/*" onChange={e => handleAssetUpload(e, 'cover_image_url')} disabled={uploading} />
+                                </div>
+                              </label>
+                            ) : (
+                              <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-black/40">
+                                  <LinkIcon size={14} />
+                                </div>
+                                <input type="url" className={`${inputStyle} pl-12`} placeholder="https://..." 
+                                  value={formData.cover_image_url} onChange={e => setFormData({...formData, cover_image_url: e.target.value})} required />
+                              </div>
+                            )}
+                            {formData.cover_image_url && (
+                              <div className="w-full h-32 border-[3px] border-black bg-slate-100 overflow-hidden shadow-[4px_4px_0px_0px_#000]">
+                                <img src={formData.cover_image_url} className="w-full h-full object-cover" alt="Cover Preview" />
+                              </div>
+                            )}
+                        </div>
+                      </div>
+
                       <div>
                          <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Physical Location Text</label>
                          <input type="text" className={inputStyle} placeholder="City, Sector..." 
                             value={formData.location_text} onChange={e => setFormData({...formData, location_text: e.target.value})} required />
                       </div>
                     </div>
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       <div>
                         <label className="block font-black text-[10px] uppercase tracking-[0.3em] mb-3 text-black/40 italic">Mission Brief Description</label>
-                        <textarea className={`${inputStyle} h-[320px] resize-none`} rows={8} placeholder="Define brand DNA and ecosystem rules..."
+                        <textarea className={`${inputStyle} h-[450px] resize-none`} rows={8} placeholder="Define brand DNA and ecosystem rules..."
                            value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} required ></textarea>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-4 pt-6 border-t-[4px] border-black">
+                  <div className="flex gap-4 pt-8 border-t-[4px] border-black">
                     <button type="submit" disabled={loading || uploading} className="flex-1 py-6 bg-[#834bf1] text-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] font-black text-sm uppercase tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 disabled:opacity-50">
                        {loading ? <Loader2 className="animate-spin" /> : <Save size={20} strokeWidth={3} />} 
                        <span>{selectedBrand ? "Sync Node Data" : "Initialize New Alliance"}</span>
