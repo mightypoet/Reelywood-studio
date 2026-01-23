@@ -14,6 +14,8 @@ import {
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
 import { useSoundNotification } from '../../hooks/useSoundNotification';
+import { RCNotificationModal } from '../RCNotificationModal';
+import { useRCBalanceWatcher } from '../../hooks/useRCBalanceWatcher';
 
 interface DashboardViewProps {
   onBack: () => void;
@@ -35,7 +37,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
   
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
   // Edit Profile States
@@ -51,6 +52,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const { playSound } = useSoundNotification();
   const prevMissionCount = useRef(0);
   const prevRewardCount = useRef(0);
+
+  // Balance Watcher Hook
+  const { rewardAmount, clearReward } = useRCBalanceWatcher({
+    currentBalance: profile?.reelcoins,
+    storageKey: 'user_last_rc_balance'
+  });
 
   const fetchOperationalGrid = useCallback(async (user: FirebaseUser) => {
     if (!supabase) return;
@@ -98,14 +105,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (sRes.data) setUserSubmissions(sRes.data);
       if (redRes.data) setMyRedemptions(redRes.data.map((r: any) => String(r.reward_id)));
 
-      // Trigger sound if items increased (after initial load)
       if (prevMissionCount.current > 0 && currentMissions.length > prevMissionCount.current) {
         playSound();
       } else if (prevRewardCount.current > 0 && currentRewards.length > prevRewardCount.current) {
         playSound();
       }
 
-      // Update refs for next fetch
       prevMissionCount.current = currentMissions.length;
       prevRewardCount.current = currentRewards.length;
 
@@ -319,39 +324,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             return (
               <div 
                 key={m.id} 
-                className={`border-[3px] sm:border-[4px] p-5 sm:p-6 shadow-[4px_4px_0px_0px] sm:shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col transition-all duration-300 ${
+                className={`border-[4px] p-5 sm:p-6 shadow-[4px_4px_0px_0px] sm:shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col transition-all duration-300 ${
                   isApprovedSub 
-                    ? 'bg-[#39ff14] border-[#00a300] shadow-[#00a300]' 
+                    ? 'bg-[#4ade80] border-black shadow-black' 
                     : isPendingSub 
-                      ? 'bg-[#ffde59] border-[#d4a017] shadow-[#d4a017]' 
+                      ? 'bg-[#ffde59] border-black shadow-black' 
                       : 'bg-white border-black shadow-black'
                 }`}
               >
-                {/* VERIFIED STAMP */}
                 {isApprovedSub && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-20 pointer-events-none">
-                    <div className="border-[6px] border-[#006400] px-4 py-2 rounded-xl flex items-center gap-2 bg-[#39ff14]/80 backdrop-blur-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                      <CheckCircle2 size={24} className="text-[#006400]" strokeWidth={4} />
-                      <span className="font-display font-black text-2xl text-[#006400] uppercase italic tracking-tighter">VERIFIED</span>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80">
+                    <div className="border-[5px] border-black px-6 py-2 rounded-none flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
+                      <span className="font-display font-black text-3xl sm:text-4xl text-black uppercase tracking-tighter italic">MISSION COMPLETE</span>
                     </div>
                   </div>
                 )}
 
-                <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className={`flex justify-between items-start mb-4 relative z-10 ${isApprovedSub ? 'opacity-40' : ''}`}>
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">
                     {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} />}
                   </div>
-                  <div className={`px-2 py-1 font-black text-[7px] sm:text-[9px] border-[2px] shadow-[2px_2px_0px_0px_#000] ${
-                    isApprovedSub ? 'bg-black text-[#39ff14] border-black' : isPendingSub ? 'bg-black text-[#ffde59] border-black' : 'bg-black text-[#ffde59] border-black'
-                  }`}>
+                  <div className={`px-2 py-1 font-black text-[7px] sm:text-[9px] border-[2px] shadow-[2px_2px_0px_0px_#000] bg-black text-white border-black`}>
                     {isApprovedSub ? 'VERIFIED_ENTRY' : isPendingSub ? 'QC_IN_PROGRESS' : `+${m.reward_amount} RC`}
                   </div>
                 </div>
                 
-                <h4 className={`text-base sm:text-lg font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'line-through decoration-4 decoration-black/20' : ''}`}>
+                <h4 className={`text-base sm:text-lg font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'opacity-30 line-through decoration-[3px] decoration-black' : ''}`}>
                   {m.title}
                 </h4>
-                <p className={`text-[9px] sm:text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-30' : ''}`}>
+                <p className={`text-[9px] sm:text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-20' : ''}`}>
                   {m.description}
                 </p>
                 
@@ -541,6 +542,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 font-lexend flex flex-col overflow-x-hidden">
+      {rewardAmount !== null && (
+        <RCNotificationModal amount={rewardAmount} onClose={clearReward} />
+      )}
+      
       {selectedMission && (
         <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />
       )}

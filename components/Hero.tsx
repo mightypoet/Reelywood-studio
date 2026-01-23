@@ -43,9 +43,6 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
 
       {/* 1. MASSIVE HEADLINE - Fluid sizing */}
       <div className="w-full px-4 py-12 md:py-24 text-center border-b-[8px] border-black bg-[#ffde59] relative z-10">
-        {/* Blue Decorative Box from Screenshot */}
-        <div className="absolute left-8 top-1/2 -translate-y-1/2 w-16 h-16 md:w-24 md:h-24 border-[3px] border-[#3b82f6] opacity-60 hidden md:block"></div>
-        
         <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
           <div className="space-y-1">
             <h1 className="text-5xl sm:text-7xl lg:text-[110px] font-black text-black leading-[0.8] tracking-tighter font-display uppercase italic">

@@ -31,6 +31,8 @@ import {
   LayoutGrid,
   Send
 } from 'lucide-react';
+import { RCNotificationModal } from '../RCNotificationModal';
+import { useRCBalanceWatcher } from '../../hooks/useRCBalanceWatcher';
 
 interface BrandDashboardProps {
   onBack?: () => void;
@@ -50,19 +52,17 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
 
+  // Balance Watcher Hook
+  const { rewardAmount, clearReward } = useRCBalanceWatcher({
+    currentBalance: brand?.reelcoins,
+    storageKey: 'brand_last_rc_balance'
+  });
+
   const [requestForm, setRequestForm] = useState({
     title: '',
     description: '',
     reward_amount: '',
     requirements: ''
-  });
-
-  const [stats, setStats] = useState({
-    activeMissionsCount: 0,
-    totalMissionsCount: 0,
-    rcDistributed: 0,
-    engagement: 0,
-    mediaValue: "₹0"
   });
 
   const handleLogout = async () => {
@@ -75,8 +75,6 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     if (!supabase || !brand) return;
     
     setIsRequesting(true);
-    console.log("SYNC_LOG: Initiating mission request for brand:", brand.id);
-
     try {
       const payload = {
         brand_id: brand.id,
@@ -86,25 +84,19 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         status: 'pending_approval'
       };
 
-      const { data, error } = await supabase.from('missions').insert([payload]).select();
+      const { error } = await supabase.from('missions').insert([payload]);
 
-      if (error) {
-        console.error("SYNC_ERROR_DATABASE:", error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log("SYNC_SUCCESS:", data);
       alert("Mission Requested! Waiting for Admin Approval.");
       setRequestModalOpen(false);
       setRequestForm({ title: '', description: '', reward_amount: '', requirements: '' });
       
-      // Refresh current data
       if (auth.currentUser?.email) {
         await fetchBrandData(auth.currentUser.email);
       }
     } catch (err: any) {
-      console.error("SYNC_CRITICAL_FAILURE:", err);
-      alert("Failed: " + (err.message || "Unknown transmission error. Check Console."));
+      alert("Failed: " + (err.message || "Unknown transmission error."));
     } finally {
       setIsRequesting(false);
     }
@@ -367,6 +359,10 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] pb-32 font-lexend">
+      {rewardAmount !== null && (
+        <RCNotificationModal amount={rewardAmount} onClose={clearReward} />
+      )}
+
       {/* FAB Button */}
       {activeTab === 'campaigns' && (
         <button 

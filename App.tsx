@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/firebase';
 import { supabase } from './lib/clients';
@@ -16,17 +16,27 @@ import { CreatorVerse } from './components/CreatorVerse';
 import { Engagement } from './components/Engagement';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
-import { AuthView } from './components/AuthView';
 import { Trust } from './components/Trust';
 import { ScrollToTop } from './components/ScrollToTop';
-import { CreatorCardView } from './components/CreatorCardView';
-import { AdminLogin } from './components/Admin/AdminLogin';
-import { AdminDashboard } from './components/Admin/AdminDashboard';
-import { BrandDashboard } from './components/Brands/BrandDashboard';
-import { AcademyView } from './components/AcademyView';
-import { DashboardView } from './components/Dashboard/DashboardView';
+import { Loader2 } from 'lucide-react';
+
+// Lazy load large dashboard components
+const DashboardView = lazy(() => import('./components/Dashboard/DashboardView').then(m => ({ default: m.DashboardView })));
+const BrandDashboard = lazy(() => import('./components/Brands/BrandDashboard').then(m => ({ default: m.BrandDashboard })));
+const AdminDashboard = lazy(() => import('./components/Admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AcademyView = lazy(() => import('./components/AcademyView').then(m => ({ default: m.AcademyView })));
+const AdminLogin = lazy(() => import('./components/Admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
+const AuthView = lazy(() => import('./components/AuthView').then(m => ({ default: m.AuthView })));
+const CreatorCardView = lazy(() => import('./components/CreatorCardView').then(m => ({ default: m.CreatorCardView })));
 
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
+
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-8">
+    <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
+    <p className="text-[12px] font-black uppercase tracking-[0.6em] text-black animate-pulse">Syncing Interface...</p>
+  </div>
+);
 
 const MainContent: React.FC = () => {
   const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'brand-dashboard' | 'academy' | 'dashboard'>('home');
@@ -45,11 +55,9 @@ const MainContent: React.FC = () => {
         try {
           if (!supabase) return;
           
-          // Determine Role for Intelligent Redirection
           if (ADMIN_EMAILS.includes(user.email || '')) {
              setView('admin-dashboard');
           } else {
-            // Check if user is a Partner Brand
             const { data: brandMatch } = await supabase
               .from('partner_brands')
               .select('id')
@@ -118,45 +126,49 @@ const MainContent: React.FC = () => {
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
-  if (view === 'auth') return <AuthView onBack={() => setView('home')} />;
-  if (view === 'creator-card') return <CreatorCardView onBack={() => setView('home')} />;
-  if (view === 'dashboard' && user) return <DashboardView onBack={() => setView('home')} />;
-  if (view === 'brand-dashboard' && user) return <BrandDashboard onBack={() => setView('home')} />;
-  if (view === 'academy') return <AcademyView onBack={() => setView('home')} />;
-  if (view === 'admin-login') return <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />;
-  if (view === 'admin-dashboard') return <AdminDashboard onLogout={() => setView('home')} />;
-
   return (
-    <div className={`min-h-screen transition-all duration-700 bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <Navbar 
-        onAuthClick={() => setView('auth')} 
-        onThemeToggle={toggleTheme} 
-        currentTheme={theme} 
-        onDashboardClick={() => {
-           if (user) {
-              if (ADMIN_EMAILS.includes(user.email || '')) setView('admin-dashboard');
-              else setView('dashboard');
-           } else {
-              setView('auth');
-           }
-        }} 
-      />
-      <main>
-        <Hero onAuthClick={() => setView('auth')} onDashboardClick={() => setView('dashboard')} />
-        <Trust />
-        <About onAcademyClick={() => setView('academy')} />
-        <UVP />
-        <BrandDNA />
-        <ExpertiseSection />
-        <GamifiedJourney />
-        <CreatorVerse onEnterUniverse={() => setView('dashboard')} />
-        <Engagement />
-        <Pricing />
-        <CTA />
-      </main>
-      <Footer onAdminClick={() => setView('admin-login')} />
-      <ScrollToTop />
-    </div>
+    <Suspense fallback={<LoadingFallback />}>
+      {view === 'auth' && <AuthView onBack={() => setView('home')} />}
+      {view === 'creator-card' && <CreatorCardView onBack={() => setView('home')} />}
+      {view === 'dashboard' && user && <DashboardView onBack={() => setView('home')} />}
+      {view === 'brand-dashboard' && user && <BrandDashboard onBack={() => setView('home')} />}
+      {view === 'academy' && <AcademyView onBack={() => setView('home')} />}
+      {view === 'admin-login' && <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />}
+      {view === 'admin-dashboard' && <AdminDashboard onLogout={() => setView('home')} />}
+      
+      {view === 'home' && (
+        <div className={`min-h-screen transition-all duration-700 bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+          <Navbar 
+            onAuthClick={() => setView('auth')} 
+            onThemeToggle={toggleTheme} 
+            currentTheme={theme} 
+            onDashboardClick={() => {
+               if (user) {
+                  if (ADMIN_EMAILS.includes(user.email || '')) setView('admin-dashboard');
+                  else setView('dashboard');
+               } else {
+                  setView('auth');
+               }
+            }} 
+          />
+          <main>
+            <Hero onAuthClick={() => setView('auth')} onDashboardClick={() => setView('dashboard')} />
+            <Trust />
+            <About onAcademyClick={() => setView('academy')} />
+            <UVP />
+            <BrandDNA />
+            <ExpertiseSection />
+            <GamifiedJourney />
+            <CreatorVerse onEnterUniverse={() => setView('dashboard')} />
+            <Engagement />
+            <Pricing />
+            <CTA />
+          </main>
+          <Footer onAdminClick={() => setView('admin-login')} />
+          <ScrollToTop />
+        </div>
+      )}
+    </Suspense>
   );
 };
 
