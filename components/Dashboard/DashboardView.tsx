@@ -134,20 +134,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   }, [fetchOperationalGrid]);
 
   const handleRedeem = async (reward: any) => {
-    const isAlreadyRedeemed = myRedemptions.includes(String(reward.id));
+    const isAlreadyRedeemed = myRedemptions.includes(String(reward.id)) || reward.status === 'redeemed';
     if (isAlreadyRedeemed) return alert("⛔ PROTOCOL DENIED: Reward already claimed.");
     if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
     if (!confirm(`Redeem "${reward.title}" for ${reward.cost} RC?`)) return;
     
     setIsProcessing(reward.id);
     try {
-      const { error } = await supabase!.rpc('redeem_reward', {
+      // 1. Transaction Handshake (RPC handles balance deduction and logging)
+      const { error: rpcError } = await supabase!.rpc('redeem_reward', {
         user_uid: currentUser?.uid,
         cost: reward.cost,
         item_title: reward.title
       });
-      if (error) throw error;
+      if (rpcError) throw rpcError;
+
+      // 2. Persistent Status Update (Save to DB)
+      const { error: updateError } = await supabase!
+        .from('rewards')
+        .update({ 
+          status: 'redeemed',
+          redeemed_at: new Date().toISOString() 
+        })
+        .eq('id', reward.id);
+      
+      if (updateError) throw updateError;
+      
+      // 3. Optimistic UI update
+      setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'redeemed' } : r));
+      setMyRedemptions(prev => [...prev, String(reward.id)]);
       setRevealedCodes(prev => ({ ...prev, [reward.id]: reward.code || 'RW-' + Math.random().toString(36).substr(2, 6).toUpperCase() }));
+      
       if (currentUser) fetchOperationalGrid(currentUser);
     } catch (err: any) {
       alert("Redemption Protocol Failure: " + err.message);
@@ -332,6 +349,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       : 'bg-white border-black shadow-black'
                 }`}
               >
+                {/* BLACK RUBBER STAMP OVERLAY */}
                 {isApprovedSub && (
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80">
                     <div className="border-[5px] border-black px-6 py-2 rounded-none flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
@@ -389,10 +407,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">VAULT_EMPTY</div>
         ) : (
           rewards.map(r => {
-            const isRedeemed = myRedemptions.includes(String(r.id)) || !!revealedCodes[r.id];
+            const isRedeemed = myRedemptions.includes(String(r.id)) || r.status === 'redeemed' || !!revealedCodes[r.id];
             const brand = r.partner_brands;
             return (
-              <div key={r.id} className={`border-[3px] sm:border-[4px] p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] sm:shadow-[5px_5px_0px_0px] relative overflow-hidden transition-all duration-300 ${isRedeemed ? 'bg-slate-200 border-slate-400 shadow-none' : 'bg-white border-black shadow-[#ffde59]'}`}>
+              <div key={r.id} className={`border-[3px] sm:border-[4px] p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] sm:shadow-[5px_5px_0px_0px] relative overflow-hidden transition-all duration-300 ${isRedeemed ? 'bg-slate-200 border-slate-400 shadow-none grayscale opacity-60 pointer-events-none select-none' : 'bg-white border-black shadow-[#ffde59]'}`}>
+                {/* REDEEMED RUBBER STAMP */}
+                {isRedeemed && (
+                  <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                    <div className="border-[6px] border-red-600 px-6 py-2 text-3xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 shadow-sm font-display italic" style={{ mixBlendMode: 'multiply' }}>
+                      REDEEMED
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">
                      {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Gift size={18} />}
