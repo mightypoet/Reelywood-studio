@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Menu, X, LogOut, Sun, Moon, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] px-2 sm:px-4 pt-4 sm:pt-6 pointer-events-none">
       <nav 
-        className="mx-auto max-w-6xl pointer-events-auto bg-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] py-2 px-3 sm:px-6 rounded-none transition-all duration-300"
+        className="mx-auto max-w-[1400px] pointer-events-auto bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] py-2 px-3 sm:px-6 rounded-none transition-all duration-300"
       >
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -45,7 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
             className="flex items-center space-x-2 sm:space-x-3 cursor-pointer shrink-0" 
             onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
           >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-black bg-white overflow-hidden flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform hover:scale-105">
+            <div className="w-10 h-10 border-[3px] border-black bg-white overflow-hidden flex items-center justify-center transition-transform hover:scale-105">
                <video 
                 src={LOGO_VIDEO} 
                 autoPlay 
@@ -55,42 +55,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
                 className="w-full h-full object-cover"
                />
             </div>
-            <span className="font-black text-xs sm:text-sm tracking-tight uppercase text-black font-display italic">
+            <span className="font-black text-sm sm:text-base tracking-tight uppercase text-black font-display italic">
               REELYWOOD
             </span>
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Desktop Links */}
-            <div className="hidden lg:flex items-center space-x-5 mr-2">
+            <div className="hidden lg:flex items-center space-x-6 mr-4">
               {navLinks.map((link) => (
                 <a 
                   key={link.name} 
                   href={link.href} 
                   onClick={(e) => handleLinkClick(e, link.href)}
-                  className="text-[9px] font-black uppercase tracking-widest text-black hover:text-[#834bf1] transition-colors"
+                  className="text-[10px] font-black uppercase tracking-widest text-black hover:text-[#834bf1] transition-colors"
                 >
                   {link.name}
                 </a>
               ))}
             </div>
 
-            {/* Dashboard Shortcut (Desktop) */}
-            {user && (
-              <button 
-                onClick={onDashboardClick}
-                className="hidden md:flex items-center space-x-2 bg-[#834bf1] text-white px-3 py-1.5 border-[2px] border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-[9px] font-black uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
-              >
-                <LayoutDashboard size={12} />
-                <span>Dashboard</span>
-              </button>
-            )}
-
-            {/* Auth Action: Profile Image or Login Button */}
+            {/* Auth Action */}
             {user ? (
               <button 
                 onClick={onDashboardClick}
-                title="Go to Dashboard"
                 className="w-10 h-10 border-[3px] border-black bg-white overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all group"
               >
                 {user.photoURL ? (
@@ -104,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
             ) : (
               <button 
                 onClick={onAuthClick}
-                className="bg-white text-black px-3 sm:px-4 h-10 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[10px] font-black uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+                className="bg-white text-black px-6 h-10 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[11px] font-black uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
               >
                 LOGIN
               </button>

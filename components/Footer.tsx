@@ -7,7 +7,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
-  const LOGO_IMAGE = "https://izz9qoicna213xwc.public.blob.vercel-storage.com/Black%20and%20White%20Modern%20Streetwear%20Sport%20Logo.png";
+  const LOGO_VIDEO = "https://gkaffrpzczamnawhmlph.supabase.co/storage/v1/object/public/brand-assets/OWLLOGO.mp4";
 
   const scrollToId = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -24,24 +24,27 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col lg:flex-row justify-between items-start gap-16 mb-24">
           <div className="space-y-10 max-w-sm">
-            <div className="flex items-center space-x-3 cursor-pointer group" onClick={(e) => scrollToId(e as any, 'home')}>
-              <div className="w-14 h-14 border-[3px] border-black dark:border-white overflow-hidden bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-transform group-hover:scale-110">
-                <img 
-                  src={LOGO_IMAGE} 
-                  alt="Reelywood Logo"
+            <div className="flex items-center space-x-4 cursor-pointer group" onClick={(e) => scrollToId(e as any, 'home')}>
+              <div className="w-16 h-16 border-[4px] border-black dark:border-white overflow-hidden bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-transform group-hover:scale-110">
+                <video 
+                  src={LOGO_VIDEO} 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
                   className="w-full h-full object-cover"
                 />
               </div>
               <span className="font-black text-3xl tracking-tighter uppercase text-black dark:text-white font-display italic">REELYWOOD</span>
             </div>
-            <p className="text-black dark:text-white/80 text-sm leading-relaxed font-bold">
+            <p className="text-black dark:text-white/80 text-sm leading-relaxed font-bold uppercase tracking-tight">
               Engineering growth ecosystems through Human-AI synergy. The standard for modern brands.
             </p>
             <div className="flex items-center space-x-4">
-              <a href="#" className="w-12 h-12 bg-white dark:bg-[#111] border-4 border-black dark:border-white flex items-center justify-center text-black dark:text-white hover:bg-[#ffde59] dark:hover:bg-[#ffde59] dark:hover:text-black transition-all shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff]">
+              <a href="#" className="w-12 h-12 bg-white dark:bg-[#111] border-[4px] border-black dark:border-white flex items-center justify-center text-black dark:text-white hover:bg-[#ffde59] dark:hover:bg-[#ffde59] dark:hover:text-black transition-all shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff]">
                 <Instagram size={20} />
               </a>
-              <a href="#" className="w-12 h-12 bg-white dark:bg-[#111] border-4 border-black dark:border-white flex items-center justify-center text-black dark:text-white hover:bg-[#834bf1] dark:hover:bg-[#834bf1] hover:text-white transition-all shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff]">
+              <a href="#" className="w-12 h-12 bg-white dark:bg-[#111] border-[4px] border-black dark:border-white flex items-center justify-center text-black dark:text-white hover:bg-[#834bf1] dark:hover:bg-[#834bf1] hover:text-white transition-all shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff]">
                 <Linkedin size={20} />
               </a>
             </div>
@@ -86,8 +89,9 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
         <div className="pt-12 border-t-4 border-black dark:border-white flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0 text-[10px] font-black uppercase tracking-[0.4em] text-black dark:text-white">
           <div className="flex items-center space-x-8">
              <p>© 2024 Reelywood Studio.</p>
-             <p className="opacity-40">Privacy Protocol</p>
+             <p className="opacity-40 cursor-pointer hover:opacity-100 transition-opacity">Privacy Protocol</p>
           </div>
+          <div className="opacity-40 italic">STAY ANALOG IN A SYNTHETIC WORLD.</div>
         </div>
       </div>
     </footer>

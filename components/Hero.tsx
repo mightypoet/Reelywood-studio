@@ -42,27 +42,30 @@ export const Hero: React.FC<HeroProps> = ({ onAuthClick, onDashboardClick }) => 
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] z-50"></div>
 
       {/* 1. MASSIVE HEADLINE - Fluid sizing */}
-      <div className="w-full px-4 py-8 md:py-20 text-center border-b-[6px] md:border-b-[8px] border-black bg-[#ffde59] relative z-10">
-        <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
+      <div className="w-full px-4 py-12 md:py-24 text-center border-b-[8px] border-black bg-[#ffde59] relative z-10">
+        {/* Blue Decorative Box from Screenshot */}
+        <div className="absolute left-8 top-1/2 -translate-y-1/2 w-16 h-16 md:w-24 md:h-24 border-[3px] border-[#3b82f6] opacity-60 hidden md:block"></div>
+        
+        <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
           <div className="space-y-1">
-            <h1 className="text-4xl sm:text-7xl lg:text-[100px] font-black text-black leading-[0.8] tracking-tighter font-display uppercase italic">
+            <h1 className="text-5xl sm:text-7xl lg:text-[110px] font-black text-black leading-[0.8] tracking-tighter font-display uppercase italic">
               GAME OVER FOR
             </h1>
-            <div className="inline-block bg-black text-[#ffde59] px-3 md:px-6 py-2 -rotate-1 mt-1 border-[3px] md:border-[4px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]">
-              <span className="text-3xl sm:text-7xl lg:text-[100px] font-black uppercase font-display italic leading-none">VANITY METRICS.</span>
+            <div className="inline-block bg-black text-white px-6 md:px-12 py-3 -rotate-1 mt-2 border-[4px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+              <span className="text-4xl sm:text-7xl lg:text-[110px] font-black uppercase font-display italic leading-none">VANITY METRICS.</span>
             </div>
           </div>
           
-          <div className="pt-4 md:pt-6">
-            <div className="inline-flex items-center space-x-2 md:space-x-4 bg-black text-white px-4 md:px-8 py-3 md:py-4 border-[3px] md:border-[4px] border-black shadow-[4px_4px_0px_0px_#834bf1] md:shadow-[8px_8px_0px_0px_#834bf1]">
-               <Gamepad2 className="animate-bounce shrink-0 w-5 h-5 md:w-7 md:h-7" />
-               <p className="text-[10px] md:text-2xl font-black uppercase tracking-widest italic leading-none">
+          <div className="pt-8">
+            <div className="inline-flex items-center space-x-3 md:space-x-5 bg-black text-white px-6 md:px-10 py-4 md:py-5 border-[4px] border-black shadow-[10px_10px_0px_0px_#834bf1]">
+               <Gamepad2 className="animate-bounce shrink-0 w-6 h-6 md:w-10 md:h-10" />
+               <p className="text-xs md:text-3xl font-black uppercase tracking-[0.1em] italic leading-none">
                  WELCOME TO THE CREATOR COMMERCE ARCADE
                </p>
             </div>
           </div>
 
-          <p className="text-black font-black uppercase italic tracking-tight text-base sm:text-xl md:text-3xl mt-4 md:mt-8 max-w-xs sm:max-w-4xl mx-auto leading-tight">
+          <p className="text-black font-black uppercase italic tracking-tight text-xl sm:text-2xl md:text-4xl mt-6 md:mt-10 max-w-xs sm:max-w-5xl mx-auto leading-tight">
             INSERT COIN. TRACK SALES. EARN LOOT. THE CARD THAT TURNS EVERY POST INTO A PAYOUT ENGINE.
           </p>
         </div>
