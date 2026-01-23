@@ -64,6 +64,7 @@ export const BrandManager = () => {
         .order('created_at', { ascending: false });
       
       if (data) setPendingMissions(data);
+      if (error) throw error;
     } catch (err) {
       console.error("Error fetching pending missions:", err);
     }
@@ -80,8 +81,8 @@ export const BrandManager = () => {
       
       if (error) throw error;
       alert("MISSION_AUTHORIZED: Operational grid updated.");
-      fetchPendingMissions();
-      fetchBrands();
+      await fetchPendingMissions();
+      await fetchBrands();
     } catch (err: any) {
       alert("Authorization Failed: " + err.message);
     } finally {
@@ -267,36 +268,37 @@ export const BrandManager = () => {
 
   return (
     <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-      {/* Mission Request Queue Section */}
+      {/* MISSION REQUEST QUEUE SECTION */}
       <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#834bf1] text-black">
         <h3 className="text-2xl font-black italic uppercase font-display mb-6 flex items-center gap-3">
-          <Zap className="text-[#834bf1]" /> MISSION REQUEST QUEUE
+          <Zap className="text-[#834bf1]" /> PENDING MISSION REQUESTS
         </h3>
         <div className="space-y-4">
           {pendingMissions.length === 0 ? (
             <div className="py-10 text-center border-4 border-dashed border-black/10 text-black/20 font-black uppercase text-xs italic tracking-widest">
-              QUEUE_SILENT: No pending mission requests.
+              QUEUE_SILENT: No pending mission requests detected.
             </div>
           ) : (
             pendingMissions.map(m => (
               <div key={m.id} className="bg-slate-50 border-[3px] border-black p-4 flex items-center justify-between shadow-[4px_4px_0px_0px_#000]">
                 <div className="flex items-center gap-6 min-w-0">
                   <div className="w-12 h-12 bg-white border-2 border-black shadow-[2px_2px_0px_0px_#000] p-1 shrink-0">
-                    <img src={m.partner_brands?.logo_url} className="w-full h-full object-contain" onError={e => e.currentTarget.src='https://api.dicebear.com/7.x/identicon/svg?seed='+m.partner_brands?.name} />
+                    <img src={m.partner_brands?.logo_url} className="w-full h-full object-contain" onError={e => e.currentTarget.src='https://api.dicebear.com/7.x/identicon/svg?seed='+m.partner_brands?.name} alt="Brand Logo" />
                   </div>
                   <div className="min-w-0">
                     <h4 className="font-black text-sm uppercase italic truncate">{m.title}</h4>
                     <p className="text-[10px] font-bold text-[#834bf1] uppercase tracking-widest">
-                      {m.partner_brands?.name} • Bounty: {m.reward_amount} RC
+                      {m.partner_brands?.name || 'Unknown Brand'} • Bounty: {m.reward_amount} RC
                     </p>
                   </div>
                 </div>
                 <button 
                   onClick={() => handleApproveMission(m.id)}
                   disabled={loading}
-                  className="bg-[#39ff14] text-black p-3 border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                  className="bg-[#39ff14] text-black p-3 border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center min-w-[100px] gap-2"
                 >
                   <Check size={20} strokeWidth={4} />
+                  <span className="font-black text-[10px] uppercase">APPROVE</span>
                 </button>
               </div>
             ))
@@ -306,7 +308,7 @@ export const BrandManager = () => {
 
       <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#000] flex flex-col md:flex-row justify-between items-center gap-6 text-black">
         <div>
-          <h2 className="text-3xl font-black italic uppercase font-display text-black">Alliance Network</h2>
+          <h2 className="text-3xl font-black italic uppercase font-display text-black">Alliance Directory</h2>
           <p className="text-[10px] font-black uppercase tracking-widest text-black/40">Scale • Manage • Deploy</p>
         </div>
         <button 

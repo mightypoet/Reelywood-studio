@@ -75,30 +75,36 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     if (!supabase || !brand) return;
     
     setIsRequesting(true);
+    console.log("SYNC_LOG: Initiating mission request for brand:", brand.id);
+
     try {
-      // Concatenate requirements into description as a fallback if the requirements column is missing
-      // But we explicitly send the 'status' field which is required for the admin approval workflow.
-      const { error } = await supabase.from('missions').insert([{
+      const payload = {
         brand_id: brand.id,
         title: requestForm.title,
         description: `${requestForm.description}${requestForm.requirements ? `\n\nREQUIREMENTS:\n${requestForm.requirements}` : ''}`,
         reward_amount: parseInt(requestForm.reward_amount),
         status: 'pending_approval'
-      }]);
+      };
 
-      if (error) throw error;
+      const { data, error } = await supabase.from('missions').insert([payload]).select();
+
+      if (error) {
+        console.error("SYNC_ERROR_DATABASE:", error);
+        throw error;
+      }
       
-      alert("MISSION_REQUEST_CACHED: Reelywood Admin will verify deployment shortly.");
+      console.log("SYNC_SUCCESS:", data);
+      alert("Mission Requested! Waiting for Admin Approval.");
       setRequestModalOpen(false);
       setRequestForm({ title: '', description: '', reward_amount: '', requirements: '' });
       
-      // Refresh current tab data if needed
-      const unsubscribe = auth.onAuthStateChanged((user) => {
-        if(user) fetchBrandData(user.email!);
-      });
+      // Refresh current data
+      if (auth.currentUser?.email) {
+        await fetchBrandData(auth.currentUser.email);
+      }
     } catch (err: any) {
-      console.error("SYNC_ERROR_DETAIL:", err);
-      alert(`SYNC_ERROR: ${err.message}\n\nTIP: If you see 'status column not found', please run the SQL provided in the database_update.sql file within your Supabase SQL Editor to synchronize the schema.`);
+      console.error("SYNC_CRITICAL_FAILURE:", err);
+      alert("Failed: " + (err.message || "Unknown transmission error. Check Console."));
     } finally {
       setIsRequesting(false);
     }
