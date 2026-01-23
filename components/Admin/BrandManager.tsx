@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/clients';
-import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload, Check, RotateCcw, Link as LinkIcon } from 'lucide-react';
+import { Building2, MapPin, Image as ImageIcon, Save, Edit2, Trash2, X, Globe, ExternalLink, Loader2, Zap, Gift, Settings, ListChecks, ArrowRight, Mail, Wallet, Plus, Upload, Check, RotateCcw, Link as LinkIcon, Crosshair } from 'lucide-react';
+import { TargetingModal } from './TargetingModal';
 
 export const BrandManager = () => {
   const [loading, setLoading] = useState(false);
@@ -15,6 +16,9 @@ export const BrandManager = () => {
   const [brandMissions, setBrandMissions] = useState<any[]>([]);
   const [brandVouchers, setBrandVouchers] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Targeting Modal State
+  const [targetingItem, setTargetingItem] = useState<{item: any, type: 'mission' | 'reward', isApproving: boolean} | null>(null);
 
   // Asset method toggles
   const [logoMethod, setLogoMethod] = useState<'file' | 'link'>('file');
@@ -70,21 +74,30 @@ export const BrandManager = () => {
     }
   };
 
-  const handleApproveMission = async (missionId: string) => {
-    if (!supabase || !window.confirm("Authorize this mission for live deployment?")) return;
+  const handleTargetingSubmit = async (targetingData: any) => {
+    if (!supabase || !targetingItem) return;
     setLoading(true);
     try {
+      const table = targetingItem.type === 'mission' ? 'missions' : 'rewards';
+      const updates = {
+        ...targetingData,
+        status: targetingItem.isApproving ? 'active' : (targetingItem.item.status || 'active')
+      };
+
       const { error } = await supabase
-        .from('missions')
-        .update({ status: 'active' })
-        .eq('id', missionId);
+        .from(table)
+        .update(updates)
+        .eq('id', targetingItem.item.id);
       
       if (error) throw error;
-      alert("MISSION_AUTHORIZED: Operational grid updated.");
+      
+      alert(targetingItem.isApproving ? "DEPLOYMENT_AUTHORIZED: Mission is now live." : "TARGETING_SYNCED: Audience nodes updated.");
+      setTargetingItem(null);
       await fetchPendingMissions();
       await fetchBrands();
+      if (selectedBrand) fetchBrandDetails(selectedBrand.id);
     } catch (err: any) {
-      alert("Authorization Failed: " + err.message);
+      alert("Terminal Sync Failure: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -267,7 +280,19 @@ export const BrandManager = () => {
   const inputStyle = "w-full bg-white border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all shadow-[4px_4px_0px_0px_#000] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] text-black";
 
   return (
-    <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+    <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 text-black">
+      {/* Targeting Modal Integration */}
+      {targetingItem && (
+        <TargetingModal 
+          item={targetingItem.item} 
+          type={targetingItem.type}
+          isApproving={targetingItem.isApproving}
+          loading={loading}
+          onClose={() => setTargetingItem(null)}
+          onConfirm={handleTargetingSubmit}
+        />
+      )}
+
       {/* MISSION REQUEST QUEUE SECTION */}
       <div className="bg-white border-[6px] border-black p-8 shadow-[12px_12px_0px_0px_#834bf1] text-black">
         <h3 className="text-2xl font-black italic uppercase font-display mb-6 flex items-center gap-3">
@@ -293,7 +318,7 @@ export const BrandManager = () => {
                   </div>
                 </div>
                 <button 
-                  onClick={() => handleApproveMission(m.id)}
+                  onClick={() => setTargetingItem({item: m, type: 'mission', isApproving: true})}
                   disabled={loading}
                   className="bg-[#39ff14] text-black p-3 border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center min-w-[100px] gap-2"
                 >
@@ -447,12 +472,20 @@ export const BrandManager = () => {
                              <p className="text-[10px] font-bold text-[#834bf1] uppercase tracking-widest">+{m.reward_amount} RC Pool</p>
                            </div>
                         </div>
-                        <button 
-                          onClick={() => handleDeleteItem('mission', m.id)}
-                          className="p-3 bg-rose-500 text-white border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
-                        >
-                          <Trash2 size={16} strokeWidth={3} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => setTargetingItem({item: m, type: 'mission', isApproving: false})}
+                            className="p-3 bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                          >
+                            <Crosshair size={16} strokeWidth={3} className="text-[#834bf1]" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteItem('mission', m.id)}
+                            className="p-3 bg-rose-500 text-white border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                          >
+                            <Trash2 size={16} strokeWidth={3} />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
@@ -479,12 +512,20 @@ export const BrandManager = () => {
                              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Cost: {v.cost} RC</p>
                            </div>
                         </div>
-                        <button 
-                          onClick={() => handleDeleteItem('reward', v.id)}
-                          className="p-3 bg-rose-500 text-white border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
-                        >
-                          <Trash2 size={16} strokeWidth={3} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => setTargetingItem({item: v, type: 'reward', isApproving: false})}
+                            className="p-3 bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                          >
+                            <Crosshair size={16} strokeWidth={3} className="text-[#834bf1]" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteItem('reward', v.id)}
+                            className="p-3 bg-rose-500 text-white border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                          >
+                            <Trash2 size={16} strokeWidth={3} />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}

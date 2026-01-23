@@ -50,6 +50,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   const [missionSubmissions, setMissionSubmissions] = useState<any[]>([]);
   const [modalLoading, setModalLoading] = useState(false);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [voucherModalOpen, setVoucherModalOpen] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
 
   // Balance Watcher Hook
@@ -63,6 +64,13 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     description: '',
     reward_amount: '',
     requirements: ''
+  });
+
+  const [voucherForm, setVoucherForm] = useState({
+    title: '',
+    cost: '',
+    description: '',
+    code: ''
   });
 
   const handleLogout = async () => {
@@ -102,6 +110,40 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
     }
   };
 
+  const handleRequestVoucher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !brand) return;
+    
+    setIsRequesting(true);
+    try {
+      const payload = {
+        brand_id: brand.id,
+        title: voucherForm.title,
+        description: voucherForm.description,
+        cost: parseInt(voucherForm.cost),
+        code: voucherForm.code || 'REDEEM-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+        status: 'pending_approval'
+      };
+
+      // Since vouchers/rewards share a logical structure in neobrutal style, we save it as a 'pending' reward
+      const { error } = await supabase.from('rewards').insert([payload]);
+
+      if (error) throw error;
+      
+      alert("Voucher Node Requested! Awaiting Deployment Approval.");
+      setVoucherModalOpen(false);
+      setVoucherForm({ title: '', cost: '', description: '', code: '' });
+      
+      if (auth.currentUser?.email) {
+        await fetchBrandData(auth.currentUser.email);
+      }
+    } catch (err: any) {
+      alert("Sync Failure: " + (err.message || "Unknown transmission error."));
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
   const fetchBrandData = async (email: string) => {
     if (!supabase) return;
     try {
@@ -116,7 +158,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
 
       const [missionsRes, rewardsRes] = await Promise.all([
         supabase.from('missions').select('*').eq('brand_id', brandData.id).neq('status', 'pending_approval').order('created_at', { ascending: false }),
-        supabase.from('rewards').select('*').eq('brand_id', brandData.id).order('created_at', { ascending: false })
+        supabase.from('rewards').select('*').eq('brand_id', brandData.id).neq('status', 'pending_approval').order('created_at', { ascending: false })
       ]);
 
       setActiveMissions(missionsRes.data || []);
@@ -248,6 +290,14 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         <h3 className="text-lg sm:text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
           <Zap className="text-[#ffde59]" size={18} /> Mission Control
         </h3>
+        <div className="flex gap-2">
+           <button 
+             onClick={() => setVoucherModalOpen(true)}
+             className="bg-black text-white px-4 py-2 border-[2px] border-black shadow-[4px_4px_0px_0px_#ffde59] font-black uppercase text-[8px] tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+           >
+             + REWARD NODE
+           </button>
+        </div>
       </div>
       <div className="space-y-4 sm:space-y-6">
         {activeMissions.length === 0 ? (
@@ -288,7 +338,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   );
 
   const renderInbox = () => (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 text-black">
       <h3 className="text-lg sm:text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
         <Inbox size={20} className="text-[#ffde59]" /> Signal Log
       </h3>
@@ -321,7 +371,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   );
 
   const renderProfile = () => (
-    <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500 pb-20">
+    <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500 pb-20 text-black">
        <div className="bg-white border-[3px] sm:border-[4px] border-black p-5 sm:p-6 flex items-center gap-4 sm:gap-6 shadow-[6px_6px_0px_0px_#000]">
           <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#ffde59] border-[2px] sm:border-[3px] border-black overflow-hidden shadow-[2px_2px_0px_0px_#834bf1] sm:shadow-[3px_3px_0px_0px_#834bf1] p-1 flex items-center justify-center">
             <img src={brand.logo_url} className="w-full h-full object-contain" alt="Logo" />
@@ -358,7 +408,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] pb-32 font-lexend">
+    <div className="min-h-screen bg-[#f8f8f8] pb-32 font-lexend text-black">
       {rewardAmount !== null && (
         <RCNotificationModal amount={rewardAmount} onClose={clearReward} />
       )}
@@ -373,9 +423,9 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         </button>
       )}
 
-      {/* Request Modal */}
+      {/* Mission Request Modal */}
       {requestModalOpen && (
-        <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 text-black">
           <div className="bg-white w-full max-w-lg border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] p-8 md:p-12 relative overflow-hidden animate-in zoom-in-95 duration-300">
             <button onClick={() => setRequestModalOpen(false)} className="absolute top-6 right-6 bg-black text-white p-2 border-2 border-white hover:bg-rose-500 transition-colors shadow-[4px_4px_0px_0px_#000]">
               <X size={20} strokeWidth={4} />
@@ -424,9 +474,71 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
         </div>
       )}
 
+      {/* Voucher Request Modal */}
+      {voucherModalOpen && (
+        <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 text-black">
+          <div className="bg-white w-full max-w-lg border-[6px] border-black shadow-[24px_24px_0px_0px_#ffde59] p-8 md:p-12 relative overflow-hidden animate-in zoom-in-95 duration-300">
+            <button onClick={() => setVoucherModalOpen(false)} className="absolute top-6 right-6 bg-black text-white p-2 border-2 border-white hover:bg-rose-500 transition-colors shadow-[4px_4px_0px_0px_#000]">
+              <X size={20} strokeWidth={4} />
+            </button>
+            <div className="flex items-center gap-3 mb-8">
+               <div className="w-10 h-10 bg-black text-[#ffde59] flex items-center justify-center border-2 border-black rotate-3">
+                  <Gift size={20} fill="currentColor" />
+               </div>
+               <h2 className="text-3xl font-black italic uppercase font-display leading-none">Request Voucher</h2>
+            </div>
+            
+            <form onSubmit={handleRequestVoucher} className="space-y-6">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">Voucher Title</label>
+                <input required type="text" placeholder="e.g. 1+1 FREE COCKTAIL" 
+                       className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all"
+                       value={voucherForm.title} onChange={e => setVoucherForm({...voucherForm, title: e.target.value})} />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">RC Cost for User</label>
+                  <input required type="number" placeholder="100" 
+                         className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all"
+                         value={voucherForm.cost} onChange={e => setVoucherForm({...voucherForm, cost: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">Stock (Optional)</label>
+                  <input type="number" placeholder="50" 
+                         className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">Redeem Code</label>
+                <input type="text" placeholder="AUTO-GENERATE" 
+                       className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all"
+                       value={voucherForm.code} onChange={e => setVoucherForm({...voucherForm, code: e.target.value})} />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-black/40 block mb-2">Fine Print / Rules</label>
+                <textarea required rows={4} placeholder="e.g. Valid on Weekdays only..." 
+                          className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm focus:bg-[#ffde59] focus:outline-none transition-all resize-none"
+                          value={voucherForm.description} onChange={e => setVoucherForm({...voucherForm, description: e.target.value})} />
+              </div>
+
+              <button 
+                disabled={isRequesting}
+                className="w-full bg-black text-white py-5 border-[4px] border-black shadow-[8px_8px_0px_0px_#ffde59] font-black uppercase text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4"
+              >
+                {isRequesting ? <Loader2 className="animate-spin" /> : <Plus size={18} />}
+                REQUEST DEPLOYMENT
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Applicant Sync Modal */}
       {selectedMission && (
-        <div className="fixed inset-0 z-[1000] bg-white animate-in slide-in-from-bottom duration-500 flex flex-col">
+        <div className="fixed inset-0 z-[1000] bg-white animate-in slide-in-from-bottom duration-500 flex flex-col text-black">
           <header className="bg-[#ffde59] p-6 text-black border-b-[6px] border-black flex justify-between items-center sticky top-0">
             <div>
               <p className="text-[8px] font-black uppercase tracking-[0.4em] mb-1 text-black/50">Applicant Sync Node</p>
@@ -437,7 +549,7 @@ export const BrandDashboard: React.FC<BrandDashboardProps> = ({ onBack }) => {
             </button>
           </header>
 
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50 custom-scrollbar text-black">
             {modalLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Loader2 className="animate-spin text-[#ffde59]" size={48} />
