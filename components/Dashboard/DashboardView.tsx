@@ -140,8 +140,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     if (!confirm(`Redeem "${reward.title}" for ${reward.cost} RC?`)) return;
     
     setIsProcessing(reward.id);
+
+    // Capture initial state for rollback
+    const previousRewards = [...rewards];
+
     try {
-      // 1. Transaction Handshake (RPC handles balance deduction and logging)
+      // 1. Optimistic Update (Immediate UI Feedback)
+      setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'redeemed' } : r));
+
+      // 2. Transaction Handshake (RPC handles balance deduction and logging)
       const { error: rpcError } = await supabase!.rpc('redeem_reward', {
         user_uid: currentUser?.uid,
         cost: reward.cost,
@@ -149,7 +156,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       });
       if (rpcError) throw rpcError;
 
-      // 2. Persistent Status Update (Save to DB)
+      // 3. Persistent Status Update (Save to DB permanently)
       const { error: updateError } = await supabase!
         .from('rewards')
         .update({ 
@@ -160,14 +167,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       
       if (updateError) throw updateError;
       
-      // 3. Optimistic UI update
-      setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'redeemed' } : r));
+      // Success Protocol
       setMyRedemptions(prev => [...prev, String(reward.id)]);
       setRevealedCodes(prev => ({ ...prev, [reward.id]: reward.code || 'RW-' + Math.random().toString(36).substr(2, 6).toUpperCase() }));
       
+      // Success Haptic
+      if ('vibrate' in navigator) navigator.vibrate(200);
+
+      // Re-fetch to ensure data integrity
       if (currentUser) fetchOperationalGrid(currentUser);
     } catch (err: any) {
-      alert("Redemption Protocol Failure: " + err.message);
+      console.error("Redemption protocol failed:", err.message);
+      alert("Redemption Failed: " + err.message);
+      // Rollback UI
+      setRewards(previousRewards);
     } finally {
       setIsProcessing(null);
     }
@@ -414,7 +427,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 {/* REDEEMED RUBBER STAMP */}
                 {isRedeemed && (
                   <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                    <div className="border-[6px] border-red-600 px-6 py-2 text-3xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 shadow-sm font-display italic" style={{ mixBlendMode: 'multiply' }}>
+                    <div className="border-[8px] border-red-600 px-6 py-2 text-4xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 shadow-sm font-display italic" style={{ mixBlendMode: 'multiply' }}>
                       REDEEMED
                     </div>
                   </div>
