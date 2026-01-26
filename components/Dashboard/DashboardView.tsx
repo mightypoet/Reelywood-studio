@@ -173,7 +173,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [rewards, setRewards] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
   const [myRedemptions, setMyRedemptions] = useState<string[]>([]);
-  const [latestTxReason, setLatestTxReason] = useState<string | null>(null);
+  const [latestTxMetadata, setLatestTxMetadata] = useState<{reason: string | null, image: string | null}>({reason: null, image: null});
   
   const [activeTab, setActiveTab] = useState<TabType>('hub');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -213,19 +213,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       setProfile(profileData);
 
-      // Fetch Latest Transaction to get context/reason for balance changes
+      // Fetch Latest Transaction to get context/reason/image for balance changes
       const { data: latestTx } = await supabase
         .from('transactions')
-        .select('description, amount')
+        .select('description, amount, meta_image')
         .eq('user_id', user.uid)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       
       if (latestTx && latestTx.amount > 0) {
-        setLatestTxReason(latestTx.description);
+        setLatestTxMetadata({
+          reason: latestTx.description,
+          image: latestTx.meta_image
+        });
       } else {
-        setLatestTxReason(null);
+        setLatestTxMetadata({reason: null, image: null});
       }
 
       const { data: allMissions } = await supabase
@@ -309,8 +312,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         schema: 'public', 
         table: 'profiles',
         filter: `firebase_uid=eq.${currentUser.uid}`
-      }, (payload) => {
-        // Force refresh to trigger watcher and fetch latest transaction reason
+      }, () => {
         fetchOperationalGrid(currentUser);
       })
       .subscribe();
@@ -403,7 +405,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
         if (uploadError) throw uploadError;
 
-        /* Comment: Fixed variable name from 'fileName' to 'filePath' to match its definition */
         const { data: { publicUrl } } = supabase.storage
           .from('avatars')
           .getPublicUrl(filePath);
@@ -549,6 +550,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                       : 'bg-white border-black shadow-black'
                 }`}
               >
+                {/* BLACK RUBBER STAMP OVERLAY */}
                 {isApprovedSub && (
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80">
                     <div className="border-[5px] border-black px-6 py-2 rounded-none flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
@@ -610,6 +612,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             const brand = r.partner_brands;
             return (
               <div key={r.id} className={`border-[3px] sm:border-[4px] p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] sm:shadow-[5px_5px_0px_0px] relative overflow-hidden transition-all duration-300 ${isRedeemed ? 'bg-slate-200 border-slate-400 shadow-none grayscale opacity-60 pointer-events-none select-none' : 'bg-white border-black shadow-[#ffde59]'}`}>
+                {/* REDEEMED RUBBER STAMP */}
                 {isRedeemed && (
                   <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                     <div className="border-[8px] border-red-600 px-6 py-2 text-4xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 shadow-sm font-display italic" style={{ mixBlendMode: 'multiply' }}>
@@ -771,7 +774,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         <RCNotificationModal 
           amount={rewardAmount} 
           onClose={clearReward} 
-          subtitle={latestTxReason || "Admin just dropped some loot into your wallet."}
+          subtitle={latestTxMetadata.reason || "Admin just dropped some loot into your wallet."}
+          coverImage={latestTxMetadata.image || undefined}
         />
       )}
       
