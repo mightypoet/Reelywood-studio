@@ -177,7 +177,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<TabType>('hub');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [redemptionSuccessId, setRedemptionSuccessId] = useState<string | null>(null);
-  const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
   
@@ -194,8 +193,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   // Sound Notification Integration
   const { playSound } = useSoundNotification();
-  const prevMissionCount = useRef(0);
-  const prevRewardCount = useRef(0);
 
   // Balance Watcher Hook
   const { rewardAmount, clearReward } = useRCBalanceWatcher({
@@ -249,21 +246,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (sRes.data) setUserSubmissions(sRes.data);
       if (redRes.data) setMyRedemptions(redRes.data.map((r: any) => String(r.reward_id)));
 
-      if (prevMissionCount.current > 0 && currentMissions.length > prevMissionCount.current) {
-        playSound();
-      } else if (prevRewardCount.current > 0 && currentRewards.length > prevRewardCount.current) {
-        playSound();
-      }
-
-      prevMissionCount.current = currentMissions.length;
-      prevRewardCount.current = currentRewards.length;
-
     } catch (err) {
       console.error("GRID_SYNC_FAILURE:", err);
     } finally {
       setLoading(false);
     }
-  }, [playSound]);
+  }, []);
+
+  // REALTIME SYNC HANDLER
+  useEffect(() => {
+    if (!supabase || !currentUser) return;
+
+    const syncChannel = supabase.channel(`user-sync-${currentUser.uid}`)
+      // 1. Listen for new missions assigned to user or global
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'missions' 
+      }, (payload) => {
+        const m = payload.new;
+        const isGlobal = !m.assigned_to || (Array.isArray(m.assigned_to) && m.assigned_to.length === 0);
+        const isAssigned = Array.isArray(m.assigned_to) && m.assigned_to.includes(currentUser.uid);
+        
+        if (isGlobal || isAssigned) {
+          playSound();
+          fetchOperationalGrid(currentUser);
+        }
+      })
+      // 2. Listen for new rewards/vouchers
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'rewards' 
+      }, (payload) => {
+        const r = payload.new;
+        const isGlobal = !r.assigned_to || (Array.isArray(r.assigned_to) && r.assigned_to.length === 0);
+        const isAssigned = Array.isArray(r.assigned_to) && r.assigned_to.includes(currentUser.uid);
+        
+        if (isGlobal || isAssigned) {
+          playSound();
+          fetchOperationalGrid(currentUser);
+        }
+      })
+      // 3. Listen for balance adjustments/profile updates
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles',
+        filter: `firebase_uid=eq.${currentUser.uid}`
+      }, (payload) => {
+        // Only refresh if reelcoins balance actually changed
+        if (payload.old.reelcoins !== payload.new.reelcoins) {
+          // No playSound here because RCNotificationModal handles it, 
+          // but we fetch to trigger the watcher.
+          fetchOperationalGrid(currentUser);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(syncChannel);
+    };
+  }, [currentUser, playSound, fetchOperationalGrid]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
