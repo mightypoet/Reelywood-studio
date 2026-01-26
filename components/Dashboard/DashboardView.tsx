@@ -3,13 +3,15 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/clients';
 import { auth } from '../../lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+// Added AlertCircle to imports
 import { 
   LogOut, User, Wallet, CheckCircle2, ArrowLeft, Loader2,
   Lock, X, Bell, Clock, Zap, Gift,
   Target, TrendingUp, Maximize2, Building2,
   LayoutDashboard, CreditCard, Share2, QrCode, Settings,
   ChevronRight, Activity, Terminal, History, Home, Menu,
-  Camera, Save, Pencil
+  Camera, Save, Pencil, Ticket, MapPin, ExternalLink, Info,
+  AlertCircle
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
@@ -22,6 +24,97 @@ interface DashboardViewProps {
 }
 
 type TabType = 'hub' | 'card' | 'missions' | 'perks' | 'sync';
+
+// --- Dedicated Voucher Modal Component ---
+const VoucherModal = ({ voucher, onClose, onRedeem, isRedeeming, userBalance }: { 
+  voucher: any, 
+  onClose: () => void, 
+  onRedeem: (v: any) => void,
+  isRedeeming: boolean,
+  userBalance: number
+}) => {
+  const brand = voucher.partner_brands;
+  const canAfford = userBalance >= voucher.cost;
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#ffde59] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
+        <header className="bg-black text-white p-6 flex justify-between items-center border-b-[6px] border-black">
+          <div className="flex items-center gap-3">
+            <div className="bg-[#ffde59] p-2 border-2 border-black rotate-3">
+              <Gift className="text-black" size={20} fill="currentColor" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black italic uppercase font-display leading-none">Voucher Detail</h2>
+              <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-50 mt-1">Reward Node v4.5</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-rose-500 transition-colors">
+            <X size={20} strokeWidth={4} />
+          </button>
+        </header>
+
+        <main className="p-8 space-y-8 bg-[#fdfdfd]">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 bg-white border-[4px] border-black shadow-[6px_6px_0px_0px_#000] p-2 flex items-center justify-center shrink-0">
+              {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Building2 size={32} />}
+            </div>
+            <div>
+              <h3 className="text-2xl font-black uppercase italic font-display text-black leading-tight">{voucher.title}</h3>
+              <p className="text-[10px] font-bold text-[#834bf1] uppercase tracking-widest">{brand?.name || 'Partner Alliance'}</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-black/30">
+              <Info size={16} strokeWidth={3} />
+              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Redemption Logic</span>
+            </div>
+            <p className="text-sm font-bold uppercase leading-relaxed text-black/70 border-l-[6px] border-[#ffde59] pl-6 py-1">
+              {voucher.description || "Valid at all authorized partner outlets. Show this digital node to the merchant to redeem."}
+            </p>
+          </div>
+
+          <div className="bg-slate-50 border-[3px] border-black p-6 flex justify-between items-center shadow-[6px_6px_0px_0px_#000]">
+             <div>
+               <p className="text-[8px] font-black uppercase text-black/30 mb-1">Required Assets</p>
+               <p className="text-3xl font-black italic font-display text-[#834bf1]">{voucher.cost} RC</p>
+             </div>
+             <div className="text-right">
+                <p className="text-[8px] font-black uppercase text-black/30 mb-1">Your Balance</p>
+                <p className={`text-xl font-black italic ${canAfford ? 'text-emerald-500' : 'text-rose-500'}`}>{userBalance} RC</p>
+             </div>
+          </div>
+
+          {!canAfford && (
+            <div className="bg-rose-50 border-[2px] border-rose-500 p-4 flex items-center gap-3 text-rose-600">
+               <AlertCircle size={18} strokeWidth={3} />
+               <span className="text-[10px] font-black uppercase tracking-widest leading-none">INSUFFICIENT FUNDS: TRANSMISSION BLOCKED</span>
+            </div>
+          )}
+
+          <button 
+            onClick={() => onRedeem(voucher)}
+            disabled={isRedeeming || !canAfford}
+            className="w-full bg-black text-white py-6 border-[6px] border-black shadow-[8px_8px_0px_0px_#ffde59] font-black uppercase text-lg tracking-[0.2em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-30 disabled:grayscale"
+          >
+            {isRedeeming ? <Loader2 className="animate-spin" /> : (
+              <>
+                AUTHORIZE REDEMPTION
+                <Zap fill="currentColor" size={20} />
+              </>
+            )}
+          </button>
+        </main>
+
+        <footer className="p-4 bg-slate-100 border-t-[4px] border-black text-center">
+           <p className="text-[8px] font-black uppercase tracking-[0.5em] text-black/30 italic">Secure Redemption Protocol v4.5.1</p>
+        </footer>
+      </div>
+    </div>
+  );
+};
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
@@ -36,6 +129,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
   const [selectedMission, setSelectedMission] = useState<any>(null);
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
   
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
@@ -133,22 +227,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return () => unsubscribe();
   }, [fetchOperationalGrid]);
 
-  const handleRedeem = async (reward: any) => {
-    const isAlreadyRedeemed = myRedemptions.includes(String(reward.id)) || reward.status === 'redeemed';
-    if (isAlreadyRedeemed) return alert("⛔ PROTOCOL DENIED: Reward already claimed.");
-    if (!profile || profile.reelcoins < reward.cost) return alert("⛔ INSUFFICIENT RC BAL");
-    if (!confirm(`Redeem "${reward.title}" for ${reward.cost} RC?`)) return;
-    
+  const handleRedeemReward = async (reward: any) => {
+    // 1. Confirm Intent
+    if (!confirm(`Confirm redemption of "${reward.title}" for ${reward.cost} RC?`)) return;
+
+    // 2. Optimistic UI Update (Immediate visual feedback)
+    setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'redeemed' } : r));
+
     setIsProcessing(reward.id);
-
-    // Capture initial state for rollback
-    const previousRewards = [...rewards];
-
     try {
-      // 1. Optimistic Update (Immediate UI Feedback)
-      setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'redeemed' } : r));
-
-      // 2. Transaction Handshake (RPC handles balance deduction and logging)
+      // 3. RPC Transaction Handshake (Deducts balance, logs tx)
       const { error: rpcError } = await supabase!.rpc('redeem_reward', {
         user_uid: currentUser?.uid,
         cost: reward.cost,
@@ -156,31 +244,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       });
       if (rpcError) throw rpcError;
 
-      // 3. Persistent Status Update (Save to DB permanently)
-      const { error: updateError } = await supabase!
+      // 4. Database Update (Permanent status persistence)
+      // Removed 'redeemed_at' to avoid schema mismatch if column doesn't exist
+      const { error } = await supabase!
         .from('rewards')
         .update({ 
-          status: 'redeemed',
-          redeemed_at: new Date().toISOString() 
+          status: 'redeemed'
         })
         .eq('id', reward.id);
-      
-      if (updateError) throw updateError;
-      
-      // Success Protocol
-      setMyRedemptions(prev => [...prev, String(reward.id)]);
-      setRevealedCodes(prev => ({ ...prev, [reward.id]: reward.code || 'RW-' + Math.random().toString(36).substr(2, 6).toUpperCase() }));
-      
-      // Success Haptic
-      if ('vibrate' in navigator) navigator.vibrate(200);
 
-      // Re-fetch to ensure data integrity
+      if (error) {
+        console.error("Supabase Error:", error);
+        throw error;
+      }
+
+      // 5. Success Feedback
+      if ('vibrate' in navigator) navigator.vibrate(200);
+      setSelectedVoucher(null); // Close modal
+      
+      // Refresh balance and profile
       if (currentUser) fetchOperationalGrid(currentUser);
+
     } catch (err: any) {
-      console.error("Redemption protocol failed:", err.message);
-      alert("Redemption Failed: " + err.message);
-      // Rollback UI
-      setRewards(previousRewards);
+      // 6. Rollback on Failure
+      alert("Redemption Failed: " + (err.message || "Unknown error"));
+      setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'active' } : r));
     } finally {
       setIsProcessing(null);
     }
@@ -445,7 +533,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                 <div className="flex flex-col items-end gap-1 sm:gap-2 shrink-0">
                   <span className={`text-base sm:text-lg font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span>
                   <button 
-                    onClick={() => handleRedeem(r)}
+                    onClick={() => !isRedeemed && setSelectedVoucher(r)}
                     disabled={isProcessing === r.id || isRedeemed || !isApproved}
                     className={`px-3 sm:px-4 py-2 border-[2px] font-black uppercase text-[7px] sm:text-[8px] tracking-[0.15em] shadow-[2px_2px_0px_0px_#000] transition-all active:scale-95 ${revealedCodes[r.id] ? 'bg-[#39ff14]' : isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}
                   >
@@ -461,7 +549,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   );
 
   const renderSync = () => (
-    <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500">
+    <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500 text-black">
        {isEditing ? (
          <div className="bg-white border-[3px] sm:border-[4px] border-black p-6 sm:p-10 shadow-[8px_8px_0px_0px_#000] space-y-8">
            <div className="flex flex-col items-center gap-6">
@@ -486,7 +574,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                <input 
                  value={editName} 
                  onChange={e => setEditName(e.target.value)}
-                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none" 
+                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
                  placeholder="AGENT NAME"
                />
              </div>
@@ -495,7 +583,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                <input 
                  value={editHandle} 
                  onChange={e => setEditHandle(e.target.value)}
-                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none" 
+                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
                  placeholder="@handle"
                />
              </div>
@@ -505,7 +593,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                  value={editBio} 
                  onChange={e => setEditBio(e.target.value)}
                  rows={3}
-                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm uppercase tracking-tight focus:bg-white transition-all outline-none resize-none" 
+                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm uppercase tracking-tight focus:bg-white transition-all outline-none resize-none text-black" 
                  placeholder="MISSION PARAMETERS & INTEL..."
                />
              </div>
@@ -514,7 +602,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
            <div className="flex gap-4">
              <button 
                onClick={() => setIsEditing(false)}
-               className="flex-1 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all"
+               className="flex-1 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all text-black"
              >
                Abort Sync
              </button>
@@ -544,7 +632,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
            {profile?.bio && (
              <div className="bg-white border-[3px] border-black p-5 shadow-[4px_4px_0px_0px_#ffde59]">
                <h4 className="text-[8px] font-black uppercase tracking-widest text-black/40 mb-2">Operational Bio</h4>
-               <p className="text-[10px] font-bold uppercase tracking-tight leading-relaxed">{profile.bio}</p>
+               <p className="text-[10px] font-bold uppercase tracking-tight leading-relaxed text-black">{profile.bio}</p>
              </div>
            )}
 
@@ -581,13 +669,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 font-lexend flex flex-col overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-slate-50 font-lexend flex flex-col overflow-x-hidden text-black">
       {rewardAmount !== null && (
         <RCNotificationModal amount={rewardAmount} onClose={clearReward} />
       )}
       
       {selectedMission && (
         <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />
+      )}
+
+      {selectedVoucher && (
+        <VoucherModal 
+          voucher={selectedVoucher} 
+          userBalance={profile?.reelcoins || 0}
+          isRedeeming={isProcessing === selectedVoucher.id}
+          onClose={() => setSelectedVoucher(null)}
+          onRedeem={handleRedeemReward}
+        />
       )}
 
       <header className="bg-white border-b-[3px] sm:border-b-4 border-black p-3 sm:p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md shrink-0">
