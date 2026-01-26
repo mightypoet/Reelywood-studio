@@ -257,7 +257,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   useEffect(() => {
     if (!supabase || !currentUser) return;
 
-    const syncChannel = supabase.channel(`user-sync-${currentUser.uid}`)
+    // Use a local ref to avoid any nullability issues inside the closure
+    const client = supabase;
+
+    const syncChannel = client.channel(`user-sync-${currentUser.uid}`)
       // 1. Listen for new missions assigned to user or global
       .on('postgres_changes', { 
         event: 'INSERT', 
@@ -297,15 +300,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       }, (payload) => {
         // Only refresh if reelcoins balance actually changed
         if (payload.old.reelcoins !== payload.new.reelcoins) {
-          // No playSound here because RCNotificationModal handles it, 
-          // but we fetch to trigger the watcher.
           fetchOperationalGrid(currentUser);
         }
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(syncChannel);
+      client.removeChannel(syncChannel);
     };
   }, [currentUser, playSound, fetchOperationalGrid]);
 
@@ -322,13 +323,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   }, [fetchOperationalGrid]);
 
   const handleRedeemReward = async (reward: any) => {
+    if (!supabase) return;
+    
     // 1. Optimistic UI Update (Immediate visual feedback)
     setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'redeemed' } : r));
 
     setIsProcessing(reward.id);
     try {
       // 2. RPC Transaction Handshake (Deducts balance, logs tx)
-      const { error: rpcError } = await supabase!.rpc('redeem_reward', {
+      const { error: rpcError } = await supabase.rpc('redeem_reward', {
         user_uid: currentUser?.uid,
         cost: reward.cost,
         item_title: reward.title
@@ -336,7 +339,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (rpcError) throw rpcError;
 
       // 3. Database Update (Permanent status persistence)
-      const { error } = await supabase!
+      const { error } = await supabase
         .from('rewards')
         .update({ 
           status: 'redeemed'
