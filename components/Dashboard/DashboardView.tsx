@@ -10,7 +10,7 @@ import {
   LayoutDashboard, CreditCard, Share2, QrCode, Settings,
   ChevronRight, Activity, Terminal, History, Home, Menu,
   Camera, Save, Pencil, Ticket, MapPin, ExternalLink, Info,
-  AlertCircle, Copy, Check
+  AlertCircle, Copy, Check, Hash, Users as UsersIcon
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
@@ -188,6 +188,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [editName, setEditName] = useState('');
   const [editHandle, setEditHandle] = useState('');
   const [editBio, setEditBio] = useState('');
+  const [editNiche, setEditNiche] = useState('');
+  const [editFollowers, setEditFollowers] = useState<number>(0);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -378,6 +380,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     setEditName(profile?.display_name || '');
     setEditHandle(profile?.handle || '');
     setEditBio(profile?.bio || '');
+    setEditNiche(profile?.niche || 'CREATOR NODE');
+    setEditFollowers(profile?.followers || 0);
     setIsEditing(true);
   };
 
@@ -400,7 +404,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `avatars/${currentUser.uid}_${Date.now()}.${fileExt}`;
         
-        // We use brand-assets bucket which is verified as existing in this deployment
+        // Ensure bucket brand-assets is public and RLS is disabled for authenticated users
         const { error: uploadError } = await supabase.storage
           .from('brand-assets')
           .upload(filePath, avatarFile);
@@ -414,12 +418,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         photoUrl = publicUrl;
       }
 
+      // Explicit persistence protocol for all node metadata
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           display_name: editName,
           handle: editHandle,
           bio: editBio,
+          niche: editNiche,
+          followers: editFollowers,
           photo_url: photoUrl
         })
         .eq('firebase_uid', currentUser.uid);
@@ -430,9 +437,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       setIsEditing(false);
       setAvatarFile(null);
       setPreviewUrl(null);
-      alert("PROFILE_SYNCED: Identity node updated.");
+      alert("PROFILE_SYNCED: Identity node updated successfully.");
     } catch (err: any) {
-      alert("SYNC_FAILURE: " + err.message);
+      alert("SYNC_FAILURE: " + (err.message || "Security policy violation detected. Ensure DB RLS is configured."));
     } finally {
       setIsUploading(false);
     }
@@ -732,24 +739,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
            </div>
 
            <div className="space-y-6">
-             <div>
-               <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Identity Name</label>
-               <input 
-                 value={editName} 
-                 onChange={e => setEditName(e.target.value)}
-                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
-                 placeholder="AGENT NAME"
-               />
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Identity Name</label>
+                  <input 
+                    value={editName} 
+                    onChange={e => setEditName(e.target.value)}
+                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
+                    placeholder="AGENT NAME"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Protocol Handle</label>
+                  <input 
+                    value={editHandle} 
+                    onChange={e => setEditHandle(e.target.value)}
+                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
+                    placeholder="@handle"
+                  />
+                </div>
              </div>
-             <div>
-               <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Protocol Handle</label>
-               <input 
-                 value={editHandle} 
-                 onChange={e => setEditHandle(e.target.value)}
-                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
-                 placeholder="@handle"
-               />
+
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1] flex items-center gap-2"><Hash size={12}/> Current Niche</label>
+                  <input 
+                    value={editNiche} 
+                    onChange={e => setEditNiche(e.target.value)}
+                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
+                    placeholder="e.g. FASHION"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1] flex items-center gap-2"><UsersIcon size={12}/> Follower Count</label>
+                  <input 
+                    type="number"
+                    value={editFollowers} 
+                    onChange={e => setEditFollowers(parseInt(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
+                    placeholder="0"
+                  />
+                </div>
              </div>
+
              <div>
                <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Operational Bio</label>
                <textarea 

@@ -78,6 +78,7 @@ const MainContent: React.FC = () => {
             .single();
 
           if (!existingUser) {
+            // Initializing new profile node with full dataset
             await supabase
               .from('profiles')
               .insert([{
@@ -87,7 +88,11 @@ const MainContent: React.FC = () => {
                 card_status: 'none',
                 reelcoins: 0,
                 display_name: user.displayName || 'Agent ' + user.uid.substring(0, 5),
-                photo_url: user.photoURL || null
+                photo_url: user.photoURL || null,
+                handle: user.displayName?.toLowerCase().replace(/\s/g, '') || '',
+                niche: 'CREATOR NODE',
+                followers: 0,
+                bio: ''
               }]);
           }
         } catch (err) {
