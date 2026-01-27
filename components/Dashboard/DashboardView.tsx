@@ -89,7 +89,7 @@ const VoucherModal = ({ voucher, onClose, onRedeem, isRedeeming, userBalance, is
                     onClick={handleCopy}
                     className="p-3 bg-black text-white border-2 border-black hover:bg-[#834bf1] transition-all active:scale-90"
                   >
-                    {copied ? <Check size={20} className="text-emerald-400" /> : <Copy size={20} />}
+                    {copied ? <Check size={20} className="text-emerald-400" /> : <Check size={20} />}
                   </button>
                 </div>
               </div>
@@ -207,12 +207,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     if (!supabase) return;
 
     try {
-      const { data: profileData } = await supabase
+      const { data: profileData, error: pError } = await supabase
         .from('profiles')
         .select('*')
         .eq('firebase_uid', user.uid)
         .single();
 
+      if (pError) throw pError;
       setProfile(profileData);
 
       // Fetch Latest Transaction to get context/reason/image for balance changes
@@ -267,8 +268,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (sRes.data) setUserSubmissions(sRes.data);
       if (redRes.data) setMyRedemptions(redRes.data.map((r: any) => String(r.reward_id)));
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("GRID_SYNC_FAILURE:", err);
+      // Don't crash the app if bio or columns are missing, but notify developers in console.
     } finally {
       setLoading(false);
     }
@@ -402,9 +404,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `avatars/${currentUser.uid}.${fileExt}`; // Fixed path naming
+        const filePath = `avatars/${currentUser.uid}.${fileExt}`;
         
-        // Upload image to Supabase Storage
+        // Use standard upload procedure with public access
         const { error: uploadError } = await supabase.storage
           .from('brand-assets')
           .upload(filePath, avatarFile, {
@@ -421,13 +423,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         photoUrl = publicUrl;
       }
 
-      // Explicit persistence protocol for all node metadata
+      // Explicit update protocol for all node metadata
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           display_name: editName,
           handle: editHandle,
-          bio: editBio,
+          bio: editBio, // This column must exist in DB
           niche: editNiche,
           followers: editFollowers,
           photo_url: photoUrl
@@ -443,7 +445,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       alert("PROFILE_SYNCED: Identity node updated successfully.");
     } catch (err: any) {
       console.error("SYNC_ERROR_LOG:", err);
-      alert("SYNC_FAILURE: " + (err.message || "Security policy violation detected. Ensure DB RLS is configured."));
+      if (err.message?.includes("column \"bio\" does not exist") || err.message?.includes("'bio' column")) {
+        alert("CRITICAL_DB_ERROR: The 'bio' column is missing from your database. Please run the SQL migration script provided in the terminal instructions.");
+      } else {
+        alert("SYNC_FAILURE: " + (err.message || "Security policy violation detected. Ensure DB RLS is configured."));
+      }
     } finally {
       setIsUploading(false);
     }
@@ -463,7 +469,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const renderHub = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* --- User Profile Header (Instagram style) --- */}
-      <div className="bg-white border-[3px] sm:border-4 border-black p-6 sm:p-8 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
+      <div className="bg-white border-[4px] border-black p-6 sm:p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
         {/* Profile Picture */}
         <div className="relative shrink-0">
           <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-[4px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#834bf1] bg-slate-100">
@@ -479,43 +485,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
 
         {/* Profile Info */}
-        <div className="flex-1 text-center sm:text-left space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <h2 className="text-2xl sm:text-3xl font-black uppercase italic font-display text-black truncate max-w-[250px] sm:max-w-none">
-              {profile?.handle || profile?.display_name?.split(' ')[0].toLowerCase() || "agent"}
+        <div className="flex-1 text-center sm:text-left space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <h2 className="text-2xl sm:text-3xl font-black uppercase italic font-display text-black truncate max-w-[200px] sm:max-w-none">
+              {profile?.handle || "AGENT"}
             </h2>
             <div className="flex gap-2 justify-center sm:justify-start">
-              <button onClick={() => setActiveTab('sync')} className="bg-slate-100 border-2 border-black px-4 py-1.5 font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 shadow-[2px_2px_0px_0px_#000]">
+              <button onClick={() => setActiveTab('sync')} className="bg-white border-[3px] border-black px-6 py-2 font-black text-[10px] uppercase tracking-widest hover:bg-[#ffde59] transition-all active:scale-95 shadow-[3px_3px_0px_0px_#000]">
                 Edit Profile
               </button>
-              <button onClick={() => setActiveTab('sync')} className="bg-slate-100 border-2 border-black px-2 py-1.5 font-black hover:bg-slate-200 transition-all active:scale-95 shadow-[2px_2px_0px_0px_#000]">
+              <button onClick={() => setActiveTab('sync')} className="bg-white border-[3px] border-black px-3 py-2 font-black hover:bg-slate-50 transition-all active:scale-95 shadow-[3px_3px_0px_0px_#000]">
                 <Settings size={16} />
               </button>
             </div>
           </div>
 
-          <div className="flex justify-center sm:justify-start gap-8">
+          <div className="flex justify-center sm:justify-start gap-8 border-y-2 border-black/5 py-4">
             <div className="text-center sm:text-left">
-              <span className="block font-black text-lg text-black leading-none">{missions.length}</span>
+              <span className="block font-black text-xl text-black leading-none">{missions.length}</span>
               <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">missions</span>
             </div>
             <div className="text-center sm:text-left">
-              <span className="block font-black text-lg text-black leading-none">{profile?.followers?.toLocaleString() || "0"}</span>
+              <span className="block font-black text-xl text-black leading-none">{profile?.followers?.toLocaleString() || "0"}</span>
               <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">followers</span>
             </div>
             <div className="text-center sm:text-left">
-              <span className="block font-black text-lg text-black leading-none">{userSubmissions.filter(s => s.status === 'approved').length}</span>
+              <span className="block font-black text-xl text-black leading-none">{userSubmissions.filter(s => s.status === 'approved').length}</span>
               <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">completed</span>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <p className="font-black text-sm uppercase text-black">{profile?.display_name}</p>
-            <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-widest bg-[#834bf1]/5 inline-block px-2 py-0.5 border border-[#834bf1]/20">
-              {profile?.niche || "CREATOR NODE"}
-            </p>
+          <div className="space-y-3">
+            <div>
+               <p className="font-black text-base uppercase text-black">{profile?.display_name || "Agent Node"}</p>
+               <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-widest bg-[#834bf1]/5 inline-block px-3 py-1 border border-[#834bf1]/20 mt-1">
+                 {profile?.niche || "CREATOR NODE"}
+               </p>
+            </div>
             {profile?.bio && (
-              <p className="text-[11px] font-bold text-black/60 uppercase tracking-tight leading-relaxed max-w-sm mx-auto sm:mx-0">
+              <p className="text-[11px] font-bold text-black/70 uppercase tracking-tight leading-relaxed max-w-md mx-auto sm:mx-0 border-l-[4px] border-[#ffde59] pl-4 py-1 whitespace-pre-wrap">
                 {profile.bio}
               </p>
             )}
@@ -728,7 +736,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
          <div className="bg-white border-[3px] sm:border-[4px] border-black p-6 sm:p-10 shadow-[8px_8px_0px_0px_#000] space-y-8">
            <div className="flex flex-col items-center gap-6">
              <div className="relative group cursor-pointer" onClick={() => document.getElementById('avatar-input')?.click()}>
-               <div className="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 border-[4px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#834bf1] relative">
+               <div className="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 border-[4px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#834bf1] relative rounded-none">
                  <img src={previewUrl || profile?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                    <Camera size={24} />
@@ -791,8 +799,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                <textarea 
                  value={editBio} 
                  onChange={e => setEditBio(e.target.value)}
-                 rows={3}
-                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm uppercase tracking-tight focus:bg-white transition-all outline-none resize-none text-black" 
+                 rows={4}
+                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm uppercase tracking-tight focus:bg-white transition-all outline-none resize-none text-black leading-relaxed" 
                  placeholder="MISSION PARAMETERS & INTEL..."
                />
              </div>
@@ -831,7 +839,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
            {profile?.bio && (
              <div className="bg-white border-[3px] border-black p-5 shadow-[4px_4px_0px_0px_#ffde59]">
                <h4 className="text-[8px] font-black uppercase tracking-widest text-black/40 mb-2">Operational Bio</h4>
-               <p className="text-[10px] font-bold uppercase tracking-tight leading-relaxed text-black">{profile.bio}</p>
+               <p className="text-[10px] font-bold uppercase tracking-tight leading-relaxed text-black whitespace-pre-wrap">{profile.bio}</p>
              </div>
            )}
 
