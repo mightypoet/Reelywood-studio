@@ -402,12 +402,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `avatars/${currentUser.uid}_${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${currentUser.uid}.${fileExt}`; // Fixed path naming
         
-        // Ensure bucket brand-assets is public and RLS is disabled for authenticated users
+        // Upload image to Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from('brand-assets')
-          .upload(filePath, avatarFile);
+          .upload(filePath, avatarFile, {
+            upsert: true,
+            cacheControl: '3600'
+          });
 
         if (uploadError) throw uploadError;
 
@@ -439,6 +442,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       setPreviewUrl(null);
       alert("PROFILE_SYNCED: Identity node updated successfully.");
     } catch (err: any) {
+      console.error("SYNC_ERROR_LOG:", err);
       alert("SYNC_FAILURE: " + (err.message || "Security policy violation detected. Ensure DB RLS is configured."));
     } finally {
       setIsUploading(false);
@@ -564,7 +568,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const renderCard = () => (
     <div className="flex flex-col items-center justify-start min-h-[60dvh] py-4 sm:py-8 space-y-8 sm:space-y-12 animate-in zoom-in-95 duration-500">
       {!isApproved ? (
-         <div className="bg-[#ffde59] border-[4px] sm:border-[5px] border-black p-8 sm:p-10 text-center shadow-[8px_8px_0px_0px_#000] sm:shadow-[10px_10px_0px_0px_#000] w-full max-w-md mx-auto">
+         <div className="bg-[#ffde59] border-[4px] border-black p-8 sm:p-10 text-center shadow-[8px_8px_0px_0px_#000] sm:shadow-[10px_10px_0px_0px_#000] w-full max-w-md mx-auto">
             <Lock size={40} className="mx-auto mb-6" strokeWidth={3} />
             <h3 className="text-xl sm:text-2xl font-black uppercase italic font-display">Identity Syncing</h3>
             <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p>
@@ -719,7 +723,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   );
 
   const renderSync = () => (
-    <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500 text-black">
+    <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500 text-black pb-20">
        {isEditing ? (
          <div className="bg-white border-[3px] sm:border-[4px] border-black p-6 sm:p-10 shadow-[8px_8px_0px_0px_#000] space-y-8">
            <div className="flex flex-col items-center gap-6">
