@@ -398,15 +398,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${currentUser.uid}/${Date.now()}_avatar.${fileExt}`;
+        const filePath = `avatars/${currentUser.uid}_${Date.now()}.${fileExt}`;
+        
+        // We use brand-assets bucket which is verified as existing in this deployment
         const { error: uploadError } = await supabase.storage
-          .from('avatars')
+          .from('brand-assets')
           .upload(filePath, avatarFile);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('avatars')
+          .from('brand-assets')
           .getPublicUrl(filePath);
         
         photoUrl = publicUrl;
@@ -449,6 +451,67 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const renderHub = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* --- User Profile Header (Instagram style) --- */}
+      <div className="bg-white border-[3px] sm:border-4 border-black p-6 sm:p-8 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
+        {/* Profile Picture */}
+        <div className="relative shrink-0">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-[4px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#834bf1] bg-slate-100">
+            <img 
+              src={profile?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} 
+              className="w-full h-full object-cover" 
+              alt="Profile" 
+            />
+          </div>
+          <div className="absolute -bottom-1 -right-1 bg-[#ffde59] border-2 border-black p-1.5 rounded-full shadow-[2px_2px_0px_0px_#000]">
+            <CheckCircle2 size={16} className="text-black" />
+          </div>
+        </div>
+
+        {/* Profile Info */}
+        <div className="flex-1 text-center sm:text-left space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-black uppercase italic font-display text-black truncate max-w-[250px] sm:max-w-none">
+              {profile?.handle || profile?.display_name?.split(' ')[0].toLowerCase() || "agent"}
+            </h2>
+            <div className="flex gap-2 justify-center sm:justify-start">
+              <button onClick={() => setActiveTab('sync')} className="bg-slate-100 border-2 border-black px-4 py-1.5 font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 shadow-[2px_2px_0px_0px_#000]">
+                Edit Profile
+              </button>
+              <button onClick={() => setActiveTab('sync')} className="bg-slate-100 border-2 border-black px-2 py-1.5 font-black hover:bg-slate-200 transition-all active:scale-95 shadow-[2px_2px_0px_0px_#000]">
+                <Settings size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-center sm:justify-start gap-8">
+            <div className="text-center sm:text-left">
+              <span className="block font-black text-lg text-black leading-none">{missions.length}</span>
+              <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">missions</span>
+            </div>
+            <div className="text-center sm:text-left">
+              <span className="block font-black text-lg text-black leading-none">{profile?.followers?.toLocaleString() || "0"}</span>
+              <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">followers</span>
+            </div>
+            <div className="text-center sm:text-left">
+              <span className="block font-black text-lg text-black leading-none">{userSubmissions.filter(s => s.status === 'approved').length}</span>
+              <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">completed</span>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-black text-sm uppercase text-black">{profile?.display_name}</p>
+            <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-widest bg-[#834bf1]/5 inline-block px-2 py-0.5 border border-[#834bf1]/20">
+              {profile?.niche || "CREATOR NODE"}
+            </p>
+            {profile?.bio && (
+              <p className="text-[11px] font-bold text-black/60 uppercase tracking-tight leading-relaxed max-w-sm mx-auto sm:mx-0">
+                {profile.bio}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div className="bg-[#834bf1] p-4 sm:p-6 border-[3px] sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] text-white">
           <div className="flex justify-between items-start mb-2">
