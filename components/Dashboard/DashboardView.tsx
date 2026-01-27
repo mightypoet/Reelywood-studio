@@ -10,7 +10,8 @@ import {
   LayoutDashboard, CreditCard, Share2, QrCode, Settings,
   ChevronRight, Activity, Terminal, History, Home, Menu,
   Camera, Save, Pencil, Ticket, MapPin, ExternalLink, Info,
-  AlertCircle, Copy, Check, Hash, Users as UsersIcon
+  AlertCircle, Copy, Check, Hash, Users as UsersIcon,
+  UserPlus, UserMinus, Eye, Award, ShieldCheck
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
@@ -23,6 +24,92 @@ interface DashboardViewProps {
 }
 
 type TabType = 'hub' | 'card' | 'missions' | 'perks' | 'sync';
+
+// --- Agent Dossier Modal (View Other Profile) ---
+const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose }: { 
+  agent: any, 
+  isFollowing: boolean, 
+  onFollow: () => void, 
+  onClose: () => void 
+}) => {
+  return (
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300 text-black">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
+        <header className="bg-[#834bf1] text-white p-6 flex justify-between items-center border-b-[6px] border-black">
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-2 border-2 border-black rotate-3">
+              {/* Fix: Added missing ShieldCheck component import and ensured use here */}
+              <ShieldCheck className="text-[#834bf1]" size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black italic uppercase font-display leading-none">Agent Dossier</h2>
+              <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-50 mt-1">Verified Node Analysis</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-black transition-colors">
+            <X size={20} strokeWidth={4} />
+          </button>
+        </header>
+
+        <main className="p-8 space-y-8 overflow-y-auto max-h-[70vh] custom-scrollbar">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-24 h-24 rounded-full border-[4px] border-black overflow-hidden shadow-[6px_6px_0px_0px_#ffde59] bg-slate-100">
+              <img src={agent.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${agent.firebase_uid}`} className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <h3 className="text-3xl font-black uppercase italic font-display">{agent.display_name}</h3>
+              <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-widest mt-1">@{agent.handle || 'unknown_node'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <div className="bg-slate-50 border-[3px] border-black p-4 text-center">
+                <span className="block text-2xl font-black italic font-display">{agent.followers?.toLocaleString() || "0"}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Authority Rank</span>
+             </div>
+             <div className="bg-slate-50 border-[3px] border-black p-4 text-center">
+                <span className="block text-2xl font-black italic font-display text-[#834bf1]">{agent.reelcoins?.toLocaleString() || "0"}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Asset Value</span>
+             </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-black/30">
+              <Info size={16} strokeWidth={3} />
+              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Operational Parameters</span>
+            </div>
+            <div className="bg-slate-50 border-[3px] border-black p-5 relative">
+               <div className="absolute -top-3 left-4 bg-black text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest border-2 border-white">BIO_INTEL</div>
+               <p className="text-sm font-bold uppercase leading-relaxed text-black/70 italic mt-2">
+                 {agent.bio || "No mission bio transmitted. Agent is operating in stealth mode."}
+               </p>
+               <div className="mt-4 flex gap-2 flex-wrap">
+                  <span className="px-2 py-1 bg-[#ffde59] border-2 border-black text-[8px] font-black uppercase tracking-widest">{agent.niche || 'GENERALIST'}</span>
+                  <span className="px-2 py-1 bg-white border-2 border-black text-[8px] font-black uppercase tracking-widest">LVL 0{Math.floor(Math.random() * 9) + 1} NODE</span>
+               </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={onFollow}
+            className={`w-full py-6 border-[6px] border-black shadow-[8px_8px_0px_0px_#000] font-black uppercase text-lg tracking-[0.2em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-95 ${isFollowing ? 'bg-white text-black' : 'bg-[#ffde59] text-black'}`}
+          >
+            {isFollowing ? (
+              <><UserMinus size={24} strokeWidth={3} /> UNLINK NODE</>
+            ) : (
+              <><UserPlus size={24} strokeWidth={3} /> LINK IDENTITY</>
+            )}
+          </button>
+        </main>
+
+        <footer className="p-4 bg-slate-100 border-t-[4px] border-black text-center">
+           <p className="text-[8px] font-black uppercase tracking-[0.5em] text-black/30 italic">Encryption Standard v4.5.1 • Dossier Ref: {agent.firebase_uid?.slice(0,8)}</p>
+        </footer>
+      </div>
+    </div>
+  );
+};
 
 const VoucherModal = ({ voucher, onClose, onRedeem, isRedeeming, userBalance, isSuccess }: { 
   voucher: any, 
@@ -45,7 +132,7 @@ const VoucherModal = ({ voucher, onClose, onRedeem, isRedeeming, userBalance, is
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 text-black">
       <div className="absolute inset-0" onClick={isRedeeming ? undefined : onClose} />
-      <div className="relative w-full max-w-lg bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#ffde59] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
+      <div className="relative w-full max-lg bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#ffde59] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
         <header className="bg-black text-white p-6 flex justify-between items-center border-b-[6px] border-black">
           <div className="flex items-center gap-3">
             <div className="bg-[#ffde59] p-2 border-2 border-black rotate-3">
@@ -168,7 +255,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
-  // Fixed: Define isApproved helper based on profile card_status to fix missing reference errors
   const isApproved = profile?.card_status === 'approved';
   
   const [missions, setMissions] = useState<any[]>([]);
@@ -177,6 +263,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [myRedemptions, setMyRedemptions] = useState<string[]>([]);
   const [latestTxMetadata, setLatestTxMetadata] = useState<{reason: string | null, image: string | null}>({reason: null, image: null});
   
+  // Follow System States
+  const [otherCreators, setOtherCreators] = useState<any[]>([]);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [viewingAgent, setViewingAgent] = useState<any>(null);
+
   const [activeTab, setActiveTab] = useState<TabType>('hub');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [redemptionSuccessId, setRedemptionSuccessId] = useState<string | null>(null);
@@ -201,6 +292,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     currentBalance: profile?.reelcoins,
     storageKey: 'user_last_rc_balance'
   });
+
+  const fetchCreatorNetwork = useCallback(async (user: FirebaseUser) => {
+    if (!supabase) return;
+    try {
+      // 1. Fetch other active creators
+      const { data: others } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('firebase_uid', user.uid)
+        .order('reelcoins', { ascending: false })
+        .limit(10);
+      
+      if (others) setOtherCreators(others);
+
+      // 2. Fetch following relationships
+      const { data: following } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.uid);
+      
+      if (following) {
+        setFollowingIds(new Set(following.map(f => f.following_id)));
+      }
+    } catch (err) {
+      console.error("NETWORK_SYNC_FAILURE:", err);
+    }
+  }, []);
+
+  const handleFollowToggle = async (targetUid: string) => {
+    if (!supabase || !currentUser) return;
+    
+    const isCurrentlyFollowing = followingIds.has(targetUid);
+    
+    try {
+      if (isCurrentlyFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.uid)
+          .eq('following_id', targetUid);
+        if (error) throw error;
+        
+        setFollowingIds(prev => {
+          const next = new Set(prev);
+          next.delete(targetUid);
+          return next;
+        });
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from('follows')
+          .insert([{ follower_id: currentUser.uid, following_id: targetUid }]);
+        if (error) throw error;
+        
+        setFollowingIds(prev => {
+          const next = new Set(prev);
+          next.add(targetUid);
+          return next;
+        });
+        playSound();
+      }
+    } catch (err: any) {
+      alert("FOLLOW_SYNC_FAILURE: " + err.message);
+    }
+  };
 
   const fetchOperationalGrid = useCallback(async (user: FirebaseUser) => {
     if (!supabase) return;
@@ -262,12 +419,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (sRes.data) setUserSubmissions(sRes.data);
       if (redRes.data) setMyRedemptions(redRes.data.map((r: any) => String(r.reward_id)));
 
+      // Trigger network fetch
+      fetchCreatorNetwork(user);
+
     } catch (err: any) {
       console.error("GRID_SYNC_FAILURE:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchCreatorNetwork]);
 
   useEffect(() => {
     if (!supabase || !currentUser) return;
@@ -343,7 +503,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         .update({
           display_name: editName,
           handle: editHandle,
-          bio: editBio,
+          bio: editBio || '',
           niche: editNiche,
           followers: editFollowers,
           photo_url: photoUrl
@@ -351,6 +511,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         .eq('firebase_uid', currentUser.uid);
 
       if (updateError) throw updateError;
+      
       await fetchOperationalGrid(currentUser);
       setIsEditing(false);
       setAvatarFile(null);
@@ -358,9 +519,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       alert("PROFILE_SYNCED: Identity node updated successfully.");
     } catch (err: any) {
       if (err.message?.includes("column \"bio\" does not exist") || err.message?.includes("'bio' column")) {
-        alert("CRITICAL_DB_ERROR: The 'bio' column is missing. Please run the SQL fix in the Supabase Editor.");
+        alert("CRITICAL_DB_ERROR: The 'bio' column is still missing from your database. Please run the SQL fix in the Supabase Editor as instructed.");
       } else {
-        alert("SYNC_FAILURE: " + err.message);
+        alert("SYNC_FAILURE: " + (err.message || "Identity update protocol failed."));
       }
     } finally {
       setIsUploading(false);
@@ -368,10 +529,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   };
 
   const getBioFontSize = (text: string) => {
-    if (text.length > 200) return 'text-[8px]';
-    if (text.length > 100) return 'text-[10px]';
-    return 'text-[11px]';
+    const length = text?.length || 0;
+    if (length > 200) return 'text-[9px]';
+    if (length > 100) return 'text-[11px]';
+    return 'text-[12px]';
   };
+
+  const renderCreatorNetwork = () => (
+    <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] overflow-hidden">
+      <div className="flex items-center justify-between mb-6">
+        <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 text-black">
+          <UsersIcon size={14} className="text-[#834bf1]" /> Agent Grid (Global)
+        </h4>
+        <span className="text-[7px] font-black uppercase text-emerald-500 animate-pulse">Live_Feed_On</span>
+      </div>
+      
+      <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x">
+        {otherCreators.map((agent) => (
+          <div key={agent.firebase_uid} className="flex-shrink-0 w-32 bg-slate-50 border-[3px] border-black p-3 shadow-[4px_4px_0px_0px_#000] snap-start flex flex-col items-center text-center group relative overflow-hidden">
+            <div className="absolute inset-0 bg-[#834bf1] opacity-0 group-hover:opacity-5 transition-opacity" />
+            
+            <div className="w-14 h-14 rounded-full border-2 border-black overflow-hidden mb-3 bg-white shadow-[2px_2px_0px_0px_#834bf1] group-hover:scale-105 transition-transform cursor-pointer"
+                 onClick={() => setViewingAgent(agent)}>
+              <img src={agent.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${agent.firebase_uid}`} className="w-full h-full object-cover" />
+            </div>
+            
+            <h5 className="text-[10px] font-black uppercase truncate w-full mb-0.5">{agent.display_name}</h5>
+            <p className="text-[7px] font-bold text-black/40 uppercase tracking-widest mb-3 truncate w-full">@{agent.handle || 'node'}</p>
+            
+            <div className="flex gap-1 w-full mt-auto">
+               <button 
+                onClick={() => handleFollowToggle(agent.firebase_uid)}
+                className={`flex-1 p-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all ${followingIds.has(agent.firebase_uid) ? 'bg-white text-black' : 'bg-[#ffde59] text-black'}`}
+              >
+                {followingIds.has(agent.firebase_uid) ? <UserMinus size={12} strokeWidth={3} className="mx-auto" /> : <UserPlus size={12} strokeWidth={3} className="mx-auto" />}
+              </button>
+              <button 
+                onClick={() => setViewingAgent(agent)}
+                className="p-1.5 bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_#834bf1] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
+              >
+                <Eye size={12} strokeWidth={3} className="mx-auto" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const renderHub = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -415,7 +619,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
                <p className="font-black text-base uppercase text-black">{profile?.display_name || "Agent Node"}</p>
                <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-widest bg-[#834bf1]/5 inline-block px-3 py-1 border border-[#834bf1]/20 mt-1">
@@ -423,8 +627,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                </p>
             </div>
             {profile?.bio && (
-              <div className="max-w-md mx-auto sm:mx-0 border-l-[6px] border-[#ffde59] pl-4 py-1.5 bg-slate-50/50">
-                <p className={`${getBioFontSize(profile.bio)} font-bold text-black/70 uppercase tracking-tight leading-normal whitespace-pre-wrap`}>
+              <div className="max-w-md mx-auto sm:mx-0 border-l-[6px] border-[#ffde59] pl-6 py-2 bg-slate-50 shadow-inner">
+                <p className={`${getBioFontSize(profile.bio)} font-black text-black/70 uppercase tracking-tight leading-relaxed whitespace-pre-wrap italic`}>
                   {profile.bio}
                 </p>
               </div>
@@ -452,8 +656,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </div>
 
+      {renderCreatorNetwork()}
+
       <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000]">
-        <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-black">
+        <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] mb-6 flex items-center gap-2 text-black">
           <History size={14} /> Operational Timeline
         </h4>
         <div className="space-y-4">
@@ -574,6 +780,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       {rewardAmount !== null && <RCNotificationModal amount={rewardAmount} onClose={clearReward} subtitle={latestTxMetadata.reason || "Admin just dropped some loot into your wallet."} coverImage={latestTxMetadata.image || undefined} />}
       {selectedMission && <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />}
       {selectedVoucher && <VoucherModal voucher={selectedVoucher} userBalance={profile?.reelcoins || 0} isRedeeming={isProcessing === selectedVoucher.id} isSuccess={redemptionSuccessId === selectedVoucher.id} onClose={() => { setSelectedVoucher(null); setRedemptionSuccessId(null); }} onRedeem={handleRedeemReward} />}
+      
+      {viewingAgent && (
+        <AgentDossierModal 
+          agent={viewingAgent} 
+          isFollowing={followingIds.has(viewingAgent.firebase_uid)}
+          onFollow={() => handleFollowToggle(viewingAgent.firebase_uid)}
+          onClose={() => setViewingAgent(null)}
+        />
+      )}
 
       <header className="bg-white border-b-[3px] sm:border-b-4 border-black p-3 sm:p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md shrink-0 text-black">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -581,21 +796,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <Terminal size={18} strokeWidth={3} />
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-black italic uppercase font-display leading-none">REELYWOOD<span className="text-[#834bf1]">HUB</span></h1>
+            <h1 className="text-base sm:text-lg font-black italic uppercase font-display leading-none text-black">REELYWOOD<span className="text-[#834bf1]">HUB</span></h1>
             <p className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] opacity-30">Agent Node v4.5</p>
           </div>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
-          <div className="hidden sm:flex items-center gap-2 bg-[#ffde59] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000]"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div><span className="text-[8px] font-black uppercase">LIVE_SYNC_OK</span></div>
+          <div className="hidden sm:flex items-center gap-2 bg-[#ffde59] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000]"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div><span className="text-[8px] font-black uppercase text-black">LIVE_SYNC_OK</span></div>
           <button onClick={() => setShowNotifDropdown(!showNotifDropdown)} className="p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black active:translate-x-0.5 active:translate-y-0.5 transition-all"><Bell size={18} /></button>
         </div>
       </header>
 
       <main className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full pb-44 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         {activeTab === 'hub' && renderHub()}
-        {activeTab === 'card' && <div className="flex flex-col items-center justify-start min-h-[60dvh] py-4 sm:py-8 space-y-8 animate-in zoom-in-95 duration-500">{!isApproved ? <div className="bg-[#ffde59] border-[4px] border-black p-8 text-center shadow-[8px_8px_0px_0px_#000] w-full max-w-md mx-auto"><Lock size={40} className="mx-auto mb-6" /><h3 className="text-xl font-black uppercase italic font-display">Identity Syncing</h3><p className="text-[9px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p></div> : <><div className="w-full max-w-[320px] sm:max-w-[340px] flex justify-center"><div className="w-full relative h-[480px] sm:h-[520px]"><ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} /></div></div><div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto px-2"><button className="bg-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#000] transition-all group"><QrCode size={24} /><span className="text-[8px] uppercase tracking-widest">QR Node</span></button><button className="bg-black text-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#834bf1] transition-all group"><Share2 size={24} className="text-[#ffde59]" /><span className="text-[8px] uppercase tracking-widest text-[#ffde59]">Share ID</span></button></div></>}</div>}
-        {activeTab === 'missions' && <div className="space-y-6 animate-in fade-in duration-500"><h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black"><Zap className="text-[#834bf1]" size={18} /> Operational Grid</h3><div className="space-y-4">{missions.length === 0 ? <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">GRID_SILENT</div> : missions.map(m => { const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id)); const isApprovedSub = submission?.status === 'approved' || submission?.status === 'completed'; const isPendingSub = submission?.status === 'pending' || submission?.status === 'verifying'; const isAnySubmitted = isApprovedSub || isPendingSub; return <div key={m.id} className={`border-[4px] p-5 shadow-[4px_4px_0px_0px] relative overflow-hidden flex flex-col transition-all ${isApprovedSub ? 'bg-[#4ade80] border-black shadow-black' : isPendingSub ? 'bg-[#ffde59] border-black shadow-black' : 'bg-white border-black shadow-black'}`}>{isApprovedSub && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80"><div className="border-[5px] border-black px-6 py-2 flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"><span className="font-display font-black text-3xl text-black uppercase italic">MISSION COMPLETE</span></div></div>}<div className={`flex justify-between items-start mb-4 relative z-10 ${isApprovedSub ? 'opacity-40' : ''}`}><div className="w-10 h-10 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">{m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} />}</div><div className="px-2 py-1 font-black text-[7px] border-[2px] shadow-[2px_2px_0px_0px_#000] bg-black text-white border-black">{isApprovedSub ? 'VERIFIED_ENTRY' : isPendingSub ? 'QC_IN_PROGRESS' : `+${m.reward_amount} RC`}</div></div><h4 className={`text-base font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'opacity-30 line-through decoration-[3px]' : ''}`}>{m.title}</h4><p className={`text-[9px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-20' : ''}`}>{m.description}</p><button onClick={() => !isAnySubmitted && setSelectedMission(m)} disabled={isAnySubmitted || !isApproved} className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isApprovedSub ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' : isPendingSub ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed shadow-none' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}>{!isApproved ? 'LOCKED (SYNC REQ)' : isApprovedSub ? 'MISSION COMPLETED' : isPendingSub ? 'TRANSMISSION CACHED' : 'OPEN BRIEF'}</button></div>; })}</div></div>}
-        {activeTab === 'perks' && <div className="space-y-6 animate-in fade-in duration-500"><h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black"><Gift className="text-[#ffde59] fill-current stroke-black stroke-2" size={18} /> Reward Node</h3><div className="space-y-4">{rewards.length === 0 ? <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">VAULT_EMPTY</div> : rewards.map(r => { const isRedeemed = myRedemptions.includes(String(r.id)) || r.status === 'redeemed'; return <div key={r.id} className={`border-[3px] p-4 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] relative overflow-hidden transition-all ${isRedeemed ? 'bg-slate-200 border-slate-400 grayscale opacity-60 pointer-events-none' : 'bg-white border-black shadow-[#ffde59]'}`}>{isRedeemed && <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"><div className="border-[8px] border-red-600 px-6 py-2 text-4xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 font-display italic">REDEEMED</div></div>}<div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">{r.partner_brands?.logo_url ? <img src={r.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Gift size={18} />}</div><div className="min-w-0"><h4 className={`text-xs font-black uppercase italic truncate ${isRedeemed ? 'line-through text-slate-400' : 'text-black'}`}>{r.title}</h4><p className="text-[7px] font-black uppercase text-black/30 tracking-widest">{r.partner_brands?.name || 'Reelywood'}</p></div></div><div className="flex flex-col items-end gap-1 shrink-0"><span className={`text-base font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span><button onClick={() => !isRedeemed && setSelectedVoucher(r)} disabled={isProcessing === r.id || isRedeemed || !isApproved} className={`px-3 py-2 border-[2px] font-black uppercase text-[7px] tracking-widest shadow-[2px_2px_0px_0px_#000] transition-all ${isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}>{isRedeemed ? 'CLAIMED' : !isApproved ? 'LOCKED' : 'REDEEM'}</button></div></div>; })}</div></div>}
+        {activeTab === 'card' && <div className="flex flex-col items-center justify-start min-h-[60dvh] py-4 sm:py-8 space-y-8 animate-in zoom-in-95 duration-500">{!isApproved ? <div className="bg-[#ffde59] border-[4px] border-black p-8 text-center shadow-[8px_8px_0px_0px_#000] w-full max-w-md mx-auto"><Lock size={40} className="mx-auto mb-6" /><h3 className="text-xl font-black uppercase italic font-display">Identity Syncing</h3><p className="text-[9px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p></div> : <><div className="w-full max-w-[320px] sm:max-w-[340px] flex justify-center"><div className="w-full relative h-[480px] sm:h-[520px]"><ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} /></div></div><div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto px-2"><button className="bg-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#000] transition-all group"><QrCode size={24} /><span className="text-[8px] uppercase tracking-widest text-black">QR Node</span></button><button className="bg-black text-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#834bf1] transition-all group"><Share2 size={24} className="text-[#ffde59]" /><span className="text-[8px] uppercase tracking-widest text-[#ffde59]">Share ID</span></button></div></>}</div>}
+        {activeTab === 'missions' && <div className="space-y-6 animate-in fade-in duration-500"><h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black"><Zap className="text-[#834bf1]" size={18} /> Operational Grid</h3><div className="space-y-4">{missions.length === 0 ? <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">GRID_SILENT</div> : missions.map(m => { const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id)); const isApprovedSub = submission?.status === 'approved' || submission?.status === 'completed'; const isPendingSub = submission?.status === 'pending' || submission?.status === 'verifying'; const isAnySubmitted = isApprovedSub || isPendingSub; return <div key={m.id} className={`border-[4px] p-5 shadow-[4px_4px_0px_0px] relative overflow-hidden flex flex-col transition-all ${isApprovedSub ? 'bg-[#4ade80] border-black shadow-black' : isPendingSub ? 'bg-[#ffde59] border-black shadow-black' : 'bg-white border-black shadow-black'}`}>{isApprovedSub && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80"><div className="border-[5px] border-black px-6 py-2 flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"><span className="font-display font-black text-3xl text-black uppercase italic">MISSION COMPLETE</span></div></div>}<div className={`flex justify-between items-start mb-4 relative z-10 ${isApprovedSub ? 'opacity-40' : ''}`}><div className="w-10 h-10 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">{m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} className="text-black" />}</div><div className="px-2 py-1 font-black text-[7px] border-[2px] shadow-[2px_2px_0px_0px_#000] bg-black text-white border-black">{isApprovedSub ? 'VERIFIED_ENTRY' : isPendingSub ? 'QC_IN_PROGRESS' : `+${m.reward_amount} RC`}</div></div><h4 className={`text-base font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'opacity-30 line-through decoration-[3px]' : ''}`}>{m.title}</h4><p className={`text-[9px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-20' : ''}`}>{m.description}</p><button onClick={() => !isAnySubmitted && setSelectedMission(m)} disabled={isAnySubmitted || !isApproved} className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isApprovedSub ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' : isPendingSub ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed shadow-none' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}>{!isApproved ? 'LOCKED (SYNC REQ)' : isApprovedSub ? 'MISSION COMPLETED' : isPendingSub ? 'TRANSMISSION CACHED' : 'OPEN BRIEF'}</button></div>; })}</div></div>}
+        {activeTab === 'perks' && <div className="space-y-6 animate-in fade-in duration-500"><h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black"><Gift className="text-[#ffde59] fill-current stroke-black stroke-2" size={18} /> Reward Node</h3><div className="space-y-4">{rewards.length === 0 ? <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">VAULT_EMPTY</div> : rewards.map(r => { const isRedeemed = myRedemptions.includes(String(r.id)) || r.status === 'redeemed'; return <div key={r.id} className={`border-[3px] p-4 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] relative overflow-hidden transition-all ${isRedeemed ? 'bg-slate-200 border-slate-400 grayscale opacity-60 pointer-events-none' : 'bg-white border-black shadow-[#ffde59]'}`}>{isRedeemed && <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"><div className="border-[8px] border-red-600 px-6 py-2 text-4xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 font-display italic">REDEEMED</div></div>}<div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">{r.partner_brands?.logo_url ? <img src={r.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Gift size={18} className="text-black" />}</div><div className="min-w-0"><h4 className={`text-xs font-black uppercase italic truncate ${isRedeemed ? 'line-through text-slate-400' : 'text-black'}`}>{r.title}</h4><p className="text-[7px] font-black uppercase text-black/30 tracking-widest">{r.partner_brands?.name || 'Reelywood'}</p></div></div><div className="flex flex-col items-end gap-1 shrink-0"><span className={`text-base font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span><button onClick={() => !isRedeemed && setSelectedVoucher(r)} disabled={isProcessing === r.id || isRedeemed || !isApproved} className={`px-3 py-2 border-[2px] font-black uppercase text-[7px] tracking-widest shadow-[2px_2px_0px_0px_#000] transition-all ${isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}>{isRedeemed ? 'CLAIMED' : !isApproved ? 'LOCKED' : 'REDEEM'}</button></div></div>; })}</div></div>}
         {activeTab === 'sync' && renderSync()}
       </main>
 
