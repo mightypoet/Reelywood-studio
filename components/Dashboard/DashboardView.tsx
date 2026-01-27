@@ -11,7 +11,7 @@ import {
   ChevronRight, Activity, Terminal, History, Home, Menu,
   Camera, Save, Pencil, Ticket, MapPin, ExternalLink, Info,
   AlertCircle, Copy, Check, Hash, Users as UsersIcon,
-  UserPlus, UserMinus, Eye, Award, ShieldCheck
+  UserPlus, UserMinus, Eye, Award, ShieldCheck, ChevronLeft
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
@@ -25,12 +25,103 @@ interface DashboardViewProps {
 
 type TabType = 'hub' | 'card' | 'missions' | 'perks' | 'sync';
 
+// --- Connection List Modal (Followers/Following List) ---
+const ConnectionListModal = ({ 
+  type, 
+  userId, 
+  onClose, 
+  onSelectAgent 
+}: { 
+  type: 'followers' | 'following', 
+  userId: string, 
+  onClose: () => void, 
+  onSelectAgent: (agent: any) => void 
+}) => {
+  const [list, setList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchConnections = async () => {
+      if (!supabase) return;
+      try {
+        const field = type === 'followers' ? 'following_id' : 'follower_id';
+        const joinField = type === 'followers' ? 'follower_id' : 'following_id';
+        
+        const { data, error } = await supabase
+          .from('follows')
+          .select(`profiles!follows_${joinField}_fkey(*)`)
+          .eq(field, userId);
+
+        if (error) throw error;
+        setList(data.map((item: any) => item.profiles) || []);
+      } catch (err) {
+        console.error("CONNECTION_FETCH_ERROR:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConnections();
+  }, [type, userId]);
+
+  return (
+    <div className="fixed inset-0 z-[1150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 text-black">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white border-[6px] border-black shadow-[16px_16px_0px_0px_#000] flex flex-col h-[70vh]">
+        <header className="p-6 border-b-[4px] border-black flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 className="text-xl font-black uppercase italic font-display leading-none">{type}</h3>
+            <p className="text-[8px] font-black uppercase tracking-widest text-black/40 mt-1">Network Node Grid</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-rose-500 transition-colors">
+            <X size={20} strokeWidth={4} />
+          </button>
+        </header>
+        
+        <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          {loading ? (
+            <div className="h-full flex items-center justify-center">
+              <Loader2 className="animate-spin text-[#834bf1]" size={32} />
+            </div>
+          ) : list.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center opacity-20 italic">
+               <UsersIcon size={48} className="mb-4" />
+               <p className="font-black uppercase text-xs">Grid Empty</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {list.map((agent) => (
+                <div 
+                  key={agent.firebase_uid}
+                  onClick={() => onSelectAgent(agent)}
+                  className="bg-white border-[3px] border-black p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 active:translate-x-1 active:translate-y-1 transition-all shadow-[4px_4px_0px_0px_#000]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full border-2 border-black overflow-hidden bg-white shadow-[2px_2px_0px_0px_#834bf1]">
+                      <img src={agent.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${agent.firebase_uid}`} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase truncate max-w-[150px]">{agent.display_name}</p>
+                      <p className="text-[8px] font-bold text-black/40 uppercase tracking-widest">@{agent.handle || 'node'}</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className="opacity-20" />
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+};
+
 // --- Agent Dossier Modal (View Other Profile) ---
-const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose }: { 
+const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose, onShowConnections }: { 
   agent: any, 
   isFollowing: boolean, 
   onFollow: () => void, 
-  onClose: () => void 
+  onClose: () => void,
+  onShowConnections: (type: 'followers' | 'following', uid: string) => void
 }) => {
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300 text-black">
@@ -39,7 +130,6 @@ const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose }: {
         <header className="bg-[#834bf1] text-white p-6 flex justify-between items-center border-b-[6px] border-black">
           <div className="flex items-center gap-3">
             <div className="bg-white p-2 border-2 border-black rotate-3">
-              {/* Fix: Added missing ShieldCheck component import and ensured use here */}
               <ShieldCheck className="text-[#834bf1]" size={20} />
             </div>
             <div>
@@ -64,14 +154,20 @@ const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose }: {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             <div className="bg-slate-50 border-[3px] border-black p-4 text-center">
-                <span className="block text-2xl font-black italic font-display">{agent.followers?.toLocaleString() || "0"}</span>
-                <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Authority Rank</span>
-             </div>
-             <div className="bg-slate-50 border-[3px] border-black p-4 text-center">
-                <span className="block text-2xl font-black italic font-display text-[#834bf1]">{agent.reelcoins?.toLocaleString() || "0"}</span>
-                <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Asset Value</span>
-             </div>
+             <button 
+               onClick={() => onShowConnections('followers', agent.firebase_uid)}
+               className="bg-slate-50 border-[3px] border-black p-4 text-center active:scale-95 transition-transform"
+             >
+                <span className="block text-2xl font-black italic font-display">{agent.followers || "0"}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Followers</span>
+             </button>
+             <button 
+               onClick={() => onShowConnections('following', agent.firebase_uid)}
+               className="bg-slate-50 border-[3px] border-black p-4 text-center active:scale-95 transition-transform"
+             >
+                <span className="block text-2xl font-black italic font-display text-[#834bf1]">{agent.following || "0"}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Following</span>
+             </button>
           </div>
 
           <div className="space-y-4">
@@ -267,6 +363,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [otherCreators, setOtherCreators] = useState<any[]>([]);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [viewingAgent, setViewingAgent] = useState<any>(null);
+  const [showingConnections, setShowingConnections] = useState<{type: 'followers' | 'following', uid: string} | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabType>('hub');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -353,6 +450,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           return next;
         });
         playSound();
+      }
+
+      // SOCIAL_SYNC: Refresh local counts immediately to reflect triggers
+      if (currentUser) {
+        const { data: updatedProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('firebase_uid', currentUser.uid)
+          .single();
+        if (updatedProfile) setProfile(updatedProfile);
+
+        // Also refresh the viewing agent if dossier is open
+        if (viewingAgent && viewingAgent.firebase_uid === targetUid) {
+          const { data: updatedAgent } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('firebase_uid', targetUid)
+            .single();
+          if (updatedAgent) setViewingAgent(updatedAgent);
+        }
       }
     } catch (err: any) {
       alert("FOLLOW_SYNC_FAILURE: " + err.message);
@@ -535,6 +652,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     return 'text-[12px]';
   };
 
+  const handleSelectConnectionAgent = async (agent: any) => {
+    setViewingAgent(agent);
+    setShowingConnections(null);
+  };
+
   const renderCreatorNetwork = () => (
     <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] overflow-hidden">
       <div className="flex items-center justify-between mb-6">
@@ -604,18 +726,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             </div>
           </div>
 
-          <div className="flex justify-center sm:justify-start gap-8 border-y-2 border-black/5 py-4">
+          <div className="flex justify-center sm:justify-start gap-6 sm:gap-10 border-y-2 border-black/5 py-4">
             <div className="text-center sm:text-left">
               <span className="block font-black text-xl text-black leading-none">{missions.length}</span>
               <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">missions</span>
             </div>
-            <div className="text-center sm:text-left">
-              <span className="block font-black text-xl text-black leading-none">{profile?.followers?.toLocaleString() || "0"}</span>
+            <button 
+              onClick={() => setShowingConnections({type: 'followers', uid: currentUser!.uid})}
+              className="text-center sm:text-left hover:scale-110 active:scale-95 transition-transform"
+            >
+              <span className="block font-black text-xl text-black leading-none">{profile?.followers || "0"}</span>
               <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">followers</span>
-            </div>
-            <div className="text-center sm:text-left">
+            </button>
+            <button 
+              onClick={() => setShowingConnections({type: 'following', uid: currentUser!.uid})}
+              className="text-center sm:text-left hover:scale-110 active:scale-95 transition-transform"
+            >
+              <span className="block font-black text-xl text-black leading-none">{profile?.following || "0"}</span>
+              <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">following</span>
+            </button>
+            <div className="text-center sm:text-left hidden xs:block">
               <span className="block font-black text-xl text-black leading-none">{userSubmissions.filter(s => s.status === 'approved').length}</span>
-              <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">completed</span>
+              <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">vouchers</span>
             </div>
           </div>
 
@@ -787,6 +919,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           isFollowing={followingIds.has(viewingAgent.firebase_uid)}
           onFollow={() => handleFollowToggle(viewingAgent.firebase_uid)}
           onClose={() => setViewingAgent(null)}
+          onShowConnections={(type, uid) => setShowingConnections({type, uid})}
+        />
+      )}
+
+      {showingConnections && (
+        <ConnectionListModal 
+          type={showingConnections.type}
+          userId={showingConnections.uid}
+          onClose={() => setShowingConnections(null)}
+          onSelectAgent={handleSelectConnectionAgent}
         />
       )}
 
