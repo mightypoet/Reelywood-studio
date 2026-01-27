@@ -24,7 +24,6 @@ interface DashboardViewProps {
 
 type TabType = 'hub' | 'card' | 'missions' | 'perks' | 'sync';
 
-// --- Dedicated Voucher Modal Component ---
 const VoucherModal = ({ voucher, onClose, onRedeem, isRedeeming, userBalance, isSuccess }: { 
   voucher: any, 
   onClose: () => void, 
@@ -89,7 +88,7 @@ const VoucherModal = ({ voucher, onClose, onRedeem, isRedeeming, userBalance, is
                     onClick={handleCopy}
                     className="p-3 bg-black text-white border-2 border-black hover:bg-[#834bf1] transition-all active:scale-90"
                   >
-                    {copied ? <Check size={20} className="text-emerald-400" /> : <Check size={20} />}
+                    {copied ? <Check size={20} className="text-emerald-400" /> : <Copy size={20} />}
                   </button>
                 </div>
               </div>
@@ -169,6 +168,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  // Fixed: Define isApproved helper based on profile card_status to fix missing reference errors
+  const isApproved = profile?.card_status === 'approved';
+  
   const [missions, setMissions] = useState<any[]>([]);
   const [rewards, setRewards] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
@@ -194,10 +196,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Sound Notification Integration
   const { playSound } = useSoundNotification();
-
-  // Balance Watcher Hook
   const { rewardAmount, clearReward } = useRCBalanceWatcher({
     currentBalance: profile?.reelcoins,
     storageKey: 'user_last_rc_balance'
@@ -216,7 +215,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (pError) throw pError;
       setProfile(profileData);
 
-      // Fetch Latest Transaction to get context/reason/image for balance changes
       const { data: latestTx } = await supabase
         .from('transactions')
         .select('description, amount, meta_image')
@@ -230,17 +228,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           reason: latestTx.description,
           image: latestTx.meta_image
         });
-      } else {
-        setLatestTxMetadata({reason: null, image: null});
       }
 
       const { data: allMissions } = await supabase
         .from('missions')
         .select('*, partner_brands(*)');
 
-      let currentMissions: any[] = [];
       if (allMissions) {
-        currentMissions = allMissions.filter(m => {
+        const currentMissions = allMissions.filter(m => {
           if (m.assigned_to?.includes('DRAFT')) return false;
           const isGlobal = !m.assigned_to || (Array.isArray(m.assigned_to) && m.assigned_to.length === 0);
           const isAssigned = Array.isArray(m.assigned_to) && (m.assigned_to.includes(user.uid) || m.assigned_to.includes(profileData?.id));
@@ -255,9 +250,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         supabase.from('user_rewards').select('reward_id').eq('user_id', user.uid)
       ]);
 
-      let currentRewards: any[] = [];
       if (rRes.data) {
-        currentRewards = rRes.data.filter(r => {
+        const currentRewards = rRes.data.filter(r => {
           const isGlobal = !r.assigned_to || (Array.isArray(r.assigned_to) && r.assigned_to.length === 0);
           const isAssigned = Array.isArray(r.assigned_to) && (r.assigned_to.includes(user.uid));
           return isGlobal || isAssigned;
@@ -270,61 +264,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
     } catch (err: any) {
       console.error("GRID_SYNC_FAILURE:", err);
-      // Don't crash the app if bio or columns are missing, but notify developers in console.
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // REALTIME SYNC HANDLER
   useEffect(() => {
     if (!supabase || !currentUser) return;
-
     const client = supabase;
-
     const syncChannel = client.channel(`user-sync-${currentUser.uid}`)
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'missions' 
-      }, (payload) => {
-        const m = payload.new;
-        const isGlobal = !m.assigned_to || (Array.isArray(m.assigned_to) && m.assigned_to.length === 0);
-        const isAssigned = Array.isArray(m.assigned_to) && m.assigned_to.includes(currentUser.uid);
-        
-        if (isGlobal || isAssigned) {
-          playSound();
-          fetchOperationalGrid(currentUser);
-        }
-      })
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'rewards' 
-      }, (payload) => {
-        const r = payload.new;
-        const isGlobal = !r.assigned_to || (Array.isArray(r.assigned_to) && r.assigned_to.length === 0);
-        const isAssigned = Array.isArray(r.assigned_to) && r.assigned_to.includes(currentUser.uid);
-        
-        if (isGlobal || isAssigned) {
-          playSound();
-          fetchOperationalGrid(currentUser);
-        }
-      })
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'profiles',
-        filter: `firebase_uid=eq.${currentUser.uid}`
-      }, () => {
-        fetchOperationalGrid(currentUser);
-      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
       .subscribe();
-
-    return () => {
-      client.removeChannel(syncChannel);
-    };
-  }, [currentUser, playSound, fetchOperationalGrid]);
+    return () => { client.removeChannel(syncChannel); };
+  }, [currentUser, fetchOperationalGrid]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -340,39 +292,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
   const handleRedeemReward = async (reward: any) => {
     if (!supabase) return;
-    
-    setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'redeemed' } : r));
-
     setIsProcessing(reward.id);
     try {
-      const { error: rpcError } = await supabase.rpc('redeem_reward', {
-        user_uid: currentUser?.uid,
-        cost: reward.cost,
-        item_title: reward.title
-      });
+      const { error: rpcError } = await supabase.rpc('redeem_reward', { user_uid: currentUser?.uid, cost: reward.cost, item_title: reward.title });
       if (rpcError) throw rpcError;
-
-      const { error } = await supabase
-        .from('rewards')
-        .update({ 
-          status: 'redeemed'
-        })
-        .eq('id', reward.id);
-
-      if (error) {
-        console.error("Supabase Error:", error);
-        throw error;
-      }
-
-      if ('vibrate' in navigator) navigator.vibrate(200);
+      await supabase.from('rewards').update({ status: 'redeemed' }).eq('id', reward.id);
       setRedemptionSuccessId(reward.id);
       setMyRedemptions(prev => [...prev, String(reward.id)]);
-      
       if (currentUser) fetchOperationalGrid(currentUser);
-
     } catch (err: any) {
       alert("Redemption Failed: " + (err.message || "Unknown error"));
-      setRewards(prev => prev.map(r => r.id === reward.id ? { ...r, status: 'active' } : r));
     } finally {
       setIsProcessing(null);
     }
@@ -391,8 +320,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     const file = e.target.files?.[0];
     if (file) {
       setAvatarFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -401,35 +329,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     setIsUploading(true);
     try {
       let photoUrl = profile?.photo_url;
-
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `avatars/${currentUser.uid}.${fileExt}`;
-        
-        // Use standard upload procedure with public access
-        const { error: uploadError } = await supabase.storage
-          .from('brand-assets')
-          .upload(filePath, avatarFile, {
-            upsert: true,
-            cacheControl: '3600'
-          });
-
+        const { error: uploadError } = await supabase.storage.from('brand-assets').upload(filePath, avatarFile, { upsert: true });
         if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('brand-assets')
-          .getPublicUrl(filePath);
-        
+        const { data: { publicUrl } } = supabase.storage.from('brand-assets').getPublicUrl(filePath);
         photoUrl = publicUrl;
       }
 
-      // Explicit update protocol for all node metadata
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           display_name: editName,
           handle: editHandle,
-          bio: editBio, // This column must exist in DB
+          bio: editBio,
           niche: editNiche,
           followers: editFollowers,
           photo_url: photoUrl
@@ -437,55 +351,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         .eq('firebase_uid', currentUser.uid);
 
       if (updateError) throw updateError;
-
       await fetchOperationalGrid(currentUser);
       setIsEditing(false);
       setAvatarFile(null);
       setPreviewUrl(null);
       alert("PROFILE_SYNCED: Identity node updated successfully.");
     } catch (err: any) {
-      console.error("SYNC_ERROR_LOG:", err);
       if (err.message?.includes("column \"bio\" does not exist") || err.message?.includes("'bio' column")) {
-        alert("CRITICAL_DB_ERROR: The 'bio' column is missing from your database. Please run the SQL migration script provided in the terminal instructions.");
+        alert("CRITICAL_DB_ERROR: The 'bio' column is missing. Please run the SQL fix in the Supabase Editor.");
       } else {
-        alert("SYNC_FAILURE: " + (err.message || "Security policy violation detected. Ensure DB RLS is configured."));
+        alert("SYNC_FAILURE: " + err.message);
       }
     } finally {
       setIsUploading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-[100dvh] bg-white flex flex-col items-center justify-center space-y-8">
-        <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
-        <p className="text-[12px] font-black uppercase tracking-[0.6em] text-black animate-pulse">Syncing Node...</p>
-      </div>
-    );
-  }
-
-  const isApproved = profile?.card_status === 'approved';
+  const getBioFontSize = (text: string) => {
+    if (text.length > 200) return 'text-[8px]';
+    if (text.length > 100) return 'text-[10px]';
+    return 'text-[11px]';
+  };
 
   const renderHub = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* --- User Profile Header (Instagram style) --- */}
       <div className="bg-white border-[4px] border-black p-6 sm:p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
-        {/* Profile Picture */}
         <div className="relative shrink-0">
           <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-[4px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#834bf1] bg-slate-100">
-            <img 
-              src={profile?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} 
-              className="w-full h-full object-cover" 
-              alt="Profile" 
-            />
+            <img src={profile?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" alt="Profile" />
           </div>
           <div className="absolute -bottom-1 -right-1 bg-[#ffde59] border-2 border-black p-1.5 rounded-full shadow-[2px_2px_0px_0px_#000]">
             <CheckCircle2 size={16} className="text-black" />
           </div>
         </div>
 
-        {/* Profile Info */}
-        <div className="flex-1 text-center sm:text-left space-y-5">
+        <div className="flex-1 text-center sm:text-left space-y-5 w-full">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <h2 className="text-2xl sm:text-3xl font-black uppercase italic font-display text-black truncate max-w-[200px] sm:max-w-none">
               {profile?.handle || "AGENT"}
@@ -523,16 +423,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                </p>
             </div>
             {profile?.bio && (
-              <p className="text-[11px] font-bold text-black/70 uppercase tracking-tight leading-relaxed max-w-md mx-auto sm:mx-0 border-l-[4px] border-[#ffde59] pl-4 py-1 whitespace-pre-wrap">
-                {profile.bio}
-              </p>
+              <div className="max-w-md mx-auto sm:mx-0 border-l-[6px] border-[#ffde59] pl-4 py-1.5 bg-slate-50/50">
+                <p className={`${getBioFontSize(profile.bio)} font-bold text-black/70 uppercase tracking-tight leading-normal whitespace-pre-wrap`}>
+                  {profile.bio}
+                </p>
+              </div>
             )}
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <div className="bg-[#834bf1] p-4 sm:p-6 border-[3px] sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] text-white">
+        <div className="bg-[#834bf1] p-4 sm:p-6 border-[3px] sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] text-white">
           <div className="flex justify-between items-start mb-2">
             <Wallet size={18} className="opacity-50" />
             <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-widest bg-white/20 px-1">ASSETS</span>
@@ -540,7 +442,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           <h3 className="text-3xl sm:text-4xl font-black italic font-display leading-none">{profile?.reelcoins?.toLocaleString() || "0"}</h3>
           <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest mt-1">ReelCoins</p>
         </div>
-        <div className="bg-[#ffde59] p-4 sm:p-6 border-[3px] sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] text-black">
+        <div className="bg-[#ffde59] p-4 sm:p-6 border-[3px] sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] text-black">
           <div className="flex justify-between items-start mb-2">
             <Zap size={18} className="opacity-50" />
             <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-widest bg-black/10 px-1">OPS</span>
@@ -550,8 +452,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000]">
-        <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] mb-6 flex items-center gap-2 text-black">
+      <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000]">
+        <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-black">
           <History size={14} /> Operational Timeline
         </h4>
         <div className="space-y-4">
@@ -573,170 +475,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     </div>
   );
 
-  const renderCard = () => (
-    <div className="flex flex-col items-center justify-start min-h-[60dvh] py-4 sm:py-8 space-y-8 sm:space-y-12 animate-in zoom-in-95 duration-500">
-      {!isApproved ? (
-         <div className="bg-[#ffde59] border-[4px] border-black p-8 sm:p-10 text-center shadow-[8px_8px_0px_0px_#000] sm:shadow-[10px_10px_0px_0px_#000] w-full max-w-md mx-auto">
-            <Lock size={40} className="mx-auto mb-6" strokeWidth={3} />
-            <h3 className="text-xl sm:text-2xl font-black uppercase italic font-display">Identity Syncing</h3>
-            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p>
-         </div>
-      ) : (
-        <>
-          <div className="w-full max-w-[320px] sm:max-w-[340px] flex justify-center">
-            <div className="w-full relative h-[480px] sm:h-[520px]">
-              <ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 w-full max-w-md mx-auto px-2">
-            <button className="bg-white border-[3px] sm:border-[4px] border-black py-4 sm:py-5 px-3 sm:px-4 flex flex-col items-center gap-2 sm:gap-3 shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
-              <QrCode size={24} strokeWidth={3} className="group-hover:rotate-6 transition-transform" />
-              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-center">QR Node</span>
-            </button>
-            <button className="bg-black text-white border-[3px] sm:border-[4px] border-black py-4 sm:py-5 px-3 sm:px-4 flex flex-col items-center gap-2 sm:gap-3 shadow-[4px_4px_0px_0px_#834bf1] sm:shadow-[6px_6px_0px_0px_#834bf1] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all active:scale-95 group">
-              <Share2 size={24} strokeWidth={3} className="text-[#ffde59] group-hover:scale-110 transition-transform" />
-              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-center text-[#ffde59]">Share ID</span>
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-
-  const renderMissions = () => (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <h3 className="text-lg sm:text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
-        <Zap className="text-[#834bf1]" size={18} /> Operational Grid
-      </h3>
-      <div className="space-y-4 sm:space-y-6">
-        {missions.length === 0 ? (
-          <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">GRID_SILENT</div>
-        ) : (
-          missions.map(m => {
-            const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
-            const isApprovedSub = submission?.status === 'approved' || submission?.status === 'completed';
-            const isPendingSub = submission?.status === 'pending' || submission?.status === 'verifying';
-            const isAnySubmitted = isApprovedSub || isPendingSub;
-            
-            const brand = m.partner_brands;
-
-            return (
-              <div 
-                key={m.id} 
-                className={`border-[4px] p-5 sm:p-6 shadow-[4px_4px_0px_0px] sm:shadow-[6px_6px_0px_0px] relative overflow-hidden flex flex-col transition-all duration-300 ${
-                  isApprovedSub 
-                    ? 'bg-[#4ade80] border-black shadow-black' 
-                    : isPendingSub 
-                      ? 'bg-[#ffde59] border-black shadow-black' 
-                      : 'bg-white border-black shadow-black'
-                }`}
-              >
-                {/* BLACK RUBBER STAMP OVERLAY */}
-                {isApprovedSub && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80">
-                    <div className="border-[5px] border-black px-6 py-2 rounded-none flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
-                      <span className="font-display font-black text-3xl sm:text-4xl text-black uppercase tracking-tighter italic">MISSION COMPLETE</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className={`flex justify-between items-start mb-4 relative z-10 ${isApprovedSub ? 'opacity-40' : ''}`}>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">
-                    {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} />}
-                  </div>
-                  <div className={`px-2 py-1 font-black text-[7px] sm:text-[9px] border-[2px] shadow-[2px_2px_0px_0px_#000] bg-black text-white border-black`}>
-                    {isApprovedSub ? 'VERIFIED_ENTRY' : isPendingSub ? 'QC_IN_PROGRESS' : `+${m.reward_amount} RC`}
-                  </div>
-                </div>
-                
-                <h4 className={`text-base sm:text-lg font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'opacity-30 line-through decoration-[3px] decoration-black' : ''}`}>
-                  {m.title}
-                </h4>
-                <p className={`text-[9px] sm:text-[10px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-20' : ''}`}>
-                  {m.description}
-                </p>
-                
-                <button 
-                  onClick={() => !isAnySubmitted && setSelectedMission(m)}
-                  disabled={isAnySubmitted || !isApproved}
-                  className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${
-                    isApprovedSub 
-                      ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' 
-                      : isPendingSub 
-                        ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' 
-                        : !isApproved 
-                          ? 'bg-slate-300 border-slate-400 cursor-not-allowed shadow-none' 
-                          : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'
-                  }`}
-                >
-                  {!isApproved ? 'LOCKED (SYNC REQ)' : isApprovedSub ? 'MISSION COMPLETED' : isPendingSub ? 'TRANSMISSION CACHED' : 'OPEN BRIEF'}
-                </button>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-
-  const renderPerks = () => (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <h3 className="text-lg sm:text-xl font-black uppercase italic font-display flex items-center gap-3 text-black">
-        <Gift className="text-[#ffde59] fill-current stroke-black stroke-2" size={18} /> Reward Node
-      </h3>
-      <div className="space-y-4">
-        {rewards.length === 0 ? (
-          <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">VAULT_EMPTY</div>
-        ) : (
-          rewards.map(r => {
-            const isRedeemed = myRedemptions.includes(String(r.id)) || r.status === 'redeemed';
-            const brand = r.partner_brands;
-            return (
-              <div key={r.id} className={`border-[3px] sm:border-[4px] p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] sm:shadow-[5px_5px_0px_0px] relative overflow-hidden transition-all duration-300 ${isRedeemed ? 'bg-slate-200 border-slate-400 shadow-none grayscale opacity-60 pointer-events-none select-none' : 'bg-white border-black shadow-[#ffde59]'}`}>
-                {/* REDEEMED RUBBER STAMP */}
-                {isRedeemed && (
-                  <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                    <div className="border-[8px] border-red-600 px-6 py-2 text-4xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 shadow-sm font-display italic" style={{ mixBlendMode: 'multiply' }}>
-                      REDEEMED
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">
-                     {brand?.logo_url ? <img src={brand.logo_url} className="w-full h-full object-contain" /> : <Gift size={18} />}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className={`text-xs sm:text-sm font-black uppercase italic truncate ${isRedeemed ? 'line-through text-slate-400' : 'text-black'}`}>{r.title}</h4>
-                    <p className="text-[7px] sm:text-[9px] font-black uppercase text-black/30 tracking-widest">{brand?.name || 'Reelywood'}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1 sm:gap-2 shrink-0">
-                  <span className={`text-base sm:text-lg font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span>
-                  <button 
-                    onClick={() => !isRedeemed && setSelectedVoucher(r)}
-                    disabled={isProcessing === r.id || isRedeemed || !isApproved}
-                    className={`px-3 sm:px-4 py-2 border-[2px] font-black uppercase text-[7px] sm:text-[8px] tracking-[0.15em] shadow-[2px_2px_0px_0px_#000] transition-all active:scale-95 ${isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}
-                  >
-                    {isRedeemed ? 'CLAIMED' : !isApproved ? 'LOCKED' : 'REDEEM'}
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-
   const renderSync = () => (
-    <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-5 duration-500 text-black pb-20">
+    <div className="space-y-8 animate-in slide-in-from-bottom-5 duration-500 text-black pb-20">
        {isEditing ? (
          <div className="bg-white border-[3px] sm:border-[4px] border-black p-6 sm:p-10 shadow-[8px_8px_0px_0px_#000] space-y-8">
            <div className="flex flex-col items-center gap-6">
              <div className="relative group cursor-pointer" onClick={() => document.getElementById('avatar-input')?.click()}>
-               <div className="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 border-[4px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#834bf1] relative rounded-none">
+               <div className="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 border-[4px] border-black overflow-hidden shadow-[4px_4px_0px_0px_#834bf1] relative">
                  <img src={previewUrl || profile?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                    <Camera size={24} />
@@ -754,70 +499,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Identity Name</label>
-                  <input 
-                    value={editName} 
-                    onChange={e => setEditName(e.target.value)}
-                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
-                    placeholder="AGENT NAME"
-                  />
+                  <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" placeholder="AGENT NAME" />
                 </div>
                 <div>
                   <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Protocol Handle</label>
-                  <input 
-                    value={editHandle} 
-                    onChange={e => setEditHandle(e.target.value)}
-                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
-                    placeholder="@handle"
-                  />
+                  <input value={editHandle} onChange={e => setEditHandle(e.target.value)} className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" placeholder="@handle" />
                 </div>
              </div>
 
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1] flex items-center gap-2"><Hash size={12}/> Current Niche</label>
-                  <input 
-                    value={editNiche} 
-                    onChange={e => setEditNiche(e.target.value)}
-                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
-                    placeholder="e.g. FASHION"
-                  />
+                  <input value={editNiche} onChange={e => setEditNiche(e.target.value)} className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" placeholder="e.g. FASHION" />
                 </div>
                 <div>
                   <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1] flex items-center gap-2"><UsersIcon size={12}/> Follower Count</label>
-                  <input 
-                    type="number"
-                    value={editFollowers} 
-                    onChange={e => setEditFollowers(parseInt(e.target.value) || 0)}
-                    className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" 
-                    placeholder="0"
-                  />
+                  <input type="number" value={editFollowers} onChange={e => setEditFollowers(parseInt(e.target.value) || 0)} className="w-full bg-slate-50 border-[3px] border-black p-4 font-black text-sm uppercase tracking-widest focus:bg-white transition-all outline-none text-black" placeholder="0" />
                 </div>
              </div>
 
              <div>
                <label className="block text-[9px] font-black uppercase tracking-[0.2em] mb-2 text-[#834bf1]">Operational Bio</label>
-               <textarea 
-                 value={editBio} 
-                 onChange={e => setEditBio(e.target.value)}
-                 rows={4}
-                 className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm uppercase tracking-tight focus:bg-white transition-all outline-none resize-none text-black leading-relaxed" 
-                 placeholder="MISSION PARAMETERS & INTEL..."
-               />
+               <textarea value={editBio} onChange={e => setEditBio(e.target.value)} rows={5} className="w-full bg-slate-50 border-[3px] border-black p-4 font-bold text-sm uppercase tracking-tight focus:bg-white transition-all outline-none resize-none text-black leading-relaxed" placeholder="MISSION PARAMETERS & INTEL..." />
+               <p className="text-[8px] font-black text-black/30 uppercase mt-2 text-right">{editBio.length} / 500 CHARS</p>
              </div>
            </div>
 
            <div className="flex gap-4">
-             <button 
-               onClick={() => setIsEditing(false)}
-               className="flex-1 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all text-black"
-             >
+             <button onClick={() => setIsEditing(false)} className="flex-1 py-4 border-[3px] border-black font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all text-black">
                Abort Sync
              </button>
-             <button 
-               disabled={isUploading}
-               onClick={handleSaveProfile}
-               className="flex-1 py-4 bg-[#834bf1] text-white border-[3px] border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center gap-2"
-             >
+             <button disabled={isUploading} onClick={handleSaveProfile} className="flex-1 py-4 bg-[#834bf1] text-white border-[3px] border-black shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[10px] tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center gap-2">
                {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
                Commit Changes
              </button>
@@ -826,7 +538,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
        ) : (
          <>
            <div className="bg-white border-[3px] sm:border-[4px] border-black p-5 sm:p-6 flex items-center gap-4 sm:gap-6 shadow-[6px_6px_0px_0px_#000]">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 border-[2px] sm:border-[3px] border-black overflow-hidden shadow-[2px_2px_0px_0px_#834bf1] sm:shadow-[3px_3px_0px_0px_#834bf1]">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 border-[2px] sm:border-[3px] border-black overflow-hidden shadow-[2px_2px_0px_0px_#834bf1]">
                 <img src={profile?.photo_url || currentUser?.photoURL || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0">
@@ -839,105 +551,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
            {profile?.bio && (
              <div className="bg-white border-[3px] border-black p-5 shadow-[4px_4px_0px_0px_#ffde59]">
                <h4 className="text-[8px] font-black uppercase tracking-widest text-black/40 mb-2">Operational Bio</h4>
-               <p className="text-[10px] font-bold uppercase tracking-tight leading-relaxed text-black whitespace-pre-wrap">{profile.bio}</p>
+               <p className={`${getBioFontSize(profile.bio)} font-bold uppercase tracking-tight leading-relaxed text-black whitespace-pre-wrap`}>{profile.bio}</p>
              </div>
            )}
 
            <div className="space-y-3 sm:space-y-4">
-              <button 
-                onClick={startEditing}
-                className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-              >
+              <button onClick={startEditing} className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
                  <div className="flex items-center gap-3 sm:gap-4">
                    <Settings size={18} /> Edit Sync Profile
-                 </div>
-                 <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button className="w-full bg-white border-[3px] border-black p-4 sm:p-5 flex items-center justify-between shadow-[4px_4px_0px_0px_#000] font-black uppercase text-[9px] sm:text-[10px] tracking-widest group text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
-                 <div className="flex items-center gap-3 sm:gap-4">
-                   <Target size={18} /> Support Transmission
                  </div>
                  <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
               </button>
            </div>
          </>
        )}
-
-       {!isEditing && (
-         <button 
-            onClick={() => auth.signOut()}
-            className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000] font-black uppercase text-[10px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all flex items-center justify-center gap-3 sm:gap-4"
-          >
-            <LogOut size={18} strokeWidth={3} />
-            <span>TERMINATE SESSION</span>
-          </button>
-       )}
+       {!isEditing && <button onClick={() => auth.signOut()} className="w-full bg-rose-500 text-white border-[3px] sm:border-[4px] border-black py-5 sm:py-6 shadow-[6px_6px_0px_0px_#000] font-black uppercase text-[10px] tracking-[0.4em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3"><LogOut size={18} /><span>TERMINATE SESSION</span></button>}
     </div>
   );
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 font-lexend flex flex-col overflow-x-hidden text-black">
-      {rewardAmount !== null && (
-        <RCNotificationModal 
-          amount={rewardAmount} 
-          onClose={clearReward} 
-          subtitle={latestTxMetadata.reason || "Admin just dropped some loot into your wallet."}
-          coverImage={latestTxMetadata.image || undefined}
-        />
-      )}
-      
-      {selectedMission && (
-        <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />
-      )}
+      {rewardAmount !== null && <RCNotificationModal amount={rewardAmount} onClose={clearReward} subtitle={latestTxMetadata.reason || "Admin just dropped some loot into your wallet."} coverImage={latestTxMetadata.image || undefined} />}
+      {selectedMission && <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />}
+      {selectedVoucher && <VoucherModal voucher={selectedVoucher} userBalance={profile?.reelcoins || 0} isRedeeming={isProcessing === selectedVoucher.id} isSuccess={redemptionSuccessId === selectedVoucher.id} onClose={() => { setSelectedVoucher(null); setRedemptionSuccessId(null); }} onRedeem={handleRedeemReward} />}
 
-      {selectedVoucher && (
-        <VoucherModal 
-          voucher={selectedVoucher} 
-          userBalance={profile?.reelcoins || 0}
-          isRedeeming={isProcessing === selectedVoucher.id}
-          isSuccess={redemptionSuccessId === selectedVoucher.id}
-          onClose={() => { setSelectedVoucher(null); setRedemptionSuccessId(null); }}
-          onRedeem={handleRedeemReward}
-        />
-      )}
-
-      <header className="bg-white border-b-[3px] sm:border-b-4 border-black p-3 sm:p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md shrink-0">
+      <header className="bg-white border-b-[3px] sm:border-b-4 border-black p-3 sm:p-4 sticky top-0 z-[100] flex justify-between items-center shadow-md shrink-0 text-black">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black text-[#ffde59] flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_#834bf1] rotate-3 shrink-0">
             <Terminal size={18} strokeWidth={3} />
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-black italic uppercase font-display leading-none text-black">REELYWOOD<span className="text-[#834bf1]">HUB</span></h1>
+            <h1 className="text-base sm:text-lg font-black italic uppercase font-display leading-none">REELYWOOD<span className="text-[#834bf1]">HUB</span></h1>
             <p className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] opacity-30">Agent Node v4.5</p>
           </div>
         </div>
-        
         <div className="flex items-center gap-3 sm:gap-4">
-          <div className="hidden sm:flex items-center gap-2 bg-[#ffde59] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000]">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-            <span className="text-[8px] font-black uppercase text-black">LIVE_SYNC_OK</span>
-          </div>
-          <button 
-            onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-            className="p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-          >
-            <Bell size={18} />
-          </button>
+          <div className="hidden sm:flex items-center gap-2 bg-[#ffde59] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000]"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div><span className="text-[8px] font-black uppercase">LIVE_SYNC_OK</span></div>
+          <button onClick={() => setShowNotifDropdown(!showNotifDropdown)} className="p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black active:translate-x-0.5 active:translate-y-0.5 transition-all"><Bell size={18} /></button>
         </div>
       </header>
 
-      <main 
-        className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full pb-44 overflow-y-auto" 
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
+      <main className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full pb-44 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         {activeTab === 'hub' && renderHub()}
-        {activeTab === 'card' && renderCard()}
-        {activeTab === 'missions' && renderMissions()}
-        {activeTab === 'perks' && renderPerks()}
+        {activeTab === 'card' && <div className="flex flex-col items-center justify-start min-h-[60dvh] py-4 sm:py-8 space-y-8 animate-in zoom-in-95 duration-500">{!isApproved ? <div className="bg-[#ffde59] border-[4px] border-black p-8 text-center shadow-[8px_8px_0px_0px_#000] w-full max-w-md mx-auto"><Lock size={40} className="mx-auto mb-6" /><h3 className="text-xl font-black uppercase italic font-display">Identity Syncing</h3><p className="text-[9px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p></div> : <><div className="w-full max-w-[320px] sm:max-w-[340px] flex justify-center"><div className="w-full relative h-[480px] sm:h-[520px]"><ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} /></div></div><div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto px-2"><button className="bg-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#000] transition-all group"><QrCode size={24} /><span className="text-[8px] uppercase tracking-widest">QR Node</span></button><button className="bg-black text-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#834bf1] transition-all group"><Share2 size={24} className="text-[#ffde59]" /><span className="text-[8px] uppercase tracking-widest text-[#ffde59]">Share ID</span></button></div></>}</div>}
+        {activeTab === 'missions' && <div className="space-y-6 animate-in fade-in duration-500"><h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black"><Zap className="text-[#834bf1]" size={18} /> Operational Grid</h3><div className="space-y-4">{missions.length === 0 ? <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">GRID_SILENT</div> : missions.map(m => { const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id)); const isApprovedSub = submission?.status === 'approved' || submission?.status === 'completed'; const isPendingSub = submission?.status === 'pending' || submission?.status === 'verifying'; const isAnySubmitted = isApprovedSub || isPendingSub; return <div key={m.id} className={`border-[4px] p-5 shadow-[4px_4px_0px_0px] relative overflow-hidden flex flex-col transition-all ${isApprovedSub ? 'bg-[#4ade80] border-black shadow-black' : isPendingSub ? 'bg-[#ffde59] border-black shadow-black' : 'bg-white border-black shadow-black'}`}>{isApprovedSub && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80"><div className="border-[5px] border-black px-6 py-2 flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"><span className="font-display font-black text-3xl text-black uppercase italic">MISSION COMPLETE</span></div></div>}<div className={`flex justify-between items-start mb-4 relative z-10 ${isApprovedSub ? 'opacity-40' : ''}`}><div className="w-10 h-10 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">{m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} />}</div><div className="px-2 py-1 font-black text-[7px] border-[2px] shadow-[2px_2px_0px_0px_#000] bg-black text-white border-black">{isApprovedSub ? 'VERIFIED_ENTRY' : isPendingSub ? 'QC_IN_PROGRESS' : `+${m.reward_amount} RC`}</div></div><h4 className={`text-base font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'opacity-30 line-through decoration-[3px]' : ''}`}>{m.title}</h4><p className={`text-[9px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-20' : ''}`}>{m.description}</p><button onClick={() => !isAnySubmitted && setSelectedMission(m)} disabled={isAnySubmitted || !isApproved} className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isApprovedSub ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' : isPendingSub ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed shadow-none' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}>{!isApproved ? 'LOCKED (SYNC REQ)' : isApprovedSub ? 'MISSION COMPLETED' : isPendingSub ? 'TRANSMISSION CACHED' : 'OPEN BRIEF'}</button></div>; })}</div></div>}
+        {activeTab === 'perks' && <div className="space-y-6 animate-in fade-in duration-500"><h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black"><Gift className="text-[#ffde59] fill-current stroke-black stroke-2" size={18} /> Reward Node</h3><div className="space-y-4">{rewards.length === 0 ? <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">VAULT_EMPTY</div> : rewards.map(r => { const isRedeemed = myRedemptions.includes(String(r.id)) || r.status === 'redeemed'; return <div key={r.id} className={`border-[3px] p-4 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] relative overflow-hidden transition-all ${isRedeemed ? 'bg-slate-200 border-slate-400 grayscale opacity-60 pointer-events-none' : 'bg-white border-black shadow-[#ffde59]'}`}>{isRedeemed && <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"><div className="border-[8px] border-red-600 px-6 py-2 text-4xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 font-display italic">REDEEMED</div></div>}<div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">{r.partner_brands?.logo_url ? <img src={r.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Gift size={18} />}</div><div className="min-w-0"><h4 className={`text-xs font-black uppercase italic truncate ${isRedeemed ? 'line-through text-slate-400' : 'text-black'}`}>{r.title}</h4><p className="text-[7px] font-black uppercase text-black/30 tracking-widest">{r.partner_brands?.name || 'Reelywood'}</p></div></div><div className="flex flex-col items-end gap-1 shrink-0"><span className={`text-base font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span><button onClick={() => !isRedeemed && setSelectedVoucher(r)} disabled={isProcessing === r.id || isRedeemed || !isApproved} className={`px-3 py-2 border-[2px] font-black uppercase text-[7px] tracking-widest shadow-[2px_2px_0px_0px_#000] transition-all ${isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}>{isRedeemed ? 'CLAIMED' : !isApproved ? 'LOCKED' : 'REDEEM'}</button></div></div>; })}</div></div>}
         {activeTab === 'sync' && renderSync()}
       </main>
 
-      <nav className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[92%] sm:w-[95%] max-w-md bg-black border-[3px] sm:border-4 border-white p-1 sm:p-2 pb-[calc(4px+env(safe-area-inset-bottom))] flex items-center justify-between shadow-[0_15px_40px_rgba(0,0,0,0.4)] sm:shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100]">
+      <nav className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[92%] sm:w-[95%] max-w-md bg-black border-[3px] border-white p-1 pb-[calc(4px+env(safe-area-inset-bottom))] flex items-center justify-between shadow-[0_15px_40px_rgba(0,0,0,0.4)] z-[100]">
         {[
           { id: 'hub', icon: Home, label: 'HUB' },
           { id: 'card', icon: CreditCard, label: 'CARD' },
@@ -945,16 +607,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           { id: 'perks', icon: Gift, label: 'PERKS' },
           { id: 'sync', icon: User, label: 'SYNC' }
         ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex flex-col items-center justify-center flex-1 py-2 transition-all active:scale-95 ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : 'text-white/40'}`}>
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex flex-col items-center justify-center flex-1 py-2 transition-all active:scale-95 ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : 'text-white/40'}`}>
             <tab.icon size={18} strokeWidth={tab.id === activeTab ? 3 : 2} />
-            <span className="text-[6px] sm:text-[7px] font-black uppercase mt-1 tracking-widest">{tab.label}</span>
+            <span className="text-[6px] font-black uppercase mt-1 tracking-widest">{tab.label}</span>
           </button>
         ))}
       </nav>
-      
-      <footer className="text-center pt-8 sm:pt-10 pb-44 sm:pb-40 opacity-10 shrink-0">
-        <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.4em] sm:tracking-[0.6em] text-black">PRODUCTION_NODE_v4.5.0 • ENCRYPTED</p>
+      <footer className="text-center pt-8 pb-44 opacity-10 shrink-0 text-black">
+        <p className="text-[7px] font-black uppercase tracking-[0.4em]">PRODUCTION_NODE_v4.5.0 • ENCRYPTED</p>
       </footer>
     </div>
   );
