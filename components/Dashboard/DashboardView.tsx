@@ -11,7 +11,8 @@ import {
   ChevronRight, Activity, Terminal, History, Home, Menu,
   Camera, Save, Pencil, Ticket, MapPin, ExternalLink, Info,
   AlertCircle, Copy, Check, Hash, Users as UsersIcon,
-  UserPlus, UserMinus, Eye, Award, ShieldCheck, ChevronLeft
+  UserPlus, UserMinus, Eye, Award, ShieldCheck, ChevronLeft,
+  ShieldAlert, Fingerprint
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
@@ -24,6 +25,52 @@ interface DashboardViewProps {
 }
 
 type TabType = 'hub' | 'card' | 'missions' | 'perks' | 'sync';
+
+// --- Shared Locked UI Component ---
+const LockedSection = ({ title, status }: { title: string, status: string }) => (
+  <div className="flex flex-col items-center justify-center min-h-[60dvh] py-8 px-4 animate-in zoom-in-95 duration-500">
+    <div className="bg-[#ffde59] border-[6px] border-black p-8 sm:p-12 text-center shadow-[12px_12px_0px_0px_#000] w-full max-w-md mx-auto relative overflow-hidden group">
+      <div className="absolute top-0 left-0 w-full h-1 bg-black/10 group-hover:bg-black/20 transition-colors"></div>
+      
+      <div className="relative mb-8">
+        <div className="w-24 h-24 bg-white border-[4px] border-black flex items-center justify-center mx-auto shadow-[6px_6px_0px_0px_#000] group-hover:rotate-6 transition-transform">
+          <ShieldAlert size={48} className="text-black" strokeWidth={2.5} />
+        </div>
+        <div className="absolute -bottom-2 -right-2 bg-black text-[#ffde59] p-2 border-2 border-black rotate-12">
+          <Lock size={16} strokeWidth={3} />
+        </div>
+      </div>
+
+      <h3 className="text-3xl font-black uppercase italic font-display text-black mb-4 tracking-tighter">
+        ACCESS RESTRICTED
+      </h3>
+      
+      <div className="space-y-4">
+        <div className="bg-black text-white py-2 px-4 border-2 border-black font-black text-[10px] uppercase tracking-[0.3em] inline-block">
+          MODULE: {title}
+        </div>
+        
+        <p className="text-xs font-bold text-black/60 uppercase tracking-widest leading-relaxed max-w-xs mx-auto italic">
+          This operational node is encrypted. Identity verification is required to authorize transmission.
+        </p>
+
+        <div className="pt-6 border-t-2 border-black/10 mt-6 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full animate-pulse ${status === 'pending' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+              STATUS: {status === 'pending' ? 'PENDING_REVIEW' : 'UNVERIFIED_NODE'}
+            </span>
+          </div>
+          {status === 'pending' ? (
+             <p className="text-[9px] font-black uppercase text-black/30">Estimated Authorization: 24h</p>
+          ) : (
+             <p className="text-[9px] font-black uppercase text-[#834bf1]">Submit Identity via SYNC tab</p>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 // --- Connection List Modal (Followers/Following List) ---
 const ConnectionListModal = ({ 
@@ -707,7 +754,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <img src={profile?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" alt="Profile" />
           </div>
           <div className="absolute -bottom-1 -right-1 bg-[#ffde59] border-2 border-black p-1.5 rounded-full shadow-[2px_2px_0px_0px_#000]">
-            <CheckCircle2 size={16} className="text-black" />
+            {isApproved ? <CheckCircle2 size={16} className="text-black" /> : <Clock size={16} className="text-black animate-pulse" />}
           </div>
         </div>
 
@@ -728,7 +775,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
           <div className="flex justify-center sm:justify-start gap-6 sm:gap-10 border-y-2 border-black/5 py-4">
             <div className="text-center sm:text-left">
-              <span className="block font-black text-xl text-black leading-none">{missions.length}</span>
+              <span className="block font-black text-xl text-black leading-none">{isApproved ? missions.length : "0"}</span>
               <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">missions</span>
             </div>
             <button 
@@ -746,7 +793,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
               <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">following</span>
             </button>
             <div className="text-center sm:text-left hidden xs:block">
-              <span className="block font-black text-xl text-black leading-none">{userSubmissions.filter(s => s.status === 'approved').length}</span>
+              <span className="block font-black text-xl text-black leading-none">{isApproved ? userSubmissions.filter(s => s.status === 'approved').length : "0"}</span>
               <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest">vouchers</span>
             </div>
           </div>
@@ -754,9 +801,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           <div className="space-y-4">
             <div>
                <p className="font-black text-base uppercase text-black">{profile?.display_name || "Agent Node"}</p>
-               <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-widest bg-[#834bf1]/5 inline-block px-3 py-1 border border-[#834bf1]/20 mt-1">
-                 {profile?.niche || "CREATOR NODE"}
-               </p>
+               <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-1">
+                 <p className="text-[10px] font-black text-[#834bf1] uppercase tracking-widest bg-[#834bf1]/5 inline-block px-3 py-1 border border-[#834bf1]/20">
+                   {profile?.niche || "CREATOR NODE"}
+                 </p>
+                 <p className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 border border-black/10 ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                   {isApproved ? 'VERIFIED_NODE' : profile?.card_status === 'pending' ? 'SYNC_IN_PROGRESS' : 'SYNC_REQUIRED'}
+                 </p>
+               </div>
             </div>
             {profile?.bio && (
               <div className="max-w-md mx-auto sm:mx-0 border-l-[6px] border-[#ffde59] pl-6 py-2 bg-slate-50 shadow-inner">
@@ -783,7 +835,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <Zap size={18} className="opacity-50" />
             <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-widest bg-black/10 px-1">OPS</span>
           </div>
-          <h3 className="text-3xl sm:text-4xl font-black italic font-display leading-none">{missions.length}</h3>
+          <h3 className="text-3xl sm:text-4xl font-black italic font-display leading-none">{isApproved ? missions.length : "0"}</h3>
           <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest mt-1">Active</p>
         </div>
       </div>
@@ -877,7 +929,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
          <>
            <div className="bg-white border-[3px] sm:border-[4px] border-black p-5 sm:p-6 flex items-center gap-4 sm:gap-6 shadow-[6px_6px_0px_0px_#000]">
               <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 border-[2px] sm:border-[3px] border-black overflow-hidden shadow-[2px_2px_0px_0px_#834bf1]">
-                <img src={profile?.photo_url || currentUser?.photoURL || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
+                <img src={previewUrl || profile?.photo_url || currentUser?.photoURL || `https://api.dicebear.com/7.x/identicon/svg?seed=${currentUser?.uid}`} className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0">
                  <h3 className="text-lg sm:text-xl font-black uppercase italic text-black truncate">{profile?.display_name || "AGENT"}</h3>
@@ -950,22 +1002,125 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       <main className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full pb-44 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         {activeTab === 'hub' && renderHub()}
-        {activeTab === 'card' && <div className="flex flex-col items-center justify-start min-h-[60dvh] py-4 sm:py-8 space-y-8 animate-in zoom-in-95 duration-500">{!isApproved ? <div className="bg-[#ffde59] border-[4px] border-black p-8 text-center shadow-[8px_8px_0px_0px_#000] w-full max-w-md mx-auto"><Lock size={40} className="mx-auto mb-6" /><h3 className="text-xl font-black uppercase italic font-display">Identity Syncing</h3><p className="text-[9px] font-black uppercase tracking-widest mt-4">Node verification in progress. estimated time: 24h.</p></div> : <><div className="w-full max-w-[320px] sm:max-w-[340px] flex justify-center"><div className="w-full relative h-[480px] sm:h-[520px]"><ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} /></div></div><div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto px-2"><button className="bg-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#000] transition-all group"><QrCode size={24} /><span className="text-[8px] uppercase tracking-widest text-black">QR Node</span></button><button className="bg-black text-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#834bf1] transition-all group"><Share2 size={24} className="text-[#ffde59]" /><span className="text-[8px] uppercase tracking-widest text-[#ffde59]">Share ID</span></button></div></>}</div>}
-        {activeTab === 'missions' && <div className="space-y-6 animate-in fade-in duration-500"><h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black"><Zap className="text-[#834bf1]" size={18} /> Operational Grid</h3><div className="space-y-4">{missions.length === 0 ? <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">GRID_SILENT</div> : missions.map(m => { const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id)); const isApprovedSub = submission?.status === 'approved' || submission?.status === 'completed'; const isPendingSub = submission?.status === 'pending' || submission?.status === 'verifying'; const isAnySubmitted = isApprovedSub || isPendingSub; return <div key={m.id} className={`border-[4px] p-5 shadow-[4px_4px_0px_0px] relative overflow-hidden flex flex-col transition-all ${isApprovedSub ? 'bg-[#4ade80] border-black shadow-black' : isPendingSub ? 'bg-[#ffde59] border-black shadow-black' : 'bg-white border-black shadow-black'}`}>{isApprovedSub && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80"><div className="border-[5px] border-black px-6 py-2 flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"><span className="font-display font-black text-3xl text-black uppercase italic">MISSION COMPLETE</span></div></div>}<div className={`flex justify-between items-start mb-4 relative z-10 ${isApprovedSub ? 'opacity-40' : ''}`}><div className="w-10 h-10 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">{m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} className="text-black" />}</div><div className="px-2 py-1 font-black text-[7px] border-[2px] shadow-[2px_2px_0px_0px_#000] bg-black text-white border-black">{isApprovedSub ? 'VERIFIED_ENTRY' : isPendingSub ? 'QC_IN_PROGRESS' : `+${m.reward_amount} RC`}</div></div><h4 className={`text-base font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'opacity-30 line-through decoration-[3px]' : ''}`}>{m.title}</h4><p className={`text-[9px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-20' : ''}`}>{m.description}</p><button onClick={() => !isAnySubmitted && setSelectedMission(m)} disabled={isAnySubmitted || !isApproved} className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isApprovedSub ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' : isPendingSub ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' : !isApproved ? 'bg-slate-300 border-slate-400 cursor-not-allowed shadow-none' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}>{!isApproved ? 'LOCKED (SYNC REQ)' : isApprovedSub ? 'MISSION COMPLETED' : isPendingSub ? 'TRANSMISSION CACHED' : 'OPEN BRIEF'}</button></div>; })}</div></div>}
-        {activeTab === 'perks' && <div className="space-y-6 animate-in fade-in duration-500"><h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black"><Gift className="text-[#ffde59] fill-current stroke-black stroke-2" size={18} /> Reward Node</h3><div className="space-y-4">{rewards.length === 0 ? <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">VAULT_EMPTY</div> : rewards.map(r => { const isRedeemed = myRedemptions.includes(String(r.id)) || r.status === 'redeemed'; return <div key={r.id} className={`border-[3px] p-4 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] relative overflow-hidden transition-all ${isRedeemed ? 'bg-slate-200 border-slate-400 grayscale opacity-60 pointer-events-none' : 'bg-white border-black shadow-[#ffde59]'}`}>{isRedeemed && <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"><div className="border-[8px] border-red-600 px-6 py-2 text-4xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 font-display italic">REDEEMED</div></div>}<div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">{r.partner_brands?.logo_url ? <img src={r.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Gift size={18} className="text-black" />}</div><div className="min-w-0"><h4 className={`text-xs font-black uppercase italic truncate ${isRedeemed ? 'line-through text-slate-400' : 'text-black'}`}>{r.title}</h4><p className="text-[7px] font-black uppercase text-black/30 tracking-widest">{r.partner_brands?.name || 'Reelywood'}</p></div></div><div className="flex flex-col items-end gap-1 shrink-0"><span className={`text-base font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span><button onClick={() => !isRedeemed && setSelectedVoucher(r)} disabled={isProcessing === r.id || isRedeemed || !isApproved} className={`px-3 py-2 border-[2px] font-black uppercase text-[7px] tracking-widest shadow-[2px_2px_0px_0px_#000] transition-all ${isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}>{isRedeemed ? 'CLAIMED' : !isApproved ? 'LOCKED' : 'REDEEM'}</button></div></div>; })}</div></div>}
+        
+        {activeTab === 'card' && (
+          !isApproved 
+            ? <LockedSection title="CREATOR_CARD" status={profile?.card_status} />
+            : <div className="flex flex-col items-center justify-start min-h-[60dvh] py-4 sm:py-8 space-y-8 animate-in zoom-in-95 duration-500">
+                <div className="w-full max-w-[320px] sm:max-w-[340px] flex justify-center">
+                  <div className="w-full relative h-[480px] sm:h-[520px]">
+                    <ThreeDCard name={profile?.display_name || "AGENT"} handle={profile?.handle || "unlinked"} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto px-2">
+                  <button className="bg-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#000] transition-all group active:scale-95">
+                    <QrCode size={24} />
+                    <span className="text-[8px] uppercase tracking-widest text-black">QR Node</span>
+                  </button>
+                  <button className="bg-black text-white border-[3px] border-black py-4 flex flex-col items-center gap-2 shadow-[4px_4px_0px_0px_#834bf1] transition-all group active:scale-95">
+                    <Share2 size={24} className="text-[#ffde59]" />
+                    <span className="text-[8px] uppercase tracking-widest text-[#ffde59]">Share ID</span>
+                  </button>
+                </div>
+              </div>
+        )}
+
+        {activeTab === 'missions' && (
+          !isApproved
+            ? <LockedSection title="MISSION_GRID" status={profile?.card_status} />
+            : <div className="space-y-6 animate-in fade-in duration-500">
+                <h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black">
+                  <Zap className="text-[#834bf1]" size={18} /> Operational Grid
+                </h3>
+                <div className="space-y-4">
+                  {missions.length === 0 ? (
+                    <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">GRID_SILENT</div>
+                  ) : (
+                    missions.map(m => {
+                      const submission = userSubmissions.find(s => String(s.mission_id) === String(m.id));
+                      const isApprovedSub = submission?.status === 'approved' || submission?.status === 'completed';
+                      const isPendingSub = submission?.status === 'pending' || submission?.status === 'verifying';
+                      const isAnySubmitted = isApprovedSub || isPendingSub;
+                      
+                      return (
+                        <div key={m.id} className={`border-[4px] p-5 shadow-[4px_4px_0px_0px] relative overflow-hidden flex flex-col transition-all ${isApprovedSub ? 'bg-[#4ade80] border-black shadow-black' : isPendingSub ? 'bg-[#ffde59] border-black shadow-black' : 'bg-white border-black shadow-black'}`}>
+                          {isApprovedSub && (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-20 pointer-events-none opacity-80">
+                              <div className="border-[5px] border-black px-6 py-2 flex items-center justify-center bg-transparent shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
+                                <span className="font-display font-black text-3xl text-black uppercase italic">MISSION COMPLETE</span>
+                              </div>
+                            </div>
+                          )}
+                          <div className={`flex justify-between items-start mb-4 relative z-10 ${isApprovedSub ? 'opacity-40' : ''}`}>
+                            <div className="w-10 h-10 bg-white border-[2px] border-black p-1 shadow-[2px_2px_0px_0px_#000]">{m.partner_brands?.logo_url ? <img src={m.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Building2 size={18} className="text-black" />}</div>
+                            <div className="px-2 py-1 font-black text-[7px] border-[2px] shadow-[2px_2px_0px_0px_#000] bg-black text-white border-black">{isApprovedSub ? 'VERIFIED_ENTRY' : isPendingSub ? 'QC_IN_PROGRESS' : `+${m.reward_amount} RC`}</div>
+                          </div>
+                          <h4 className={`text-base font-black uppercase italic font-display leading-tight text-black relative z-10 ${isApprovedSub ? 'opacity-30 line-through decoration-[3px]' : ''}`}>{m.title}</h4>
+                          <p className={`text-[9px] font-bold text-black/50 uppercase leading-relaxed mt-2 line-clamp-2 relative z-10 ${isApprovedSub ? 'opacity-20' : ''}`}>{m.description}</p>
+                          <button 
+                            onClick={() => !isAnySubmitted && setSelectedMission(m)} 
+                            disabled={isAnySubmitted}
+                            className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isApprovedSub ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' : isPendingSub ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}
+                          >
+                            {isApprovedSub ? 'MISSION COMPLETED' : isPendingSub ? 'TRANSMISSION CACHED' : 'OPEN BRIEF'}
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+        )}
+
+        {activeTab === 'perks' && (
+          !isApproved
+            ? <LockedSection title="REWARD_NODE" status={profile?.card_status} />
+            : <div className="space-y-6 animate-in fade-in duration-500">
+                <h3 className="text-lg font-black uppercase italic font-display flex items-center gap-3 text-black">
+                  <Gift className="text-[#ffde59] fill-current stroke-black stroke-2" size={18} /> Reward Node
+                </h3>
+                <div className="space-y-4">
+                  {rewards.length === 0 ? (
+                    <div className="py-20 text-center opacity-10 italic border-4 border-dashed border-black">VAULT_EMPTY</div>
+                  ) : (
+                    rewards.map(r => {
+                      const isRedeemed = myRedemptions.includes(String(r.id)) || r.status === 'redeemed';
+                      return (
+                        <div key={r.id} className={`border-[3px] p-4 flex items-center justify-between gap-4 shadow-[4px_4px_0px_0px] relative overflow-hidden transition-all ${isRedeemed ? 'bg-slate-200 border-slate-400 grayscale opacity-60 pointer-events-none' : 'bg-white border-black shadow-[#ffde59]'}`}>
+                          {isRedeemed && (
+                            <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                              <div className="border-[8px] border-red-600 px-6 py-2 text-4xl font-black text-red-600 uppercase tracking-widest -rotate-12 opacity-80 font-display italic">REDEEMED</div>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center p-1 shadow-[2px_2px_0px_0px_#000]">{r.partner_brands?.logo_url ? <img src={r.partner_brands.logo_url} className="w-full h-full object-contain" /> : <Gift size={18} className="text-black" />}</div><div className="min-w-0"><h4 className={`text-xs font-black uppercase italic truncate ${isRedeemed ? 'line-through text-slate-400' : 'text-black'}`}>{r.title}</h4><p className="text-[7px] font-black uppercase text-black/30 tracking-widest">{r.partner_brands?.name || 'Reelywood'}</p></div></div><div className="flex flex-col items-end gap-1 shrink-0"><span className={`text-base font-black italic ${isRedeemed ? 'text-slate-400' : 'text-[#834bf1]'}`}>{r.cost} RC</span><button onClick={() => !isRedeemed && setSelectedVoucher(r)} disabled={isProcessing === r.id || isRedeemed} className={`px-3 py-2 border-[2px] font-black uppercase text-[7px] tracking-widest shadow-[2px_2px_0px_0px_#000] transition-all ${isRedeemed ? 'bg-slate-700 text-slate-500 border-slate-800' : 'bg-black text-white'}`}>{isRedeemed ? 'CLAIMED' : 'REDEEM'}</button></div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+        )}
+
         {activeTab === 'sync' && renderSync()}
       </main>
 
       <nav className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[92%] sm:w-[95%] max-w-md bg-black border-[3px] border-white p-1 pb-[calc(4px+env(safe-area-inset-bottom))] flex items-center justify-between shadow-[0_15px_40px_rgba(0,0,0,0.4)] z-[100]">
         {[
-          { id: 'hub', icon: Home, label: 'HUB' },
-          { id: 'card', icon: CreditCard, label: 'CARD' },
-          { id: 'missions', icon: Zap, label: 'MISSIONS' },
-          { id: 'perks', icon: Gift, label: 'PERKS' },
-          { id: 'sync', icon: User, label: 'SYNC' }
+          { id: 'hub', icon: Home, label: 'HUB', locked: false },
+          { id: 'card', icon: CreditCard, label: 'CARD', locked: !isApproved },
+          { id: 'missions', icon: Zap, label: 'MISSIONS', locked: !isApproved },
+          { id: 'perks', icon: Gift, label: 'PERKS', locked: !isApproved },
+          { id: 'sync', icon: User, label: 'SYNC', locked: false }
         ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex flex-col items-center justify-center flex-1 py-2 transition-all active:scale-95 ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : 'text-white/40'}`}>
-            <tab.icon size={18} strokeWidth={tab.id === activeTab ? 3 : 2} />
+          <button 
+            key={tab.id} 
+            onClick={() => setActiveTab(tab.id as any)} 
+            className={`flex flex-col items-center justify-center flex-1 py-2 transition-all active:scale-95 ${activeTab === tab.id ? 'text-[#ffde59] scale-110' : tab.locked ? 'text-white/20' : 'text-white/40'}`}
+          >
+            <div className="relative">
+              <tab.icon size={18} strokeWidth={tab.id === activeTab ? 3 : 2} />
+              {tab.locked && <Lock size={8} className="absolute -top-1 -right-1 text-rose-500" strokeWidth={3} />}
+            </div>
             <span className="text-[6px] font-black uppercase mt-1 tracking-widest">{tab.label}</span>
           </button>
         ))}
