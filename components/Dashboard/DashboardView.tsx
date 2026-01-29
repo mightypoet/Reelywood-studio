@@ -12,7 +12,7 @@ import {
   Camera, Save, Pencil, Ticket, MapPin, ExternalLink, Info,
   AlertCircle, Copy, Check, Hash, Users as UsersIcon,
   UserPlus, UserMinus, Eye, Award, ShieldCheck, ChevronLeft,
-  ShieldAlert, Fingerprint
+  ShieldAlert, Fingerprint, Handshake
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
@@ -163,9 +163,10 @@ const ConnectionListModal = ({
 };
 
 // --- Agent Dossier Modal ---
-const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose, onShowConnections }: { 
+const AgentDossierModal = ({ agent, isFollowing, isRequested, onFollow, onClose, onShowConnections }: { 
   agent: any, 
   isFollowing: boolean, 
+  isRequested: boolean,
   onFollow: () => void, 
   onClose: () => void,
   onShowConnections: (type: 'followers' | 'following', uid: string) => void
@@ -236,10 +237,13 @@ const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose, onShowConnec
 
           <button 
             onClick={onFollow}
-            className={`w-full py-6 border-[6px] border-black shadow-[8px_8px_0px_0px_#000] font-black uppercase text-lg tracking-[0.2em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-95 ${isFollowing ? 'bg-white text-black' : 'bg-[#ffde59] text-black'}`}
+            disabled={isRequested}
+            className={`w-full py-6 border-[6px] border-black shadow-[8px_8px_0px_0px_#000] font-black uppercase text-lg tracking-[0.2em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-95 ${isFollowing ? 'bg-white text-black' : isRequested ? 'bg-amber-100 text-amber-600 opacity-80' : 'bg-[#ffde59] text-black'}`}
           >
             {isFollowing ? (
               <><UserMinus size={24} strokeWidth={3} /> UNLINK NODE</>
+            ) : isRequested ? (
+              <><Clock size={24} strokeWidth={3} className="animate-pulse" /> REQUESTED</>
             ) : (
               <><UserPlus size={24} strokeWidth={3} /> LINK IDENTITY</>
             )}
@@ -406,9 +410,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [myRedemptions, setMyRedemptions] = useState<string[]>([]);
   const [latestTxMetadata, setLatestTxMetadata] = useState<{reason: string | null, image: string | null}>({reason: null, image: null});
   
-  // Follow System States
+  // Follow & Request System States
   const [otherCreators, setOtherCreators] = useState<any[]>([]);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [sentRequestUids, setSentRequestUids] = useState<Set<string>>(new Set());
+  const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
+  
   const [viewingAgent, setViewingAgent] = useState<any>(null);
   const [showingConnections, setShowingConnections] = useState<{type: 'followers' | 'following', uid: string} | null>(null);
 
@@ -459,6 +466,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       if (following) {
         setFollowingIds(new Set(following.map(f => f.following_id)));
       }
+
+      // 3. Fetch Sent Requests
+      const { data: sent } = await supabase
+        .from('link_requests')
+        .select('receiver_uid')
+        .eq('sender_uid', user.uid)
+        .eq('status', 'pending');
+      
+      if (sent) setSentRequestUids(new Set(sent.map(s => s.receiver_uid)));
+
+      // 4. Fetch Incoming Requests
+      const { data: incoming } = await supabase
+        .from('link_requests')
+        .select('*, profiles!link_requests_sender_uid_fkey(*)')
+        .eq('receiver_uid', user.uid)
+        .eq('status', 'pending');
+      
+      if (incoming) setIncomingRequests(incoming.map(i => ({...i, agent: i.profiles})));
+
     } catch (err) {
       console.error("NETWORK_SYNC_FAILURE:", err);
     }
@@ -508,7 +534,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       const [rRes, sRes, redRes] = await Promise.all([
         supabase.from('rewards').select('*, partner_brands(*)'),
-        supabase.from('submissions').select('mission_id, status, created_at').eq('user_id', user.uid),
+        supabase.from('submissions').select('mission_id, status, created_at').eq('user_id', user.uid).order('created_at', { ascending: false }),
         supabase.from('user_rewards').select('reward_id').eq('user_id', user.uid)
       ]);
 
@@ -538,10 +564,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     if (!supabase || !currentUser) return;
     
     const isCurrentlyFollowing = followingIds.has(targetUid);
+    const isAlreadyRequested = sentRequestUids.has(targetUid);
     
     try {
       if (isCurrentlyFollowing) {
-        // Unfollow
+        // Unfollow (Unlink Node)
         const { error } = await supabase
           .from('follows')
           .delete()
@@ -554,49 +581,73 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           next.delete(targetUid);
           return next;
         });
-      } else {
-        // Follow
+      } else if (!isAlreadyRequested) {
+        // Send Link Request (Instagram Style)
         const { error } = await supabase
-          .from('follows')
-          .insert([{ follower_id: currentUser.uid, following_id: targetUid }]);
+          .from('link_requests')
+          .insert([{ sender_uid: currentUser.uid, receiver_uid: targetUid, status: 'pending' }]);
+        
         if (error) throw error;
         
-        setFollowingIds(prev => {
+        setSentRequestUids(prev => {
           const next = new Set(prev);
           next.add(targetUid);
           return next;
         });
         playSound();
+        alert("LINK_REQUEST_TRANSMITTED: Awaiting Agent Authorization.");
       }
 
-      // SOCIAL_SYNC: Refresh local counts immediately to reflect triggers
-      // Wait a tiny bit for DB triggers to complete
-      await new Promise(r => setTimeout(r, 100));
-      
+      // SOCIAL_SYNC: Refresh local counts
+      await new Promise(r => setTimeout(r, 150));
       if (currentUser) {
-        // Refresh Current User Profile for updated 'following' count
-        const { data: updatedProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('firebase_uid', currentUser.uid)
-          .single();
+        const { data: updatedProfile } = await supabase.from('profiles').select('*').eq('firebase_uid', currentUser.uid).single();
         if (updatedProfile) setProfile(updatedProfile);
-
-        // Refresh The Target Agent Profile for updated 'followers' count
         if (viewingAgent && viewingAgent.firebase_uid === targetUid) {
-          const { data: updatedAgent } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('firebase_uid', targetUid)
-            .single();
+          const { data: updatedAgent } = await supabase.from('profiles').select('*').eq('firebase_uid', targetUid).single();
           if (updatedAgent) setViewingAgent(updatedAgent);
         }
-        
-        // Refresh the whole creator network list to update UI counts everywhere
         fetchCreatorNetwork(currentUser);
       }
     } catch (err: any) {
       alert("FOLLOW_SYNC_FAILURE: " + err.message);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string, senderUid: string) => {
+    if (!supabase || !currentUser) return;
+    try {
+      // 1. AUTHORIZE LINK (Insert into follows)
+      const { error: followError } = await supabase
+        .from('follows')
+        .insert([{ follower_id: senderUid, following_id: currentUser.uid }]);
+      
+      if (followError) throw followError;
+
+      // 2. PURGE REQUEST (Delete from link_requests)
+      const { error: deleteError } = await supabase
+        .from('link_requests')
+        .delete()
+        .eq('id', requestId);
+      
+      if (deleteError) throw deleteError;
+
+      playSound();
+      alert("TRANSMISSION_AUTHORIZED: Agent node linked successfully.");
+      fetchOperationalGrid(currentUser);
+    } catch (err: any) {
+      alert("AUTHORIZATION_FAILURE: " + err.message);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    if (!supabase || !currentUser) return;
+    try {
+      const { error } = await supabase.from('link_requests').delete().eq('id', requestId);
+      if (error) throw error;
+      fetchOperationalGrid(currentUser);
+    } catch (err: any) {
+      alert("REJECTION_SYNC_FAILURE: " + err.message);
     }
   };
 
@@ -605,6 +656,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     const client = supabase;
     const syncChannel = client.channel(`user-sync-${currentUser.uid}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'link_requests', filter: `receiver_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
       .subscribe();
     return () => { client.removeChannel(syncChannel); };
   }, [currentUser, fetchOperationalGrid]);
@@ -732,7 +784,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             <div className="flex gap-1 w-full mt-auto">
                <button 
                 onClick={() => handleFollowToggle(agent.firebase_uid)}
-                className={`flex-1 p-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all ${followingIds.has(agent.firebase_uid) ? 'bg-white text-black' : 'bg-[#ffde59] text-black'}`}
+                disabled={sentRequestUids.has(agent.firebase_uid)}
+                className={`flex-1 p-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all ${followingIds.has(agent.firebase_uid) ? 'bg-white text-black' : sentRequestUids.has(agent.firebase_uid) ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-[#ffde59] text-black'}`}
               >
                 {followingIds.has(agent.firebase_uid) ? <UserMinus size={12} strokeWidth={3} className="mx-auto" /> : <UserPlus size={12} strokeWidth={3} className="mx-auto" />}
               </button>
@@ -845,24 +898,58 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
 
       {renderCreatorNetwork()}
 
+      {/* COMBINED OPERATIONAL TIMELINE WITH LINK REQUESTS */}
       <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000]">
         <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] mb-6 flex items-center gap-2 text-black">
           <History size={14} /> Operational Timeline
         </h4>
         <div className="space-y-4">
-          {userSubmissions.slice(0, 3).map((sub, i) => (
-            <div key={i} className="flex items-center gap-3 sm:gap-4 border-b-2 border-slate-50 pb-4 last:border-0">
+          {/* Incoming Link Requests (Urgent Actions) */}
+          {incomingRequests.map((req) => (
+            <div key={req.id} className="bg-slate-50 border-[3px] border-[#834bf1] p-4 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-left-2 duration-300">
+              <div className="flex items-center gap-4 w-full sm:w-auto">
+                <div className="w-10 h-10 border-2 border-black bg-white overflow-hidden shadow-[2px_2px_0px_0px_#834bf1]">
+                   <img src={req.agent?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${req.sender_uid}`} className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase truncate text-black leading-none">{req.agent?.display_name}</p>
+                  <p className="text-[7px] font-bold text-[#834bf1] uppercase tracking-widest mt-1 italic">Identity Link Signal Detected</p>
+                </div>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                 <button 
+                   onClick={() => handleRejectRequest(req.id)}
+                   className="flex-1 sm:flex-none px-4 py-2 border-2 border-black bg-white text-rose-500 font-black text-[8px] uppercase tracking-widest hover:bg-rose-50 transition-all active:translate-y-0.5"
+                 >
+                    Deny
+                 </button>
+                 <button 
+                   onClick={() => handleAcceptRequest(req.id, req.sender_uid)}
+                   className="flex-1 sm:flex-none px-4 py-2 border-2 border-black bg-[#4ade80] text-black font-black text-[8px] uppercase tracking-widest hover:bg-[#32e012] transition-all active:translate-y-0.5 shadow-[2px_2px_0px_0px_#000]"
+                 >
+                    Authorize
+                 </button>
+              </div>
+            </div>
+          ))}
+
+          {/* Submission History */}
+          {userSubmissions.slice(0, 5).map((sub, i) => (
+            <div key={`sub-${i}`} className="flex items-center gap-3 sm:gap-4 border-b-2 border-slate-50 pb-4 last:border-0 opacity-80 hover:opacity-100 transition-opacity">
               <div className={`w-9 h-9 sm:w-10 sm:h-10 border-2 border-black flex items-center justify-center shrink-0 ${sub.status === 'approved' ? 'bg-emerald-400' : 'bg-[#ffde59]'}`}>
                 {sub.status === 'approved' ? <CheckCircle2 size={16} /> : <Clock size={16} />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] sm:text-[10px] font-black uppercase truncate">{missions.find(m => m.id === sub.mission_id)?.title || 'Mission Entry'}</p>
+                <p className="text-[9px] sm:text-[10px] font-black uppercase truncate">{missions.find(m => String(m.id) === String(sub.mission_id))?.title || 'Mission Entry'}</p>
                 <p className="text-[7px] sm:text-[8px] font-bold text-slate-400 uppercase">{new Date(sub.created_at).toLocaleDateString()}</p>
               </div>
               <span className={`text-[8px] sm:text-[9px] font-black uppercase ${sub.status === 'approved' ? 'text-emerald-600' : 'text-amber-500'}`}>{sub.status}</span>
             </div>
           ))}
-          {userSubmissions.length === 0 && <p className="text-[9px] font-black uppercase opacity-20 text-center py-4 italic">No recent transmissions.</p>}
+
+          {userSubmissions.length === 0 && incomingRequests.length === 0 && (
+            <p className="text-[9px] font-black uppercase opacity-20 text-center py-4 italic">No recent transmissions.</p>
+          )}
         </div>
       </div>
     </div>
@@ -966,12 +1053,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     <div className="min-h-[100dvh] bg-slate-50 font-lexend flex flex-col overflow-x-hidden text-black">
       {rewardAmount !== null && <RCNotificationModal amount={rewardAmount} onClose={clearReward} subtitle={latestTxMetadata.reason || "Admin just dropped some loot into your wallet."} coverImage={latestTxMetadata.image || undefined} />}
       {selectedMission && <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />}
-      {selectedVoucher && <VoucherModal voucher={selectedVoucher} userBalance={profile?.reelcoins || 0} isRedeeming={isProcessing === selectedVoucher.id} isSuccess={redemptionSuccessId === selectedVoucher.id} onClose={() => { setSelectedVoucher(null); setRedemptionSuccessId(null); }} onRedeem={handleRedeemReward} />}
+      {selectedVoucher && < VoucherModal voucher={selectedVoucher} userBalance={profile?.reelcoins || 0} isRedeeming={isProcessing === selectedVoucher.id} isSuccess={redemptionSuccessId === selectedVoucher.id} onClose={() => { setSelectedVoucher(null); setRedemptionSuccessId(null); }} onRedeem={handleRedeemReward} />}
       
       {viewingAgent && (
         <AgentDossierModal 
           agent={viewingAgent} 
           isFollowing={followingIds.has(viewingAgent.firebase_uid)}
+          isRequested={sentRequestUids.has(viewingAgent.firebase_uid)}
           onFollow={() => handleFollowToggle(viewingAgent.firebase_uid)}
           onClose={() => setViewingAgent(null)}
           onShowConnections={(type, uid) => setShowingConnections({type, uid})}
@@ -999,7 +1087,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="hidden sm:flex items-center gap-2 bg-[#ffde59] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000]"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div><span className="text-[8px] font-black uppercase text-black">LIVE_SYNC_OK</span></div>
-          <button onClick={() => setShowNotifDropdown(!showNotifDropdown)} className="p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black active:translate-x-0.5 active:translate-y-0.5 transition-all"><Bell size={18} /></button>
+          <button onClick={() => setShowNotifDropdown(!showNotifDropdown)} className="relative p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black active:translate-x-0.5 active:translate-y-0.5 transition-all">
+            <Bell size={18} />
+            {incomingRequests.length > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-black animate-bounce"></span>}
+          </button>
         </div>
       </header>
 
