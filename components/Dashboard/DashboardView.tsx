@@ -91,16 +91,22 @@ const ConnectionListModal = ({
     const fetchConnections = async () => {
       if (!supabase) return;
       try {
+        // 'followers': want people WHERE following_id = me. Profiles are in the 'follower_id' column.
+        // 'following': want people WHERE follower_id = me. Profiles are in the 'following_id' column.
         const field = type === 'followers' ? 'following_id' : 'follower_id';
-        const joinField = type === 'followers' ? 'follower_id' : 'following_id';
+        const profileColumn = type === 'followers' ? 'follower_id' : 'following_id';
         
+        // Standard Supabase join syntax: profiles:column_name(*)
         const { data, error } = await supabase
           .from('follows')
-          .select(`profiles!follows_${joinField}_fkey(*)`)
+          .select(`agent:profiles!${profileColumn}(*)`)
           .eq(field, userId);
 
         if (error) throw error;
-        setList(data.map((item: any) => item.profiles).filter(Boolean) || []);
+
+        // Extract profiles and filter out nulls
+        const agents = data.map((item: any) => item.agent).filter(Boolean);
+        setList(agents);
       } catch (err) {
         console.error("CONNECTION_FETCH_ERROR:", err);
       } finally {
@@ -174,7 +180,7 @@ const AgentDossierModal = ({ agent, isFollowing, isRequested, onFollow, onClose,
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300 text-black">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
+      <div className="relative w-full max-lg bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
         <header className="bg-[#834bf1] text-white p-6 flex justify-between items-center border-b-[6px] border-black">
           <div className="flex items-center gap-3">
             <div className="bg-white p-2 border-2 border-black rotate-3">
@@ -484,10 +490,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         .eq('status', 'pending');
       
       if (!inError && incoming) {
-        console.log("INCOMING_SIGNALS_RECEIVED:", incoming);
         setIncomingRequests(incoming.map(i => ({...i, agent: i.sender})));
-      } else if (inError) {
-        console.error("INCOMING_SIGNAL_SYNC_ERROR:", inError);
       }
 
     } catch (err) {
