@@ -113,7 +113,7 @@ const ConnectionListModal = ({
   return (
     <div className="fixed inset-0 z-[1150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 text-black">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white border-[6px] border-black shadow-[16px_16px_0px_0px_#000] flex flex-col h-[70vh]">
+      <div className="relative w-full max-md bg-white border-[6px] border-black shadow-[16px_16px_0px_0px_#000] flex flex-col h-[70vh]">
         <header className="p-6 border-b-[4px] border-black flex justify-between items-center bg-slate-50">
           <div>
             <h3 className="text-xl font-black uppercase italic font-display leading-none">{type}</h3>
@@ -467,23 +467,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setFollowingIds(new Set(following.map(f => f.following_id)));
       }
 
-      // 3. Fetch Sent Requests (Handle missing table gracefully)
-      const { data: sent, error: sentError } = await supabase
+      // 3. Fetch Sent Requests
+      const { data: sent } = await supabase
         .from('link_requests')
         .select('receiver_uid')
         .eq('sender_uid', user.uid)
         .eq('status', 'pending');
       
-      if (!sentError && sent) setSentRequestUids(new Set(sent.map(s => s.receiver_uid)));
+      if (sent) setSentRequestUids(new Set(sent.map(s => s.receiver_uid)));
 
-      // 4. Fetch Incoming Requests
+      // 4. Fetch Incoming Requests (RELIABLE JOIN SYNTAX)
       const { data: incoming, error: inError } = await supabase
         .from('link_requests')
-        .select('*, profiles!link_requests_sender_uid_fkey(*)')
+        .select('*, sender:profiles!link_requests_sender_uid_fkey(*)')
         .eq('receiver_uid', user.uid)
         .eq('status', 'pending');
       
-      if (!inError && incoming) setIncomingRequests(incoming.map(i => ({...i, agent: i.profiles})));
+      if (!inError && incoming) {
+        console.log("INCOMING_SIGNALS_RECEIVED:", incoming);
+        setIncomingRequests(incoming.map(i => ({...i, agent: i.sender})));
+      } else if (inError) {
+        console.error("INCOMING_SIGNAL_SYNC_ERROR:", inError);
+      }
 
     } catch (err) {
       console.error("NETWORK_SYNC_FAILURE:", err);
@@ -587,12 +592,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           .from('link_requests')
           .insert([{ sender_uid: currentUser.uid, receiver_uid: targetUid, status: 'pending' }]);
         
-        if (error) {
-          if (error.message.includes('link_requests')) {
-            throw new Error("Table 'link_requests' not found. Admin must run setup SQL.");
-          }
-          throw error;
-        }
+        if (error) throw error;
         
         setSentRequestUids(prev => {
           const next = new Set(prev);
@@ -660,8 +660,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     if (!supabase || !currentUser) return;
     const client = supabase;
     const syncChannel = client.channel(`user-sync-${currentUser.uid}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'link_requests', filter: `receiver_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'link_requests', filter: `receiver_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
       .subscribe();
     return () => { client.removeChannel(syncChannel); };
   }, [currentUser, fetchOperationalGrid]);
@@ -822,20 +822,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
 
         {incomingRequests.length === 0 ? (
-          <div className="py-8 text-center border-4 border-dashed border-slate-100 flex flex-col items-center gap-3 opacity-20">
-            <Radio size={24} className="text-black/30" />
-            <p className="text-[8px] font-black uppercase tracking-[0.4em]">Grid Silent: No pending links.</p>
+          <div className="py-12 text-center border-[3px] border-dashed border-slate-100 flex flex-col items-center justify-center gap-3 opacity-20">
+            <Radio size={32} className="text-black/30 animate-pulse" />
+            <p className="text-[9px] font-black uppercase tracking-[0.5em] leading-none">Grid Silent: No pending links.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
             {incomingRequests.map((req) => (
-              <div key={req.id} className="bg-slate-50 border-[3px] border-black p-4 flex flex-col sm:flex-row items-center justify-between gap-4 group">
+              <div key={req.id} className="bg-slate-50 border-[3px] border-black p-4 flex flex-col sm:flex-row items-center justify-between gap-4 group animate-in slide-in-from-left-2 duration-300">
                 <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="w-12 h-12 border-2 border-black bg-white overflow-hidden shadow-[3px_3px_0px_0px_#834bf1]">
+                  <div className="w-12 h-12 border-2 border-black bg-white overflow-hidden shadow-[3px_3px_0px_0px_#834bf1] shrink-0">
                      <img src={req.agent?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${req.sender_uid}`} className="w-full h-full object-cover" />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black uppercase truncate text-black leading-none">{req.agent?.display_name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-black uppercase truncate text-black leading-none">{req.agent?.display_name || "Unknown Agent"}</p>
                     <p className="text-[8px] font-bold text-black/40 uppercase tracking-widest mt-1">wants to link identity</p>
                   </div>
                 </div>
