@@ -157,7 +157,7 @@ const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose, onShowConnec
               <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-50 mt-1">Verified Node Analysis</p>
             </div>
           </div>
-          <button onClose={onClose} className="p-2 hover:bg-black transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-black transition-colors">
             <X size={20} strokeWidth={4} />
           </button>
         </header>
