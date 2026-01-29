@@ -72,7 +72,7 @@ const LockedSection = ({ title, status }: { title: string, status: string }) => 
   </div>
 );
 
-// --- Connection List Modal (Followers/Following List) ---
+// --- Connection List Modal ---
 const ConnectionListModal = ({ 
   type, 
   userId, 
@@ -100,7 +100,7 @@ const ConnectionListModal = ({
           .eq(field, userId);
 
         if (error) throw error;
-        setList(data.map((item: any) => item.profiles) || []);
+        setList(data.map((item: any) => item.profiles).filter(Boolean) || []);
       } catch (err) {
         console.error("CONNECTION_FETCH_ERROR:", err);
       } finally {
@@ -162,7 +162,7 @@ const ConnectionListModal = ({
   );
 };
 
-// --- Agent Dossier Modal (View Other Profile) ---
+// --- Agent Dossier Modal ---
 const AgentDossierModal = ({ agent, isFollowing, onFollow, onClose, onShowConnections }: { 
   agent: any, 
   isFollowing: boolean, 
@@ -464,65 +464,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     }
   }, []);
 
-  const handleFollowToggle = async (targetUid: string) => {
-    if (!supabase || !currentUser) return;
-    
-    const isCurrentlyFollowing = followingIds.has(targetUid);
-    
-    try {
-      if (isCurrentlyFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_id', currentUser.uid)
-          .eq('following_id', targetUid);
-        if (error) throw error;
-        
-        setFollowingIds(prev => {
-          const next = new Set(prev);
-          next.delete(targetUid);
-          return next;
-        });
-      } else {
-        // Follow
-        const { error } = await supabase
-          .from('follows')
-          .insert([{ follower_id: currentUser.uid, following_id: targetUid }]);
-        if (error) throw error;
-        
-        setFollowingIds(prev => {
-          const next = new Set(prev);
-          next.add(targetUid);
-          return next;
-        });
-        playSound();
-      }
-
-      // SOCIAL_SYNC: Refresh local counts immediately to reflect triggers
-      if (currentUser) {
-        const { data: updatedProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('firebase_uid', currentUser.uid)
-          .single();
-        if (updatedProfile) setProfile(updatedProfile);
-
-        // Also refresh the viewing agent if dossier is open
-        if (viewingAgent && viewingAgent.firebase_uid === targetUid) {
-          const { data: updatedAgent } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('firebase_uid', targetUid)
-            .single();
-          if (updatedAgent) setViewingAgent(updatedAgent);
-        }
-      }
-    } catch (err: any) {
-      alert("FOLLOW_SYNC_FAILURE: " + err.message);
-    }
-  };
-
   const fetchOperationalGrid = useCallback(async (user: FirebaseUser) => {
     if (!supabase) return;
 
@@ -592,6 +533,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       setLoading(false);
     }
   }, [fetchCreatorNetwork]);
+
+  const handleFollowToggle = async (targetUid: string) => {
+    if (!supabase || !currentUser) return;
+    
+    const isCurrentlyFollowing = followingIds.has(targetUid);
+    
+    try {
+      if (isCurrentlyFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.uid)
+          .eq('following_id', targetUid);
+        if (error) throw error;
+        
+        setFollowingIds(prev => {
+          const next = new Set(prev);
+          next.delete(targetUid);
+          return next;
+        });
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from('follows')
+          .insert([{ follower_id: currentUser.uid, following_id: targetUid }]);
+        if (error) throw error;
+        
+        setFollowingIds(prev => {
+          const next = new Set(prev);
+          next.add(targetUid);
+          return next;
+        });
+        playSound();
+      }
+
+      // SOCIAL_SYNC: Refresh local counts immediately to reflect triggers
+      // Wait a tiny bit for DB triggers to complete
+      await new Promise(r => setTimeout(r, 100));
+      
+      if (currentUser) {
+        // Refresh Current User Profile for updated 'following' count
+        const { data: updatedProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('firebase_uid', currentUser.uid)
+          .single();
+        if (updatedProfile) setProfile(updatedProfile);
+
+        // Refresh The Target Agent Profile for updated 'followers' count
+        if (viewingAgent && viewingAgent.firebase_uid === targetUid) {
+          const { data: updatedAgent } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('firebase_uid', targetUid)
+            .single();
+          if (updatedAgent) setViewingAgent(updatedAgent);
+        }
+        
+        // Refresh the whole creator network list to update UI counts everywhere
+        fetchCreatorNetwork(currentUser);
+      }
+    } catch (err: any) {
+      alert("FOLLOW_SYNC_FAILURE: " + err.message);
+    }
+  };
 
   useEffect(() => {
     if (!supabase || !currentUser) return;
@@ -682,11 +689,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       setPreviewUrl(null);
       alert("PROFILE_SYNCED: Identity node updated successfully.");
     } catch (err: any) {
-      if (err.message?.includes("column \"bio\" does not exist") || err.message?.includes("'bio' column")) {
-        alert("CRITICAL_DB_ERROR: The 'bio' column is still missing from your database. Please run the SQL fix in the Supabase Editor as instructed.");
-      } else {
-        alert("SYNC_FAILURE: " + (err.message || "Identity update protocol failed."));
-      }
+      alert("SYNC_FAILURE: " + (err.message || "Identity update protocol failed."));
     } finally {
       setIsUploading(false);
     }
