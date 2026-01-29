@@ -12,7 +12,7 @@ import {
   Camera, Save, Pencil, Ticket, MapPin, ExternalLink, Info,
   AlertCircle, Copy, Check, Hash, Users as UsersIcon,
   UserPlus, UserMinus, Eye, Award, ShieldCheck, ChevronLeft,
-  ShieldAlert, Fingerprint, Handshake
+  ShieldAlert, Fingerprint, Handshake, Search, Radio
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
@@ -765,44 +765,98 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   };
 
   const renderCreatorNetwork = () => (
-    <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] overflow-hidden">
-      <div className="flex items-center justify-between mb-6">
-        <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 text-black">
-          <UsersIcon size={14} className="text-[#834bf1]" /> Agent Grid (Global)
-        </h4>
-        <span className="text-[7px] font-black uppercase text-emerald-500 animate-pulse">Live_Feed_On</span>
+    <div className="space-y-6">
+      {/* 1. SECTION: EXPLORE GLOBAL NODES */}
+      <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] overflow-hidden">
+        <div className="flex items-center justify-between mb-6">
+          <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 text-black">
+            <Radio size={14} className="text-[#834bf1] animate-pulse" /> Personnel Exploration
+          </h4>
+          <span className="text-[7px] font-black uppercase text-black/30 italic">Global_Grid_v4.5</span>
+        </div>
+        
+        <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x">
+          {otherCreators.map((agent) => (
+            <div key={agent.firebase_uid} className="flex-shrink-0 w-32 bg-slate-50 border-[3px] border-black p-3 shadow-[4px_4px_0px_0px_#000] snap-start flex flex-col items-center text-center group relative overflow-hidden">
+              <div className="absolute inset-0 bg-[#834bf1] opacity-0 group-hover:opacity-5 transition-opacity" />
+              
+              <div className="w-14 h-14 rounded-full border-2 border-black overflow-hidden mb-3 bg-white shadow-[2px_2px_0px_0px_#834bf1] group-hover:scale-105 transition-transform cursor-pointer"
+                   onClick={() => setViewingAgent(agent)}>
+                <img src={agent.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${agent.firebase_uid}`} className="w-full h-full object-cover" />
+              </div>
+              
+              <h5 className="text-[10px] font-black uppercase truncate w-full mb-0.5">{agent.display_name}</h5>
+              <p className="text-[7px] font-bold text-black/40 uppercase tracking-widest mb-3 truncate w-full">@{agent.handle || 'node'}</p>
+              
+              <div className="flex gap-1 w-full mt-auto">
+                 <button 
+                  onClick={() => handleFollowToggle(agent.firebase_uid)}
+                  disabled={sentRequestUids.has(agent.firebase_uid)}
+                  className={`flex-1 p-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all ${followingIds.has(agent.firebase_uid) ? 'bg-white text-black' : sentRequestUids.has(agent.firebase_uid) ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-[#ffde59] text-black'}`}
+                >
+                  {followingIds.has(agent.firebase_uid) ? <UserMinus size={12} strokeWidth={3} className="mx-auto" /> : <UserPlus size={12} strokeWidth={3} className="mx-auto" />}
+                </button>
+                <button 
+                  onClick={() => setViewingAgent(agent)}
+                  className="p-1.5 bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_#834bf1] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
+                >
+                  <Eye size={12} strokeWidth={3} className="mx-auto" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-      
-      <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x">
-        {otherCreators.map((agent) => (
-          <div key={agent.firebase_uid} className="flex-shrink-0 w-32 bg-slate-50 border-[3px] border-black p-3 shadow-[4px_4px_0px_0px_#000] snap-start flex flex-col items-center text-center group relative overflow-hidden">
-            <div className="absolute inset-0 bg-[#834bf1] opacity-0 group-hover:opacity-5 transition-opacity" />
-            
-            <div className="w-14 h-14 rounded-full border-2 border-black overflow-hidden mb-3 bg-white shadow-[2px_2px_0px_0px_#834bf1] group-hover:scale-105 transition-transform cursor-pointer"
-                 onClick={() => setViewingAgent(agent)}>
-              <img src={agent.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${agent.firebase_uid}`} className="w-full h-full object-cover" />
-            </div>
-            
-            <h5 className="text-[10px] font-black uppercase truncate w-full mb-0.5">{agent.display_name}</h5>
-            <p className="text-[7px] font-bold text-black/40 uppercase tracking-widest mb-3 truncate w-full">@{agent.handle || 'node'}</p>
-            
-            <div className="flex gap-1 w-full mt-auto">
-               <button 
-                onClick={() => handleFollowToggle(agent.firebase_uid)}
-                disabled={sentRequestUids.has(agent.firebase_uid)}
-                className={`flex-1 p-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all ${followingIds.has(agent.firebase_uid) ? 'bg-white text-black' : sentRequestUids.has(agent.firebase_uid) ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-[#ffde59] text-black'}`}
-              >
-                {followingIds.has(agent.firebase_uid) ? <UserMinus size={12} strokeWidth={3} className="mx-auto" /> : <UserPlus size={12} strokeWidth={3} className="mx-auto" />}
-              </button>
-              <button 
-                onClick={() => setViewingAgent(agent)}
-                className="p-1.5 bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_#834bf1] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
-              >
-                <Eye size={12} strokeWidth={3} className="mx-auto" />
-              </button>
-            </div>
+
+      {/* 2. SECTION: IDENTITY HANDSHAKES (REQUESTS) */}
+      <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#834bf1] animate-in slide-in-from-top-2 duration-300">
+        <div className="flex items-center justify-between mb-6">
+          <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 text-black">
+            <Handshake size={14} className="text-[#834bf1]" /> Identity Handshakes
+          </h4>
+          <div className="flex items-center gap-2">
+            <span className={`text-[7px] font-black uppercase px-2 py-0.5 border-2 border-black ${incomingRequests.length > 0 ? 'bg-rose-500 text-white border-black animate-pulse' : 'bg-slate-100 text-black/30 border-slate-200'}`}>
+              {incomingRequests.length} Signals
+            </span>
           </div>
-        ))}
+        </div>
+
+        {incomingRequests.length === 0 ? (
+          <div className="py-8 text-center border-4 border-dashed border-slate-100 flex flex-col items-center gap-3 opacity-20">
+            <Radio size={24} className="text-black/30" />
+            <p className="text-[8px] font-black uppercase tracking-[0.4em]">Grid Silent: No pending links.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {incomingRequests.map((req) => (
+              <div key={req.id} className="bg-slate-50 border-[3px] border-black p-4 flex flex-col sm:flex-row items-center justify-between gap-4 group">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="w-12 h-12 border-2 border-black bg-white overflow-hidden shadow-[3px_3px_0px_0px_#834bf1]">
+                     <img src={req.agent?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${req.sender_uid}`} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black uppercase truncate text-black leading-none">{req.agent?.display_name}</p>
+                    <p className="text-[8px] font-bold text-black/40 uppercase tracking-widest mt-1">wants to link identity</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                   <button 
+                     onClick={() => handleRejectRequest(req.id)}
+                     className="flex-1 sm:flex-none px-5 py-2.5 border-2 border-black bg-white text-rose-500 font-black text-[9px] uppercase tracking-widest hover:bg-rose-50 transition-all active:translate-y-0.5 shadow-[2px_2px_0px_0px_#000] active:shadow-none"
+                   >
+                      Reject
+                   </button>
+                   <button 
+                     onClick={() => handleAcceptRequest(req.id, req.sender_uid)}
+                     className="flex-1 sm:flex-none px-5 py-2.5 border-2 border-black bg-[#4ade80] text-black font-black text-[9px] uppercase tracking-widest hover:bg-[#39e075] transition-all active:translate-y-0.5 shadow-[4px_4px_0px_0px_#000] active:shadow-none"
+                   >
+                      Accept
+                   </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -901,44 +955,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </div>
 
+      {/* DUAL SECTION CREATOR GRID */}
       {renderCreatorNetwork()}
 
-      {/* COMBINED OPERATIONAL TIMELINE WITH LINK REQUESTS */}
       <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000]">
         <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] mb-6 flex items-center gap-2 text-black">
           <History size={14} /> Operational Timeline
         </h4>
         <div className="space-y-4">
-          {/* Incoming Link Requests (Urgent Actions) */}
-          {incomingRequests.map((req) => (
-            <div key={req.id} className="bg-slate-50 border-[3px] border-[#834bf1] p-4 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-left-2 duration-300">
-              <div className="flex items-center gap-4 w-full sm:w-auto">
-                <div className="w-10 h-10 border-2 border-black bg-white overflow-hidden shadow-[2px_2px_0px_0px_#834bf1]">
-                   <img src={req.agent?.photo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${req.sender_uid}`} className="w-full h-full object-cover" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase truncate text-black leading-none">{req.agent?.display_name}</p>
-                  <p className="text-[7px] font-bold text-[#834bf1] uppercase tracking-widest mt-1 italic">Identity Link Signal Detected</p>
-                </div>
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                 <button 
-                   onClick={() => handleRejectRequest(req.id)}
-                   className="flex-1 sm:flex-none px-4 py-2 border-2 border-black bg-white text-rose-500 font-black text-[8px] uppercase tracking-widest hover:bg-rose-50 transition-all active:translate-y-0.5"
-                 >
-                    Deny
-                 </button>
-                 <button 
-                   onClick={() => handleAcceptRequest(req.id, req.sender_uid)}
-                   className="flex-1 sm:flex-none px-4 py-2 border-2 border-black bg-[#4ade80] text-black font-black text-[8px] uppercase tracking-widest hover:bg-[#32e012] transition-all active:translate-y-0.5 shadow-[2px_2px_0px_0px_#000]"
-                 >
-                    Authorize
-                 </button>
-              </div>
-            </div>
-          ))}
-
-          {/* Submission History */}
           {userSubmissions.slice(0, 5).map((sub, i) => (
             <div key={`sub-${i}`} className="flex items-center gap-3 sm:gap-4 border-b-2 border-slate-50 pb-4 last:border-0 opacity-80 hover:opacity-100 transition-opacity">
               <div className={`w-9 h-9 sm:w-10 sm:h-10 border-2 border-black flex items-center justify-center shrink-0 ${sub.status === 'approved' ? 'bg-emerald-400' : 'bg-[#ffde59]'}`}>
@@ -952,7 +976,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
             </div>
           ))}
 
-          {userSubmissions.length === 0 && incomingRequests.length === 0 && (
+          {userSubmissions.length === 0 && (
             <p className="text-[9px] font-black uppercase opacity-20 text-center py-4 italic">No recent transmissions.</p>
           )}
         </div>
