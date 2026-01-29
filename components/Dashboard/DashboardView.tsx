@@ -467,23 +467,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         setFollowingIds(new Set(following.map(f => f.following_id)));
       }
 
-      // 3. Fetch Sent Requests
-      const { data: sent } = await supabase
+      // 3. Fetch Sent Requests (Handle missing table gracefully)
+      const { data: sent, error: sentError } = await supabase
         .from('link_requests')
         .select('receiver_uid')
         .eq('sender_uid', user.uid)
         .eq('status', 'pending');
       
-      if (sent) setSentRequestUids(new Set(sent.map(s => s.receiver_uid)));
+      if (!sentError && sent) setSentRequestUids(new Set(sent.map(s => s.receiver_uid)));
 
       // 4. Fetch Incoming Requests
-      const { data: incoming } = await supabase
+      const { data: incoming, error: inError } = await supabase
         .from('link_requests')
         .select('*, profiles!link_requests_sender_uid_fkey(*)')
         .eq('receiver_uid', user.uid)
         .eq('status', 'pending');
       
-      if (incoming) setIncomingRequests(incoming.map(i => ({...i, agent: i.profiles})));
+      if (!inError && incoming) setIncomingRequests(incoming.map(i => ({...i, agent: i.profiles})));
 
     } catch (err) {
       console.error("NETWORK_SYNC_FAILURE:", err);
@@ -587,7 +587,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           .from('link_requests')
           .insert([{ sender_uid: currentUser.uid, receiver_uid: targetUid, status: 'pending' }]);
         
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('link_requests')) {
+            throw new Error("Table 'link_requests' not found. Admin must run setup SQL.");
+          }
+          throw error;
+        }
         
         setSentRequestUids(prev => {
           const next = new Set(prev);
