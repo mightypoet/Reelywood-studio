@@ -20,7 +20,7 @@ import { Trust } from './components/Trust';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Loader2 } from 'lucide-react';
 
-// Lazy load dashboard components
+// Lazy load large dashboard components
 const DashboardView = lazy(() => import('./components/Dashboard/DashboardView').then(m => ({ default: m.DashboardView })));
 const BrandDashboard = lazy(() => import('./components/Brands/BrandDashboard').then(m => ({ default: m.BrandDashboard })));
 const AdminDashboard = lazy(() => import('./components/Admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -50,54 +50,56 @@ const MainContent: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
         try {
-          // 1. FAST VIEW TRANSITION (Determine view instantly)
-          if (ADMIN_EMAILS.includes(firebaseUser.email || '')) {
+          if (!supabase) return;
+          
+          if (ADMIN_EMAILS.includes(user.email || '')) {
              setView('admin-dashboard');
           } else {
-             setView('dashboard'); // Default
-             if (supabase) {
-               supabase
-                 .from('partner_brands')
-                 .select('id')
-                 .eq('brand_email', firebaseUser.email)
-                 .maybeSingle()
-                 .then(({ data }) => { if (data) setView('brand-dashboard'); });
-             }
-          }
-
-          // 2. BACKGROUND PROFILE SYNC (Type-safe async execution)
-          if (supabase) {
-            try {
-              await supabase
-                .from('profiles')
-                .upsert({
-                  firebase_uid: firebaseUser.uid,
-                  email: firebaseUser.email || "no-email",
-                  display_name: firebaseUser.displayName || 'Agent ' + firebaseUser.uid.substring(0, 5),
-                  photo_url: firebaseUser.photoURL || null,
-                  handle: firebaseUser.displayName?.toLowerCase().replace(/\s/g, '') || firebaseUser.uid.substring(0, 8),
-                  updated_at: new Date().toISOString()
-                }, { 
-                  onConflict: 'firebase_uid',
-                  ignoreDuplicates: true 
-                });
-            } catch (syncErr) {
-              console.warn("Background sync deferred:", syncErr);
+            const { data: brandMatch } = await supabase
+              .from('partner_brands')
+              .select('id')
+              .eq('brand_email', user.email)
+              .maybeSingle();
+            
+            if (brandMatch) {
+              setView('brand-dashboard');
+            } else {
+              setView('dashboard');
             }
           }
 
+          const { data: existingUser } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('firebase_uid', user.uid)
+            .single();
+
+          if (!existingUser) {
+            // Initializing new profile node with full dataset
+            await supabase
+              .from('profiles')
+              .insert([{
+                firebase_uid: user.uid,
+                email: user.email || "no-email",
+                role: 'user',
+                card_status: 'none',
+                reelcoins: 0,
+                display_name: user.displayName || 'Agent ' + user.uid.substring(0, 5),
+                photo_url: user.photoURL || null,
+                handle: user.displayName?.toLowerCase().replace(/\s/g, '') || '',
+                niche: 'CREATOR NODE',
+                followers: 0,
+                bio: ''
+              }]);
+          }
         } catch (err) {
-          console.error("BOOTSTRAP_ERROR:", err);
-          setView('dashboard'); // Fail forward
+          console.error("CRITICAL ERROR:", err);
         }
       } else {
-        const hash = window.location.hash;
-        if (!['#academy', '#creatorcard', '#admin'].includes(hash)) {
-          setView('home');
-        }
+        setView('home');
       }
     });
     return () => unsubscribe();
@@ -106,16 +108,18 @@ const MainContent: React.FC = () => {
   useEffect(() => {
     setIsVisible(true);
     const handleRouting = () => {
+      const path = window.location.pathname;
       const hash = window.location.hash;
-      if (hash === '#admin') setView('admin-login');
-      else if (hash === '#brands') setView('brand-dashboard');
-      else if (hash === '#dashboard') setView('dashboard');
-      else if (hash === '#creatorcard') setView('creator-card');
-      else if (hash === '#academy') setView('academy');
+      if (path === '/admin' || hash === '#admin') setView('admin-login');
+      else if (path === '/brands' || hash === '#brands') setView('brand-dashboard');
+      else if (path === '/dashboard' || hash === '#dashboard') setView('dashboard');
+      else if (path === '/creatorcard' || hash === '#creatorcard') setView('creator-card');
+      else if (path === '/academy' || hash === '#academy') setView('academy');
+      else setView('home');
     };
     handleRouting();
-    window.addEventListener('hashchange', handleRouting);
-    return () => window.removeEventListener('hashchange', handleRouting);
+    window.addEventListener('popstate', handleRouting);
+    return () => window.removeEventListener('popstate', handleRouting);
   }, []);
 
   useEffect(() => {
