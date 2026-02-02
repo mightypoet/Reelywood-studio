@@ -12,13 +12,14 @@ import {
   Camera, Save, Pencil, Ticket, MapPin, ExternalLink, Info,
   AlertCircle, Copy, Check, Hash, Users as UsersIcon,
   UserPlus, UserMinus, Eye, Award, ShieldCheck, ChevronLeft,
-  ShieldAlert, Fingerprint, Handshake, Search, Radio
+  ShieldAlert, Fingerprint, Handshake, Search, Radio, MessageSquare
 } from 'lucide-react';
 import { MissionModal } from './MissionModal';
 import { ThreeDCard } from '../ThreeDCard';
 import { useSoundNotification } from '../../hooks/useSoundNotification';
 import { RCNotificationModal } from '../RCNotificationModal';
 import { useRCBalanceWatcher } from '../../hooks/useRCBalanceWatcher';
+import { ChatWindow } from '../Chat/ChatWindow';
 
 interface DashboardViewProps {
   onBack: () => void;
@@ -79,7 +80,7 @@ const ConnectionListModal = ({
   onClose, 
   onSelectAgent 
 }: { 
-  type: 'followers' | 'following', 
+  type: 'followers' | 'following' | 'contacts', 
   userId: string, 
   onClose: () => void, 
   onSelectAgent: (agent: any) => void 
@@ -91,22 +92,33 @@ const ConnectionListModal = ({
     const fetchConnections = async () => {
       if (!supabase) return;
       try {
-        // 'followers': want people WHERE following_id = me. Profiles are in the 'follower_id' column.
-        // 'following': want people WHERE follower_id = me. Profiles are in the 'following_id' column.
-        const field = type === 'followers' ? 'following_id' : 'follower_id';
-        const profileColumn = type === 'followers' ? 'follower_id' : 'following_id';
-        
-        // Standard Supabase join syntax: profiles:column_name(*)
-        const { data, error } = await supabase
-          .from('follows')
-          .select(`agent:profiles!${profileColumn}(*)`)
-          .eq(field, userId);
+        if (type === 'contacts') {
+           const { data, error } = await supabase
+            .from('follows')
+            .select(`follower:profiles!follower_id(*), following:profiles!following_id(*)`)
+            .or(`follower_id.eq.${userId},following_id.eq.${userId}`);
 
-        if (error) throw error;
+           if (error) throw error;
+           
+           const agentsMap = new Map();
+           data.forEach((item: any) => {
+             if (item.follower && item.follower.firebase_uid !== userId) agentsMap.set(item.follower.firebase_uid, item.follower);
+             if (item.following && item.following.firebase_uid !== userId) agentsMap.set(item.following.firebase_uid, item.following);
+           });
+           setList(Array.from(agentsMap.values()));
+        } else {
+          const field = type === 'followers' ? 'following_id' : 'follower_id';
+          const profileColumn = type === 'followers' ? 'follower_id' : 'following_id';
+          
+          // Use column name hinting (!) instead of internal constraint names
+          const { data, error } = await supabase
+            .from('follows')
+            .select(`agent:profiles!${profileColumn}(*)`)
+            .eq(field, userId);
 
-        // Extract profiles and filter out nulls
-        const agents = data.map((item: any) => item.agent).filter(Boolean);
-        setList(agents);
+          if (error) throw error;
+          setList(data.map((item: any) => item.agent).filter(Boolean));
+        }
       } catch (err) {
         console.error("CONNECTION_FETCH_ERROR:", err);
       } finally {
@@ -169,18 +181,19 @@ const ConnectionListModal = ({
 };
 
 // --- Agent Dossier Modal ---
-const AgentDossierModal = ({ agent, isFollowing, isRequested, onFollow, onClose, onShowConnections }: { 
+const AgentDossierModal = ({ agent, isFollowing, isRequested, onFollow, onClose, onShowConnections, onOpenChat }: { 
   agent: any, 
   isFollowing: boolean, 
   isRequested: boolean,
   onFollow: () => void, 
   onClose: () => void,
-  onShowConnections: (type: 'followers' | 'following', uid: string) => void
+  onShowConnections: (type: 'followers' | 'following', uid: string) => void,
+  onOpenChat: (agent: any) => void
 }) => {
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300 text-black">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-lg bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
+      <div className="relative w-full max-w-lg bg-white border-[6px] border-black shadow-[24px_24px_0px_0px_#834bf1] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
         <header className="bg-[#834bf1] text-white p-6 flex justify-between items-center border-b-[6px] border-black">
           <div className="flex items-center gap-3">
             <div className="bg-white p-2 border-2 border-black rotate-3">
@@ -241,19 +254,27 @@ const AgentDossierModal = ({ agent, isFollowing, isRequested, onFollow, onClose,
             </div>
           </div>
 
-          <button 
-            onClick={onFollow}
-            disabled={isRequested}
-            className={`w-full py-6 border-[6px] border-black shadow-[8px_8px_0px_0px_#000] font-black uppercase text-lg tracking-[0.2em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-95 ${isFollowing ? 'bg-white text-black' : isRequested ? 'bg-amber-100 text-amber-600 opacity-80' : 'bg-[#ffde59] text-black'}`}
-          >
-            {isFollowing ? (
-              <><UserMinus size={24} strokeWidth={3} /> UNLINK NODE</>
-            ) : isRequested ? (
-              <><Clock size={24} strokeWidth={3} className="animate-pulse" /> REQUESTED</>
-            ) : (
-              <><UserPlus size={24} strokeWidth={3} /> LINK IDENTITY</>
-            )}
-          </button>
+          <div className="grid grid-cols-5 gap-4">
+            <button 
+              onClick={onFollow}
+              disabled={isRequested}
+              className={`col-span-4 py-6 border-[6px] border-black shadow-[8px_8px_0px_0px_#000] font-black uppercase text-lg tracking-[0.2em] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-4 active:scale-95 ${isFollowing ? 'bg-white text-black' : isRequested ? 'bg-amber-100 text-amber-600 opacity-80' : 'bg-[#ffde59] text-black'}`}
+            >
+              {isFollowing ? (
+                <><UserMinus size={24} strokeWidth={3} /> UNLINK NODE</>
+              ) : isRequested ? (
+                <><Clock size={24} strokeWidth={3} className="animate-pulse" /> REQUESTED</>
+              ) : (
+                <><UserPlus size={24} strokeWidth={3} /> LINK IDENTITY</>
+              )}
+            </button>
+            <button 
+              onClick={() => onOpenChat(agent)}
+              className="bg-black text-[#ffde59] border-[6px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] flex items-center justify-center hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+            >
+              <MessageSquare size={24} strokeWidth={3} />
+            </button>
+          </div>
         </main>
 
         <footer className="p-4 bg-slate-100 border-t-[4px] border-black text-center">
@@ -423,7 +444,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
   
   const [viewingAgent, setViewingAgent] = useState<any>(null);
-  const [showingConnections, setShowingConnections] = useState<{type: 'followers' | 'following', uid: string} | null>(null);
+  const [showingConnections, setShowingConnections] = useState<{type: 'followers' | 'following' | 'contacts', uid: string} | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabType>('hub');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -432,6 +453,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
   
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+  // CHAT STATE
+  const [activeChatAgent, setActiveChatAgent] = useState<any | null>(null);
 
   // Edit Profile States
   const [isEditing, setIsEditing] = useState(false);
@@ -485,7 +509,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       // 4. Fetch Incoming Requests (RELIABLE JOIN SYNTAX)
       const { data: incoming, error: inError } = await supabase
         .from('link_requests')
-        .select('*, sender:profiles!link_requests_sender_uid_fkey(*)')
+        .select('*, sender:profiles!sender_uid(*)')
         .eq('receiver_uid', user.uid)
         .eq('status', 'pending');
       
@@ -576,7 +600,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
     
     try {
       if (isCurrentlyFollowing) {
-        // Unfollow (Unlink Node)
         const { error } = await supabase
           .from('follows')
           .delete()
@@ -590,7 +613,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           return next;
         });
       } else if (!isAlreadyRequested) {
-        // Send Link Request (Instagram Style)
         const { error } = await supabase
           .from('link_requests')
           .insert([{ sender_uid: currentUser.uid, receiver_uid: targetUid, status: 'pending' }]);
@@ -606,7 +628,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         alert("LINK_REQUEST_TRANSMITTED: Awaiting Agent Authorization.");
       }
 
-      // SOCIAL_SYNC: Refresh local counts
       await new Promise(r => setTimeout(r, 150));
       if (currentUser) {
         const { data: updatedProfile } = await supabase.from('profiles').select('*').eq('firebase_uid', currentUser.uid).single();
@@ -625,14 +646,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   const handleAcceptRequest = async (requestId: string, senderUid: string) => {
     if (!supabase || !currentUser) return;
     try {
-      // 1. AUTHORIZE LINK (Insert into follows)
       const { error: followError } = await supabase
         .from('follows')
         .insert([{ follower_id: senderUid, following_id: currentUser.uid }]);
       
       if (followError) throw followError;
 
-      // 2. PURGE REQUEST (Delete from link_requests)
       const { error: deleteError } = await supabase
         .from('link_requests')
         .delete()
@@ -662,12 +681,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   useEffect(() => {
     if (!supabase || !currentUser) return;
     const client = supabase;
+    
+    // Updated Realtime listener to be more inclusive of link_request state changes
     const syncChannel = client.channel(`user-sync-${currentUser.uid}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'link_requests', filter: `receiver_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'link_requests' }, (payload) => {
+          // Refresh if relevant to current user as either sender or receiver
+          const req = payload.new || payload.old;
+          if (req && (req.sender_uid === currentUser.uid || req.receiver_uid === currentUser.uid)) {
+            fetchCreatorNetwork(currentUser);
+          }
+      })
       .subscribe();
     return () => { client.removeChannel(syncChannel); };
-  }, [currentUser, fetchOperationalGrid]);
+  }, [currentUser, fetchOperationalGrid, fetchCreatorNetwork]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -763,13 +790,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
   };
 
   const handleSelectConnectionAgent = async (agent: any) => {
-    setViewingAgent(agent);
+    if (showingConnections?.type === 'contacts') {
+      setActiveChatAgent(agent);
+    } else {
+      setViewingAgent(agent);
+    }
     setShowingConnections(null);
   };
 
   const renderCreatorNetwork = () => (
     <div className="space-y-6">
-      {/* 1. SECTION: EXPLORE GLOBAL NODES */}
       <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] overflow-hidden">
         <div className="flex items-center justify-between mb-6">
           <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 text-black">
@@ -811,7 +841,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* 2. SECTION: IDENTITY HANDSHAKES (REQUESTS) */}
       <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#834bf1] animate-in slide-in-from-top-2 duration-300">
         <div className="flex items-center justify-between mb-6">
           <h4 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 text-black">
@@ -958,7 +987,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* DUAL SECTION CREATOR GRID */}
       {renderCreatorNetwork()}
 
       <div className="bg-white border-[3px] sm:border-4 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000]">
@@ -1087,6 +1115,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       {selectedMission && <MissionModal mission={selectedMission} user={currentUser} onClose={() => { setSelectedMission(null); fetchOperationalGrid(currentUser!); }} />}
       {selectedVoucher && < VoucherModal voucher={selectedVoucher} userBalance={profile?.reelcoins || 0} isRedeeming={isProcessing === selectedVoucher.id} isSuccess={redemptionSuccessId === selectedVoucher.id} onClose={() => { setSelectedVoucher(null); setRedemptionSuccessId(null); }} onRedeem={handleRedeemReward} />}
       
+      {activeChatAgent && (
+        <ChatWindow 
+          currentUserId={currentUser!.uid}
+          recipientId={activeChatAgent.firebase_uid}
+          recipientName={activeChatAgent.display_name}
+          recipientPhoto={activeChatAgent.photo_url}
+          onClose={() => setActiveChatAgent(null)}
+        />
+      )}
+
       {viewingAgent && (
         <AgentDossierModal 
           agent={viewingAgent} 
@@ -1095,6 +1133,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           onFollow={() => handleFollowToggle(viewingAgent.firebase_uid)}
           onClose={() => setViewingAgent(null)}
           onShowConnections={(type, uid) => setShowingConnections({type, uid})}
+          onOpenChat={(agent) => { setViewingAgent(null); setActiveChatAgent(agent); }}
         />
       )}
 
@@ -1119,10 +1158,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="hidden sm:flex items-center gap-2 bg-[#ffde59] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000]"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div><span className="text-[8px] font-black uppercase text-black">LIVE_SYNC_OK</span></div>
-          <button onClick={() => setShowNotifDropdown(!showNotifDropdown)} className="relative p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black active:translate-x-0.5 active:translate-y-0.5 transition-all">
-            <Bell size={18} />
-            {incomingRequests.length > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-black animate-bounce"></span>}
-          </button>
+          
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowingConnections({type: 'contacts', uid: currentUser!.uid})}
+              className="p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#834bf1] text-black active:translate-x-0.5 active:translate-y-0.5 transition-all"
+            >
+              <MessageSquare size={18} />
+            </button>
+            <button onClick={() => setShowNotifDropdown(!showNotifDropdown)} className="relative p-2 border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] text-black active:translate-x-0.5 active:translate-y-0.5 transition-all">
+              <Bell size={18} />
+              {incomingRequests.length > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-black animate-bounce"></span>}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1186,7 +1234,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
                           <button 
                             onClick={() => !isAnySubmitted && setSelectedMission(m)} 
                             disabled={isAnySubmitted}
-                            className={`w-full py-4 mt-6 border-[3px] font-black uppercase text-[9px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isApprovedSub ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' : isPendingSub ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}
+                            className={`w-full py-4 mt-6 border-[3px] border-black bg-[#834bf1] text-white font-black uppercase text-[9px] tracking-widest shadow-[3px_3px_0px_0px] text-white transition-all relative z-10 ${isApprovedSub ? 'bg-black/20 border-black/40 text-black/40 cursor-not-allowed shadow-none' : isPendingSub ? 'bg-black/10 border-black/30 text-black/30 cursor-wait shadow-none' : 'bg-[#834bf1] border-black hover:translate-x-0.5 hover:translate-y-0.5'}`}
                           >
                             {isApprovedSub ? 'MISSION COMPLETED' : isPendingSub ? 'TRANSMISSION CACHED' : 'OPEN BRIEF'}
                           </button>
