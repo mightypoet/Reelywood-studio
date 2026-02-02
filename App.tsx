@@ -52,36 +52,46 @@ const MainContent: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // 1. FAST VIEW TRANSITION (User should see the app instantly)
-        if (ADMIN_EMAILS.includes(firebaseUser.email || '')) {
-           setView('admin-dashboard');
-        } else {
-           setView('dashboard'); // Default to dashboard, refine in bg
-           if (supabase) {
-             supabase
-               .from('partner_brands')
-               .select('id')
-               .eq('brand_email', firebaseUser.email)
-               .maybeSingle()
-               .then(({ data }) => { if (data) setView('brand-dashboard'); });
-           }
-        }
+        try {
+          // 1. FAST VIEW TRANSITION (Determine view instantly)
+          if (ADMIN_EMAILS.includes(firebaseUser.email || '')) {
+             setView('admin-dashboard');
+          } else {
+             setView('dashboard'); // Default
+             if (supabase) {
+               supabase
+                 .from('partner_brands')
+                 .select('id')
+                 .eq('brand_email', firebaseUser.email)
+                 .maybeSingle()
+                 .then(({ data }) => { if (data) setView('brand-dashboard'); });
+             }
+          }
 
-        // 2. BACKGROUND PROFILE SYNC (Non-blocking)
-        if (supabase) {
-          supabase
-            .from('profiles')
-            .upsert({
-              firebase_uid: firebaseUser.uid,
-              email: firebaseUser.email || "no-email",
-              display_name: firebaseUser.displayName || 'Agent ' + firebaseUser.uid.substring(0, 5),
-              photo_url: firebaseUser.photoURL || null,
-              handle: firebaseUser.displayName?.toLowerCase().replace(/\s/g, '') || firebaseUser.uid.substring(0, 8),
-              updated_at: new Date().toISOString()
-            }, { 
-              onConflict: 'firebase_uid',
-              ignoreDuplicates: true 
-            }).catch(e => console.warn("Sync deferred:", e));
+          // 2. BACKGROUND PROFILE SYNC (Type-safe async execution)
+          if (supabase) {
+            try {
+              await supabase
+                .from('profiles')
+                .upsert({
+                  firebase_uid: firebaseUser.uid,
+                  email: firebaseUser.email || "no-email",
+                  display_name: firebaseUser.displayName || 'Agent ' + firebaseUser.uid.substring(0, 5),
+                  photo_url: firebaseUser.photoURL || null,
+                  handle: firebaseUser.displayName?.toLowerCase().replace(/\s/g, '') || firebaseUser.uid.substring(0, 8),
+                  updated_at: new Date().toISOString()
+                }, { 
+                  onConflict: 'firebase_uid',
+                  ignoreDuplicates: true 
+                });
+            } catch (syncErr) {
+              console.warn("Background sync deferred:", syncErr);
+            }
+          }
+
+        } catch (err) {
+          console.error("BOOTSTRAP_ERROR:", err);
+          setView('dashboard'); // Fail forward
         }
       } else {
         const hash = window.location.hash;
