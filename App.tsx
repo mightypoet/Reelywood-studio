@@ -20,7 +20,7 @@ import { Trust } from './components/Trust';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Loader2 } from 'lucide-react';
 
-// Lazy load large dashboard components
+// Lazy load dashboard components
 const DashboardView = lazy(() => import('./components/Dashboard/DashboardView').then(m => ({ default: m.DashboardView })));
 const BrandDashboard = lazy(() => import('./components/Brands/BrandDashboard').then(m => ({ default: m.BrandDashboard })));
 const AdminDashboard = lazy(() => import('./components/Admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -50,56 +50,52 @@ const MainContent: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
         try {
-          if (!supabase) return;
+          if (!supabase) {
+            setView('dashboard'); // Fallback even if supabase fails
+            return;
+          }
           
-          if (ADMIN_EMAILS.includes(user.email || '')) {
+          // 1. Determine View
+          if (ADMIN_EMAILS.includes(firebaseUser.email || '')) {
              setView('admin-dashboard');
           } else {
             const { data: brandMatch } = await supabase
               .from('partner_brands')
               .select('id')
-              .eq('brand_email', user.email)
+              .eq('brand_email', firebaseUser.email)
               .maybeSingle();
             
-            if (brandMatch) {
-              setView('brand-dashboard');
-            } else {
-              setView('dashboard');
-            }
+            setView(brandMatch ? 'brand-dashboard' : 'dashboard');
           }
 
-          const { data: existingUser } = await supabase
+          // 2. Atomic Profile Sync (Upsert prevents crashes if record partially exists)
+          await supabase
             .from('profiles')
-            .select('id')
-            .eq('firebase_uid', user.uid)
-            .single();
+            .upsert({
+              firebase_uid: firebaseUser.uid,
+              email: firebaseUser.email || "no-email",
+              display_name: firebaseUser.displayName || 'Agent ' + firebaseUser.uid.substring(0, 5),
+              photo_url: firebaseUser.photoURL || null,
+              handle: firebaseUser.displayName?.toLowerCase().replace(/\s/g, '') || firebaseUser.uid.substring(0, 8),
+              updated_at: new Date().toISOString()
+            }, { 
+              onConflict: 'firebase_uid',
+              ignoreDuplicates: true // Only insert if missing to preserve existing bio/reelcoins
+            });
 
-          if (!existingUser) {
-            // Initializing new profile node with full dataset
-            await supabase
-              .from('profiles')
-              .insert([{
-                firebase_uid: user.uid,
-                email: user.email || "no-email",
-                role: 'user',
-                card_status: 'none',
-                reelcoins: 0,
-                display_name: user.displayName || 'Agent ' + user.uid.substring(0, 5),
-                photo_url: user.photoURL || null,
-                handle: user.displayName?.toLowerCase().replace(/\s/g, '') || '',
-                niche: 'CREATOR NODE',
-                followers: 0,
-                bio: ''
-              }]);
-          }
         } catch (err) {
-          console.error("CRITICAL ERROR:", err);
+          console.error("BOOTSTRAP_ERROR:", err);
+          setView('home');
         }
       } else {
-        setView('home');
+        // Only reset to home if we aren't already on a public sub-page
+        const path = window.location.hash || window.location.pathname;
+        if (!['#academy', '#creatorcard', '#admin'].includes(path)) {
+          setView('home');
+        }
       }
     });
     return () => unsubscribe();
@@ -115,7 +111,6 @@ const MainContent: React.FC = () => {
       else if (path === '/dashboard' || hash === '#dashboard') setView('dashboard');
       else if (path === '/creatorcard' || hash === '#creatorcard') setView('creator-card');
       else if (path === '/academy' || hash === '#academy') setView('academy');
-      else setView('home');
     };
     handleRouting();
     window.addEventListener('popstate', handleRouting);
