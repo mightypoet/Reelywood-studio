@@ -613,7 +613,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
           return next;
         });
       } else if (!isAlreadyRequested) {
-        const { error } = await supabase
+        const { error = null } = await supabase
           .from('link_requests')
           .insert([{ sender_uid: currentUser.uid, receiver_uid: targetUid, status: 'pending' }]);
         
@@ -687,7 +687,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onBack }) => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `firebase_uid=eq.${currentUser.uid}` }, () => fetchOperationalGrid(currentUser))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'link_requests' }, (payload) => {
           // Refresh if relevant to current user as either sender or receiver
-          const req = payload.new || payload.old;
+          const req = (payload.new as any) || (payload.old as any);
           if (req && (req.sender_uid === currentUser.uid || req.receiver_uid === currentUser.uid)) {
             fetchCreatorNetwork(currentUser);
           }
