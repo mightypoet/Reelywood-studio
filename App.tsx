@@ -53,15 +53,10 @@ const MainContent: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          if (!supabase) {
-            setView('dashboard'); // Fallback even if supabase fails
-            return;
-          }
-          
-          // 1. Determine View
+          // 1. Determine View IMMEDIATELY to prevent hanging on loading
           if (ADMIN_EMAILS.includes(firebaseUser.email || '')) {
              setView('admin-dashboard');
-          } else {
+          } else if (supabase) {
             const { data: brandMatch } = await supabase
               .from('partner_brands')
               .select('id')
@@ -69,31 +64,34 @@ const MainContent: React.FC = () => {
               .maybeSingle();
             
             setView(brandMatch ? 'brand-dashboard' : 'dashboard');
+          } else {
+            setView('dashboard');
           }
 
-          // 2. Atomic Profile Sync (Upsert prevents crashes if record partially exists)
-          await supabase
-            .from('profiles')
-            .upsert({
-              firebase_uid: firebaseUser.uid,
-              email: firebaseUser.email || "no-email",
-              display_name: firebaseUser.displayName || 'Agent ' + firebaseUser.uid.substring(0, 5),
-              photo_url: firebaseUser.photoURL || null,
-              handle: firebaseUser.displayName?.toLowerCase().replace(/\s/g, '') || firebaseUser.uid.substring(0, 8),
-              updated_at: new Date().toISOString()
-            }, { 
-              onConflict: 'firebase_uid',
-              ignoreDuplicates: true // Only insert if missing to preserve existing bio/reelcoins
-            });
+          // 2. Atomic Profile Sync in background
+          if (supabase) {
+            supabase
+              .from('profiles')
+              .upsert({
+                firebase_uid: firebaseUser.uid,
+                email: firebaseUser.email || "no-email",
+                display_name: firebaseUser.displayName || 'Agent ' + firebaseUser.uid.substring(0, 5),
+                photo_url: firebaseUser.photoURL || null,
+                handle: firebaseUser.displayName?.toLowerCase().replace(/\s/g, '') || firebaseUser.uid.substring(0, 8),
+                updated_at: new Date().toISOString()
+              }, { 
+                onConflict: 'firebase_uid',
+                ignoreDuplicates: true 
+              }).catch(e => console.warn("Supabase profile sync background failure:", e));
+          }
 
         } catch (err) {
           console.error("BOOTSTRAP_ERROR:", err);
-          setView('home');
+          setView('dashboard'); // Fail forward
         }
       } else {
-        // Only reset to home if we aren't already on a public sub-page
-        const path = window.location.hash || window.location.pathname;
-        if (!['#academy', '#creatorcard', '#admin'].includes(path)) {
+        const hash = window.location.hash;
+        if (!['#academy', '#creatorcard', '#admin'].includes(hash)) {
           setView('home');
         }
       }
@@ -104,17 +102,16 @@ const MainContent: React.FC = () => {
   useEffect(() => {
     setIsVisible(true);
     const handleRouting = () => {
-      const path = window.location.pathname;
       const hash = window.location.hash;
-      if (path === '/admin' || hash === '#admin') setView('admin-login');
-      else if (path === '/brands' || hash === '#brands') setView('brand-dashboard');
-      else if (path === '/dashboard' || hash === '#dashboard') setView('dashboard');
-      else if (path === '/creatorcard' || hash === '#creatorcard') setView('creator-card');
-      else if (path === '/academy' || hash === '#academy') setView('academy');
+      if (hash === '#admin') setView('admin-login');
+      else if (hash === '#brands') setView('brand-dashboard');
+      else if (hash === '#dashboard') setView('dashboard');
+      else if (hash === '#creatorcard') setView('creator-card');
+      else if (hash === '#academy') setView('academy');
     };
     handleRouting();
-    window.addEventListener('popstate', handleRouting);
-    return () => window.removeEventListener('popstate', handleRouting);
+    window.addEventListener('hashchange', handleRouting);
+    return () => window.removeEventListener('hashchange', handleRouting);
   }, []);
 
   useEffect(() => {
