@@ -32,15 +32,23 @@ const CreatorCardView = lazy(() => import('./components/CreatorCardView').then(m
 const ADMIN_EMAILS = ['rohan00as@gmail.com', 'reelywood@gmail.com', 'adityad102000@gmail.com'];
 
 const LoadingFallback = () => (
-  <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-8">
+  <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center space-y-8 transition-colors duration-300">
     <Loader2 className="animate-spin text-[#834bf1]" size={64} strokeWidth={4} />
-    <p className="text-[12px] font-black uppercase tracking-[0.6em] text-black animate-pulse">Syncing Interface...</p>
+    <p className="text-[12px] font-black uppercase tracking-[0.6em] text-black dark:text-white animate-pulse">Syncing Interface...</p>
   </div>
 );
 
 const MainContent: React.FC = () => {
-  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'brand-dashboard' | 'academy' | 'dashboard'>('home');
-  const [isVisible, setIsVisible] = useState(false);
+  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'brand-dashboard' | 'academy' | 'dashboard'>(() => {
+    const path = window.location.pathname;
+    const hash = window.location.hash;
+    if (path === '/admin' || hash === '#admin') return 'admin-login';
+    if (path === '/brands' || hash === '#brands') return 'brand-dashboard';
+    if (path === '/dashboard' || hash === '#dashboard') return 'dashboard';
+    if (path === '/creatorcard' || hash === '#creatorcard') return 'creator-card';
+    if (path === '/academy' || hash === '#academy') return 'academy';
+    return 'home';
+  });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('reelywood-theme') as 'light' | 'dark') || 'light';
@@ -102,7 +110,6 @@ const MainContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setIsVisible(true);
     const handleRouting = () => {
       const path = window.location.pathname;
       const hash = window.location.hash;
@@ -137,7 +144,7 @@ const MainContent: React.FC = () => {
       {view === 'admin-dashboard' && <AdminDashboard onLogout={() => setView('home')} />}
       
       {view === 'home' && (
-        <div className={`min-h-screen transition-all duration-700 bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="min-h-screen transition-all duration-700 bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white">
           <Navbar 
             onAuthClick={() => setView('auth')} 
             onThemeToggle={toggleTheme} 
