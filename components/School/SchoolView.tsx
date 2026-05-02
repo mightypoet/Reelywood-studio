@@ -81,6 +81,7 @@ const ProgramCard = ({ title, desc, duration, price, category, accentColor }: { 
 
 export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
   const [timeLeft, setTimeLeft] = useState({ days: 2, hours: 14, minutes: 45, seconds: 0 });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -96,6 +97,7 @@ export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
 
   const scrollToRegistration = () => {
     document.getElementById('registration')?.scrollIntoView({ behavior: 'smooth' });
+    setIsMenuOpen(false);
   };
 
   return (
@@ -107,16 +109,19 @@ export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
         className="fixed top-0 left-0 right-0 z-[100] bg-[#ffde59] border-b-4 border-black py-3 px-4 flex items-center justify-center space-x-4 cursor-pointer hover:bg-[#fff0b3] transition-colors"
         onClick={scrollToRegistration}
       >
-        <Rocket className="shrink-0" size={20} />
-        <span className="font-black uppercase tracking-widest text-[10px] sm:text-xs text-center">
+        <Rocket className="shrink-0" size={18} />
+        <span className="font-black uppercase tracking-widest text-[9px] sm:text-xs text-center leading-tight">
           🔥 Free AI Webinar This Week — Limited Seats Available
         </span>
-        <ArrowRight size={16} className="hidden sm:block" />
+        <ArrowRight size={16} className="hidden sm:block shrink-0" />
       </motion.div>
 
       {/* Nav */}
-      <nav className="pt-20 px-6 max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center space-x-3 group cursor-pointer">
+      <nav className="pt-24 px-6 max-w-7xl mx-auto flex items-center justify-between">
+        <div 
+          onClick={onBack}
+          className="flex items-center space-x-3 group cursor-pointer"
+        >
           <div className="w-10 h-10 border-4 border-black bg-[#ffde59] flex items-center justify-center neo-shadow group-hover:shadow-none transition-all">
             <span className="font-black text-xl">R</span>
           </div>
@@ -125,6 +130,8 @@ export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
             <span className="font-bold text-[8px] tracking-[0.4em] uppercase text-slate-400">By Reelywood</span>
           </div>
         </div>
+
+        {/* Desktop Nav */}
         <div className="hidden md:flex items-center space-x-8">
           {['About', 'Programs', 'Webinar', 'FAQ'].map((item) => (
             <a key={item} href={`#${item.toLowerCase()}`} className="font-black uppercase tracking-widest text-xs hover:text-[#834bf1] transition-colors">
@@ -138,47 +145,86 @@ export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
             Join Now
           </button>
         </div>
+
+        {/* Mobile Nav Toggle */}
+        <button 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="md:hidden w-12 h-12 border-4 border-black bg-white flex flex-col items-center justify-center space-y-1.5 neo-shadow active:shadow-none transition-all"
+        >
+          <div className={`w-6 h-1 bg-black transition-transform ${isMenuOpen ? 'rotate-45 translate-y-2.5' : ''}`} />
+          <div className={`w-6 h-1 bg-black ${isMenuOpen ? 'opacity-0' : ''}`} />
+          <div className={`w-6 h-1 bg-black transition-transform ${isMenuOpen ? '-rotate-45 -translate-y-2.5' : ''}`} />
+        </button>
       </nav>
 
-      {/* Hero Section */}
-      <section className="px-6 pt-20 pb-24 md:pt-32 max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMenuOpen && (
           <motion.div 
-            initial={{ x: -50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            className="space-y-8"
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            className="fixed inset-0 z-[90] bg-[#ffde59] pt-32 px-10 flex flex-col space-y-8"
           >
-            <div className="inline-block px-4 py-2 border-4 border-black bg-[#834bf1] text-white font-black uppercase tracking-[0.3em] text-xs neo-shadow">
+            {['About', 'Programs', 'Webinar', 'FAQ'].map((item) => (
+              <a 
+                key={item} 
+                href={`#${item.toLowerCase()}`} 
+                onClick={() => setIsMenuOpen(false)}
+                className="text-4xl font-black uppercase tracking-tighter hover:text-[#834bf1]"
+              >
+                {item}
+              </a>
+            ))}
+            <button 
+              onClick={scrollToRegistration}
+              className="w-full py-6 border-4 border-black bg-black text-white font-black uppercase tracking-widest text-xl neo-shadow"
+            >
+              Join Now
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hero Section */}
+      <section className="px-6 pt-16 pb-24 md:pt-32 max-w-7xl mx-auto">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="space-y-6 md:space-y-8"
+          >
+            <div className="inline-block px-4 py-2 border-4 border-black bg-[#834bf1] text-white font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[10px] md:text-xs neo-shadow">
               Future of Learning is Here
             </div>
-            <h1 className="text-6xl md:text-8xl font-black uppercase leading-[0.9] tracking-tighter">
+            <h1 className="text-5xl sm:text-6xl md:text-8xl font-black uppercase leading-[0.9] tracking-tighter">
               Learn AI.<br />
               <span className="text-[#834bf1]">Build Faster.</span><br />
               Earn More.
             </h1>
-            <p className="text-xl md:text-2xl font-medium text-slate-700 max-w-xl leading-relaxed">
+            <p className="text-lg md:text-2xl font-medium text-slate-700 max-w-xl leading-relaxed">
               Master practical AI tools, automation systems, content creation workflows, and business growth strategies.
             </p>
-            <div className="flex flex-col sm:flex-row gap-6 pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 md:gap-6 pt-4">
               <button 
                 onClick={scrollToRegistration}
-                className="px-10 py-6 border-4 border-black bg-[#ffde59] font-black uppercase tracking-widest text-sm neo-shadow hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all flex items-center justify-center space-x-3"
+                className="px-8 md:px-10 py-5 md:py-6 border-4 border-black bg-[#ffde59] font-black uppercase tracking-widest text-xs md:text-sm neo-shadow hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all flex items-center justify-center space-x-3"
               >
                 <span>Register Webinar</span>
                 <PlayCircle size={20} />
               </button>
               <a 
                 href="#programs" 
-                className="px-10 py-6 border-4 border-black bg-white font-black uppercase tracking-widest text-sm neo-shadow hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all flex items-center justify-center"
+                className="px-8 md:px-10 py-5 md:py-6 border-4 border-black bg-white font-black uppercase tracking-widest text-xs md:text-sm neo-shadow hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all flex items-center justify-center"
               >
                 Explore Programs
               </a>
             </div>
             
             {/* Countdown */}
-            <div className="pt-12">
-              <p className="font-black uppercase tracking-widest text-xs mb-4 text-slate-400">Upcoming Live Webinar in:</p>
-              <div className="flex space-x-4">
+            <div className="pt-8 md:pt-12">
+              <p className="font-black uppercase tracking-widest text-[10px] md:text-xs mb-4 text-slate-400">Upcoming Live Webinar in:</p>
+              <div className="flex flex-wrap gap-4">
                 {[
                   { val: timeLeft.days, unit: 'Days' },
                   { val: timeLeft.hours, unit: 'Hours' },
@@ -186,10 +232,10 @@ export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
                   { val: timeLeft.seconds, unit: 'Sec' }
                 ].map((item, i) => (
                   <div key={i} className="flex flex-col items-center">
-                    <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-black bg-white flex items-center justify-center neo-shadow">
-                      <span className="text-2xl md:text-3xl font-black">{item.val.toString().padStart(2, '0')}</span>
+                    <div className="w-14 h-14 md:w-20 md:h-20 border-4 border-black bg-white flex items-center justify-center neo-shadow">
+                      <span className="text-xl md:text-3xl font-black">{item.val.toString().padStart(2, '0')}</span>
                     </div>
-                    <span className="mt-2 font-black uppercase text-[10px] tracking-widest">{item.unit}</span>
+                    <span className="mt-2 font-black uppercase text-[8px] md:text-[10px] tracking-widest">{item.unit}</span>
                   </div>
                 ))}
               </div>
@@ -232,12 +278,12 @@ export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
       </section>
 
       {/* About Section */}
-      <section id="about" className="bg-[#f0f0f0] border-y-4 border-black py-24 overflow-hidden">
+      <section id="about" className="bg-[#f0f0f0] border-y-4 border-black py-20 md:py-24 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="relative">
-              <div className="border-4 border-black bg-[#ff00e5] p-12 neo-shadow rotate-[-2deg]">
-                <h2 className="text-4xl font-black uppercase mb-6 text-white">The School of Now.</h2>
+              <div className="border-4 border-black bg-[#ff00e5] p-8 md:p-12 neo-shadow rotate-[-2deg]">
+                <h2 className="text-3xl md:text-4xl font-black uppercase mb-6 text-white">The School of Now.</h2>
                 <p className="text-xl font-bold text-white mb-8 leading-relaxed">
                   Traditional education is slow. AI is fast. We bridge the gap by teaching you the exact tools being used by top tech companies and creators today.
                 </p>
@@ -395,14 +441,14 @@ export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
       </section>
 
       {/* Webinar Section */}
-      <section id="webinar" className="bg-black py-24 border-y-4 border-black text-white">
+      <section id="webinar" className="bg-black py-20 md:py-24 border-y-4 border-black text-white">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="border-4 border-white p-8 md:p-16 flex flex-col md:flex-row gap-16 items-center">
-            <div className="flex-1 space-y-8">
-              <div className="inline-block px-4 py-2 border-2 border-white bg-[#ffde59] text-black font-black uppercase tracking-[0.3em] text-xs">
+          <div className="border-4 border-white p-6 sm:p-10 md:p-16 flex flex-col md:flex-row gap-12 md:gap-16 items-center">
+            <div className="flex-1 space-y-6 md:space-y-8">
+              <div className="inline-block px-4 py-2 border-2 border-white bg-[#ffde59] text-black font-black uppercase tracking-[0.3em] text-[10px] md:text-xs">
                 Live Interactive Webinar
               </div>
-              <h2 className="text-5xl md:text-7xl font-black uppercase leading-tight">
+              <h2 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase leading-tight">
                 AI Foundations:<br />
                 The <span className="text-[#00d1ff]">10X</span> Workflow.
               </h2>
@@ -623,16 +669,16 @@ export const SchoolView: React.FC<SchoolViewProps> = ({ onBack }) => {
       </section>
 
       {/* Final CTA */}
-      <section className="py-32 bg-white text-center px-6 overflow-hidden relative">
+      <section className="py-24 md:py-32 bg-white text-center px-6 overflow-hidden relative">
         <div className="max-w-5xl mx-auto space-y-12 relative z-10">
-          <h2 className="text-6xl md:text-9xl font-black uppercase leading-[0.8] tracking-tighter">
+          <h2 className="text-5xl sm:text-7xl md:text-9xl font-black uppercase leading-[0.8] tracking-tighter">
             Future-proof your <br />
             <span className="text-[#834bf1]">Career & Business</span> <br />
             with AI.
           </h2>
           <button 
             onClick={scrollToRegistration}
-            className="px-16 py-8 border-4 border-black bg-[#ffde59] font-black uppercase tracking-[0.2em] text-xl neo-shadow hover:translate-x-4 hover:translate-y-4 hover:shadow-none transition-all"
+            className="px-10 md:px-16 py-6 md:py-8 border-4 border-black bg-[#ffde59] font-black uppercase tracking-[0.2em] text-lg md:text-xl neo-shadow hover:translate-x-4 hover:translate-y-4 hover:shadow-none transition-all"
           >
             Register For Webinar
           </button>
