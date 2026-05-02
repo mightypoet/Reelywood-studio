@@ -25,6 +25,7 @@ const DashboardView = lazy(() => import('./components/Dashboard/DashboardView').
 const BrandDashboard = lazy(() => import('./components/Brands/BrandDashboard').then(m => ({ default: m.BrandDashboard })));
 const AdminDashboard = lazy(() => import('./components/Admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const AcademyView = lazy(() => import('./components/AcademyView').then(m => ({ default: m.AcademyView })));
+const SchoolView = lazy(() => import('./components/School/SchoolView').then(m => ({ default: m.SchoolView })));
 const AdminLogin = lazy(() => import('./components/Admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
 const AuthView = lazy(() => import('./components/AuthView').then(m => ({ default: m.AuthView })));
 const CreatorCardView = lazy(() => import('./components/CreatorCardView').then(m => ({ default: m.CreatorCardView })));
@@ -39,7 +40,7 @@ const LoadingFallback = () => (
 );
 
 const MainContent: React.FC = () => {
-  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'brand-dashboard' | 'academy' | 'dashboard'>(() => {
+  const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'brand-dashboard' | 'academy' | 'dashboard' | 'school'>(() => {
     const path = window.location.pathname;
     const hash = window.location.hash;
     if (path === '/admin' || hash === '#admin') return 'admin-login';
@@ -47,6 +48,7 @@ const MainContent: React.FC = () => {
     if (path === '/dashboard' || hash === '#dashboard') return 'dashboard';
     if (path === '/creatorcard' || hash === '#creatorcard') return 'creator-card';
     if (path === '/academy' || hash === '#academy') return 'academy';
+    if (path === '/reelywoodschool' || hash === '#school') return 'school';
     return 'home';
   });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -118,6 +120,7 @@ const MainContent: React.FC = () => {
       else if (path === '/dashboard' || hash === '#dashboard') setView('dashboard');
       else if (path === '/creatorcard' || hash === '#creatorcard') setView('creator-card');
       else if (path === '/academy' || hash === '#academy') setView('academy');
+      else if (path === '/reelywoodschool' || hash === '#school') setView('school');
     };
     handleRouting();
     window.addEventListener('popstate', handleRouting);
@@ -142,6 +145,7 @@ const MainContent: React.FC = () => {
       {view === 'academy' && <AcademyView onBack={() => setView('home')} />}
       {view === 'admin-login' && <AdminLogin onBack={() => setView('home')} onSuccess={() => setView('admin-dashboard')} />}
       {view === 'admin-dashboard' && <AdminDashboard onLogout={() => setView('home')} />}
+      {view === 'school' && <SchoolView onBack={() => setView('home')} />}
       
       {view === 'home' && (
         <div className="min-h-screen transition-all duration-700 bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white">
@@ -149,6 +153,7 @@ const MainContent: React.FC = () => {
             onAuthClick={() => setView('auth')} 
             onThemeToggle={toggleTheme} 
             currentTheme={theme} 
+            onSchoolClick={() => setView('school')}
             onDashboardClick={() => {
                if (user) {
                   if (ADMIN_EMAILS.includes(user.email || '')) setView('admin-dashboard');

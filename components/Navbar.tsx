@@ -8,9 +8,10 @@ interface NavbarProps {
   onThemeToggle: () => void;
   currentTheme: 'light' | 'dark';
   onDashboardClick?: () => void;
+  onSchoolClick?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, currentTheme, onDashboardClick }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, currentTheme, onDashboardClick, onSchoolClick }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
 
@@ -18,13 +19,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
     { name: 'Home', href: '#home' },
     { name: 'Creators', href: '#creators' },
     { name: 'Pricing', href: '#pricing' },
-    { name: 'Explore', href: '#explore' },
+    { name: 'School', href: '/reelywoodschool', isRoute: true },
     { name: 'Contact', href: '#contact' },
   ];
 
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, link: { name: string, href: string, isRoute?: boolean }) => {
     e.preventDefault();
-    const id = href.replace('#', '');
+    if (link.isRoute) {
+      if (link.name === 'School' && onSchoolClick) {
+        onSchoolClick();
+      }
+      setMobileMenuOpen(false);
+      return;
+    }
+    const id = link.href.replace('#', '');
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
@@ -67,7 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
                 <a 
                   key={link.name} 
                   href={link.href} 
-                  onClick={(e) => handleLinkClick(e, link.href)}
+                  onClick={(e) => handleLinkClick(e, link)}
                   className="text-[10px] font-black uppercase tracking-widest text-black hover:text-[#834bf1] transition-colors"
                 >
                   {link.name}
@@ -123,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAuthClick, onThemeToggle, curr
               <a 
                 key={link.name}
                 href={link.href} 
-                onClick={(e) => handleLinkClick(e, link.href)} 
+                onClick={(e) => handleLinkClick(e, link)} 
                 className="text-xs font-black text-black tracking-widest uppercase py-1 hover:text-[#834bf1]"
               >
                 {link.name}
