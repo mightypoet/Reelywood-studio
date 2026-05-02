@@ -41,7 +41,7 @@ const LoadingFallback = () => (
 
 const MainContent: React.FC = () => {
   const [view, setView] = useState<'home' | 'auth' | 'creator-card' | 'admin-login' | 'admin-dashboard' | 'brand-dashboard' | 'academy' | 'dashboard' | 'school'>(() => {
-    const path = window.location.pathname;
+    const path = window.location.pathname.replace(/\/$/, "");
     const hash = window.location.hash;
     if (path === '/admin' || hash === '#admin') return 'admin-login';
     if (path === '/brands' || hash === '#brands') return 'brand-dashboard';
@@ -103,7 +103,7 @@ const MainContent: React.FC = () => {
       } else {
         // Only reset to home if we aren't already on a public sub-page
         const path = window.location.hash || window.location.pathname;
-        if (!['#academy', '#creatorcard', '#admin'].includes(path)) {
+        if (!['#academy', '#creatorcard', '#admin', '#school', '/reelywoodschool', '/academy', '/creatorcard'].includes(path)) {
           setView('home');
         }
       }
@@ -113,7 +113,7 @@ const MainContent: React.FC = () => {
 
   useEffect(() => {
     const handleRouting = () => {
-      const path = window.location.pathname;
+      const path = window.location.pathname.replace(/\/$/, "");
       const hash = window.location.hash;
       if (path === '/admin' || hash === '#admin') setView('admin-login');
       else if (path === '/brands' || hash === '#brands') setView('brand-dashboard');
